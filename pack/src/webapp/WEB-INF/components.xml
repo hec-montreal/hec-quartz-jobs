@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+     http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+     http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
+
+	<bean id="ca.hec.sakai.jobs.api.ConfigurationService"
+		class="ca.hec.sakai.jobs.impl.ConfigurationServiceImpl"
+		init-method="init" >
+
+		<property name="contentHostingService"
+			ref="org.sakaiproject.content.api.ContentHostingService" />
+		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager" />
+		<property name="eventTrackingService" ref="org.sakaiproject.event.api.EventTrackingService" />
+		<property name="securityService" ref="org.sakaiproject.authz.api.SecurityService" />
+	</bean>
+
+	<bean id="abstractHecQuartzJob" abstract="true"
+		  class="ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl">
+		<property name="adminConfigService"
+				  ref="ca.hec.sakai.jobs.api.ConfigurationService" />
+		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="cmAdmin"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
+		<property name="cmService"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+		<property name="contentHostingService"
+				  ref="org.sakaiproject.content.api.ContentHostingService" />
+	<!--	<property name="coRelationDao"
+				  ref="org.sakaiquebec.opensyllabus.common.dao.CORelationDao" />-->
+		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
+		<property name="eventTrackingService"
+				  ref="org.sakaiproject.event.api.EventTrackingService" />
+		<!--<property name="osylContentService"
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylContentService" />
+		<property name="osylDirectoryService"
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylDirectoryService" />
+		<property name="osylManagerService"
+				  ref="org.sakaiquebec.opensyllabus.manager.api.OsylManagerService" />
+		<property name="osylPublishService"
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylPublishService" />
+		<property name="osylSiteService"
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylSiteService" />
+		<property name="resourceDao"
+				  ref="org.sakaiquebec.opensyllabus.common.dao.ResourceDao" />
+	-->	<property name="serverConfigService"
+				  ref="org.sakaiproject.component.api.ServerConfigurationService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
+		<property name="usageSessionService"
+				  ref="org.sakaiproject.event.api.UsageSessionService" />
+		<property name="userDirectoryService"
+				  ref="org.sakaiproject.user.api.UserDirectoryService" />
+	</bean>
+
+
+	<!-- enable the configuration of transactional behavior based on annotations -->
+	<tx:annotation-driven transaction-manager="transactionManager"  />
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="javax.sql.DataSource" />
+	</bean>
+	
+
+	<bean id="ca.hec.sakai.jobs.api.CourseEventSynchroJob"
+		class="ca.hec.sakai.jobs.impl.CourseEventSynchroJobImpl">
+		<property name="dataSource" ref="javax.sql.DataSource" />
+	</bean>
+	
+	<bean id="createCalendarEventsJob"
+		class="ca.hec.sakai.jobs.impl.CreateCalendarEventsJobImpl"
+		parent="abstractHecQuartzJob">
+		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
+		<property name="dataSource" ref="javax.sql.DataSource" />
+	</bean>
+
+	<bean id="offSitesjob"
+		class="ca.hec.sakai.jobs.impl.OfficialSitesJobImpl"
+		parent="abstractHecQuartzJob">
+	</bean>
+
+
+		<bean id="heccmjob" class="ca.hec.sakai.jobs.impl.CourseManagementSyncJobImpl" parent="abstractHecQuartzJob">
+		<property name="courseEventSynchroJob" ref="ca.hec.sakai.jobs.api.CourseEventSynchroJob"/> 
+	</bean>
+	
+	 <bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.heccmjob"
+		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		init-method="init">
+
+		<property name="beanId">
+			<value>heccmjob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Course Management Job Synchronizer</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+	</bean> 
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createCalendarEventsJob"
+		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		init-method="init">
+
+		<property name="beanId">
+			<value>createCalendarEventsJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>Create Calendar Events Job</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.offSitesjob"
+		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		init-method="init">
+
+		<property name="beanId">
+			<value>offSitesjob</value>
+		</property>
+
+		<property name="jobName">
+			<value>Official Sites Creation Job</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+	</bean>
+
+</beans>

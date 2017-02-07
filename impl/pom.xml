@@ -1,0 +1,127 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <artifactId>base</artifactId>
+        <groupId>org.sakaiproject</groupId>
+        <version>11.2</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+  <groupId>ca.hec</groupId>
+  <artifactId>hec-quartz-jobs-impl</artifactId>
+  <version>1.1-SNAPSHOT</version>
+  <name>HEC Quartz Jobs Impl</name>
+  <description>Quatz Jobs for use in Sakai at HEC Montréal</description>
+  <packaging>jar</packaging>
+  
+   
+  <dependencies>
+    
+	<!-- hec -->
+   <dependency>
+      <groupId>ca.hec</groupId>
+      <artifactId>hec-quartz-jobs-api</artifactId>
+      <version>1.1-SNAPSHOT</version>
+   </dependency>
+    
+   <dependency>
+      <groupId>ca.hec</groupId>
+      <artifactId>hec-commons-utils</artifactId> 
+      <version>1.1-SNAPSHOT</version>
+   </dependency>
+
+     <!--  sakai -->
+	<dependency>
+	  <groupId>org.sakaiproject.kernel</groupId>
+	  <artifactId>sakai-kernel-api</artifactId>
+	</dependency>
+    <dependency>
+	  <groupId>org.sakaiproject.kernel</groupId>
+	  <artifactId>sakai-component-manager</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.sakaiproject.edu-services.course-management</groupId>
+      <artifactId>coursemanagement-api</artifactId>
+     </dependency>
+    <dependency>
+      <groupId>org.sakaiproject.calendar</groupId>
+      <artifactId>sakai-calendar-api</artifactId>
+     </dependency>
+
+     <!-- spring and hibernate -->
+      <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-core</artifactId>
+          <version>${kernel.spring.version}</version>
+          <scope>provided</scope>
+      </dependency>
+       <dependency>
+          <groupId>org.springframework</groupId>
+          <artifactId>spring-jdbc</artifactId>
+          <version>${kernel.spring.version}</version>
+          <scope>provided</scope>
+      </dependency>
+
+    <!-- misc -->
+      <dependency>
+          <groupId>org.quartz-scheduler</groupId>
+          <artifactId>quartz</artifactId>
+      </dependency>
+      <dependency>
+      <groupId>org.hsqldb</groupId>
+      <artifactId>hsqldb</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>dom4j</groupId>
+      <artifactId>dom4j</artifactId>
+      <scope>provided</scope>
+    </dependency>
+      <dependency>
+        <groupId>jta</groupId>
+        <artifactId>jta</artifactId>
+        <version>h2.1.8</version>
+      </dependency>
+      <dependency>
+        <groupId>cglib</groupId>
+        <artifactId>cglib-nodep</artifactId>
+          <scope>provided</scope>
+      </dependency>
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>commons-collections</groupId>
+      <artifactId>commons-collections</artifactId>
+    </dependency>
+        <dependency>
+      <groupId>org.sakaiproject.kernel</groupId>
+      <artifactId>sakai-kernel-util</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>net.sf.ehcache</groupId>
+      <artifactId>ehcache-core</artifactId>
+      <scope>provided</scope>
+    </dependency>
+     <dependency>
+        <groupId>easymock</groupId>
+        <artifactId>easymock</artifactId>
+        <version>1.2_Java1.3</version>
+      </dependency>
+      <dependency>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
+      </dependency>
+      <dependency>
+		<groupId>org.projectlombok</groupId>
+		<artifactId>lombok</artifactId>
+	  </dependency>
+      <dependency>
+          <groupId>org.sakaiquebec.opensyllabus</groupId>
+          <artifactId>osyl-common-api</artifactId>
+          <version>11-SNAPSHOT</version>
+      </dependency>
+
+  </dependencies>
+
+</project>
