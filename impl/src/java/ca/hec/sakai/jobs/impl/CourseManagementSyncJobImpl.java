@@ -421,7 +421,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                                     CREDITS, courseOfferingId,
                                                     new HashSet<String>());
                                 } catch (IdExistsException e) {
-                                    e.printStackTrace();
+                                    log.info(enrollmentSetId + " does not exist");
                                 }
                             } else
                                 enrollmentSet =
@@ -451,7 +451,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 //                            }
 //                        }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.info(courseSectionId + " does not exist");
                     }
                 }
             }
@@ -675,7 +675,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                         DateFormat.getDateInstance().parse(
                                 sessionEntry.getEndDate());
             } catch (ParseException e) {
-                e.printStackTrace();
+                log.info (sessionEntry + "does not contain valid dates");
             }
 
             if (!cmService.isAcademicSessionDefined(eid)) {
@@ -897,7 +897,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                         getAdminZoneCours2EMail(),
                         "Synchronization with PeopleSoft failed", message, null,
                         null, null);
-                e.printStackTrace();
+                log.info(message);
             }
 
             logoutFromSakai();
@@ -946,7 +946,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 
             }
         } catch (ParseException e) {
-            e.printStackTrace();
+            log.info (sessionEntry + " does not have valid dates");
         }
 
         // Retrieve the course offerings we will update
@@ -1086,11 +1086,11 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                     .getUserId(userId));
                             authzGroupService.save(group);
                         } catch (GroupNotDefinedException e) {
-                            log.error(e.getMessage());
+                            log.info(groupId + " is not defined.");
                         } catch (UserNotDefinedException e) {
-                            log.error(e.getMessage());
+                            log.error(userId + "is not defined");
                         } catch (AuthzPermissionException e) {
-                            log.error(e.getMessage());
+                            log.error("You are not allowed to remove " + userId + " from " + groupId);
                         }
                     }
                 log.info("L'utilisateur " + userId + " du cours "
@@ -1299,7 +1299,6 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
             } catch (Exception e) {
                 log.error("The directory site for " + siteTitle
                         + " has not been created.");
-                e.printStackTrace();
             }
 
             // TODO: put a more visible message like sending mail
@@ -1375,7 +1374,6 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
             return siteService.siteExists(siteTitle);
         } catch (Exception e) {
             log.error(e.getMessage());
-            e.printStackTrace();
             return false;
         }
     }
