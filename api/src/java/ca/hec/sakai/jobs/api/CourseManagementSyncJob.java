@@ -33,6 +33,9 @@ package ca.hec.sakai.jobs.api;
  */
 public interface CourseManagementSyncJob extends AbstractHecQuartzJob {
 
+    public static final String [] DEBUG_COURSES = {"140496", "271011", "3042009", "670112", "3015003", "5801013" };
+    // NO DEBUG public static final String [] DEBUG_COURSES = {};
+
     public final static String SESSION_FILE = "session.dat";
 
     public final static String COURS_FILE = "cours.dat";
