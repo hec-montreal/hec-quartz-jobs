@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: org.sakaiproject.edu-services.course-management:coursemanagement-api:11.2">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/sakaiproject/edu-services/course-management/coursemanagement-api/11.2/coursemanagement-api-11.2.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/org/sakaiproject/edu-services/course-management/coursemanagement-api/11.2/coursemanagement-api-11.2-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/org/sakaiproject/edu-services/course-management/coursemanagement-api/11.2/coursemanagement-api-11.2-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
