@@ -38,7 +38,7 @@ public class GenericRequirementsCoursMapFactory {
     private static Log log = LogFactory
 	    .getLog(GenericRequirementsCoursMapFactory.class);
 
-    public static RequirementsCoursMap buildMap(String completeFileName)
+    public static RequirementsCoursMap buildMap(String completeFileName, String [] debugCourses)
 	    throws java.io.IOException {
 
 	RequirementsCoursMap map;
@@ -78,8 +78,16 @@ public class GenericRequirementsCoursMapFactory {
 	    // Remove empty spaces
 	    if (courseId != null)
 		courseId = courseId.trim();
-	    if (catalogNbr != null)
-	    catalogNbr = catalogNbr.trim();
+	    if (catalogNbr != null){
+	   		catalogNbr = catalogNbr.trim();
+			//-----------------------------------------------------------------------
+			//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
+			if (debugCourses != null && debugCourses.length > 0)
+				if (!Constants.isCourseInDebug(debugCourses, catalogNbr))
+					continue;
+			//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
+			//--------------------------------------------------------------------------
+		}
 
 	    // on reprend l'entree existante
 	    if (map.containsKey(courseId)) {

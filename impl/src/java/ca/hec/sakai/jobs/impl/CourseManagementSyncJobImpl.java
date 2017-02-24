@@ -110,12 +110,13 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
     /**
      * Students currently registered as enrolled in the system
      */
-    private Map<String, Enrollment> actualStudents;
+    private Map<String, Enrollment>  actualStudents = new HashMap<String, Enrollment>();
+
 
     /**
      * Classes sections actually registered in the system
      */
-    private Set<Section> actualCoursesSection;
+    private Set<Section> actualCoursesSection = new HashSet<Section>();
 
     private Date actualStartDate = null;
 
@@ -135,6 +136,21 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
      * Max title byte length
      */
     private static final int MAX_TITLE_BYTE_LENGTH = 100;
+
+    String [] DEBUG_COURSES = null;
+
+    public boolean isSynchroOnDebug(){
+        String debugCourses = ServerConfigurationService.getString("coursemanagement.debug.courses", null);
+
+        if (debugCourses != null && !debugCourses.isEmpty()){
+          DEBUG_COURSES = debugCourses.split(",");
+          return true;
+        }
+
+
+        return false;
+
+    }
 
     public void setCourseEventSynchroJob(
             CourseEventSynchroJob courseEventSynchroJob) {
@@ -678,31 +694,30 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                 log.info (sessionEntry + "does not contain valid dates");
             }
 
-            if (!cmService.isAcademicSessionDefined(eid)) {
-                aSession =
-                        cmAdmin.createAcademicSession(eid, title, description,
-                                startDate, endDate);
-            } else {
-                // We update
-                aSession = cmService.getAcademicSession(eid);
-                aSession.setDescription(description);
-                aSession.setEndDate(endDate);
-                aSession.setStartDate(startDate);
-                aSession.setTitle(title);
-                cmAdmin.updateAcademicSession(aSession);
-            }
+                if (!cmService.isAcademicSessionDefined(eid)) {
+                    aSession =
+                            cmAdmin.createAcademicSession(eid, title, description,
+                                    startDate, endDate);
+                } else {
+                    // We update
+                    aSession = cmService.getAcademicSession(eid);
+                    aSession.setDescription(description);
+                    aSession.setEndDate(endDate);
+                    aSession.setStartDate(startDate);
+                    aSession.setTitle(title);
+                    cmAdmin.updateAcademicSession(aSession);
+                }
 
-            if (currentSessions == null) {
-                currentSessions = new ArrayList<String>();
+                if (currentSessions == null) {
+                    currentSessions = new ArrayList<String>();
+                }
+                if ((now.compareTo(startDate)) >= 0 && now.compareTo(endDate) <= 0) {
+                    currentSessions.add(aSession.getEid());
+                } else
+                    currentSessions.remove(aSession.getEid());
+                cmAdmin.setCurrentAcademicSessions(currentSessions);
             }
-            if ((now.compareTo(startDate)) >= 0 && now.compareTo(endDate) <= 0) {
-                currentSessions.add(aSession.getEid());
-            } else
-                currentSessions.remove(aSession.getEid());
-            cmAdmin.setCurrentAcademicSessions(currentSessions);
-
         }
-    }
 
     // Has same ID as course section
     private String getCourseSectionEnrollmentSetId(DetailCoursMapEntry course) {
@@ -801,6 +816,8 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 
             try {
 
+                isSynchroOnDebug();
+
                 detailSessionMap =
                         GenericDetailSessionsMapFactory.getInstance(directory
                                 + File.separator + SESSION_FILE);
@@ -823,11 +840,11 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                 + File.separator + COURS_FILE);
                 detailCoursMap =
                         GenericDetailCoursMapFactory.buildMap(directory
-                                + File.separator + COURS_FILE);
+                                + File.separator + COURS_FILE, DEBUG_COURSES);
 
                 profCoursMap =
                         GenericProfCoursMapFactory.buildMap(directory
-                                + File.separator + PROF_FILE);
+                                + File.separator + PROF_FILE, DEBUG_COURSES);
 
                 etudCoursMap =
                         GenericEtudiantCoursMapFactory.getInstance(directory
@@ -835,7 +852,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                 etudCoursMap =
                         GenericEtudiantCoursMapFactory.buildMap(directory
                                         + File.separator + ETUDIANT_FILE, detailCoursMap,
-                                detailSessionMap);
+                                detailSessionMap, DEBUG_COURSES);
 
                 programmeEtudesMap =
                         GenericProgrammeEtudesMapFactory.getInstance(directory
@@ -849,20 +866,21 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                 + File.separator + REQUIREMENTS);
                 requirementsCoursMap =
                         GenericRequirementsCoursMapFactory.buildMap(directory
-                                + File.separator + REQUIREMENTS);
+                                + File.separator + REQUIREMENTS, DEBUG_COURSES);
 
                 // We first retrieve the current values in the system for the same
                 log.info("Finished reading extracts. Now updating the Course Management");
                 // time period as the extracts
 
-                retrieveCurrentCMContent();
+                if (DEBUG_COURSES == null || DEBUG_COURSES.length == 0)
+                    retrieveCurrentCMContent();
 
                 // We load academic careers
-                loadAcademicCareers();
+               loadAcademicCareers();
                 log.info("Academic Careers updated successfully");
 
                 // We load sessions
-                loadSessions();
+                 loadSessions();
                 log.info("Sessions updated successfully");
 
                 // We add a category
@@ -874,7 +892,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                 log.info("CourseSets updated successfully");
 
                 // We load courses
-                loadCourses();
+                 loadCourses();
                 log.info("Courses updated successfully");
 
                 // We assign teachers
@@ -886,8 +904,8 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                 log.info("Enrollments updated successfully");
 
                 // course events synch
-                courseEventSynchroJob.execute(directory + File.separator
-                        + HORAIRES_FILE);
+                //courseEventSynchroJob.execute(directory + File.separator
+                 //       + HORAIRES_FILE);
 
             } catch (Exception e) {
                 String message =
@@ -960,8 +978,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 
         Set<EnrollmentSet> enrollmentS = null;
 
-        actualStudents = new HashMap<String, Enrollment>();
-        actualCoursesSection = new HashSet<Section>();
+
         Set<Enrollment> enrollments = null;
 
         for (CourseSet courseSet : courseSets) {
@@ -1411,4 +1428,4 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 
         return sret.substring(0, sret.length() - 2);
     }
-}
+        }

@@ -12,7 +12,7 @@ public class GenericEtudiantCoursMapFactory {
 	    .getLog(GenericEtudiantCoursMapFactory.class);
 
     public static EtudiantCoursMap buildMap(String completeFileName,
-	    DetailCoursMap detailCoursMap, DetailSessionsMap detailSessionsMap)
+	    DetailCoursMap detailCoursMap, DetailSessionsMap detailSessionsMap, String [] debugCourses)
 	    throws java.io.IOException {
 
 	// Pour faire reference aux cours de chaque etudiant, on a besoin du
@@ -63,14 +63,24 @@ public class GenericEtudiantCoursMapFactory {
 	    String status = token[i++];
 	    String strmId = strm + sessionCode;
 
-	    if (catalogNbr != null)
-		catalogNbr = catalogNbr.trim();
+	    if (catalogNbr != null){
+			catalogNbr = catalogNbr.trim();
+			//-----------------------------------------------------------------------
+			//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
+			if (debugCourses != null && debugCourses.length > 0)
+				if (!Constants.isCourseInDebug(debugCourses, catalogNbr))
+					continue;
+			//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
+			//--------------------------------------------------------------------------
+		}
 
 	    if (map.containsKey(emplId)) {
 		entry = map.get(emplId);
 	    } else {
 		entry = new EtudiantCoursMapEntry(emplId);
-		map.put(entry);
+			//ZCII-2783: Do not sync data during and after A2017
+			if (Constants.isInDateBound(Integer.parseInt(strm)))
+				map.put(entry);
 	    }
 
 	    DetailCoursMapEntry cours =

@@ -1,6 +1,9 @@
 package ca.hec.sakai.extracts;
 
 import java.io.*;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -49,7 +52,9 @@ public class GenericDetailSessionsMapFactory {
 	    entry.setSessionCode(token[8]);
 	    entry.setStrmId(token[9]);
 
-	    map.put(entry);
+		//ZCII-2783: Do not sync data during and after A2017
+		if (Constants.isInDateBound(Integer.parseInt(entry.getStrm())))
+			map.put(entry);
 	}
 
 	// ferme le tampon

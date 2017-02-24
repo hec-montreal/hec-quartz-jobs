@@ -10,7 +10,7 @@ public class GenericDetailCoursMapFactory {
     private static Log log = LogFactory
 	    .getLog(GenericDetailCoursMapFactory.class);
 
-    public static DetailCoursMap buildMap(String completeFileName)
+    public static DetailCoursMap buildMap(String completeFileName, String [] debugCourses)
 	    throws java.io.IOException {
 
 	DetailCoursMap map;
@@ -87,7 +87,16 @@ public class GenericDetailCoursMapFactory {
 		entry.setTypeEvaluation(null);
 	    }
 
-	    map.put(entry);
+	    //-----------------------------------------------------------------------
+		//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
+		if (debugCourses != null && debugCourses.length > 0)
+			if (!Constants.isCourseInDebug(debugCourses, entry.getCatalogNbr()))
+				continue;
+		//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
+		//--------------------------------------------------------------------------
+		//ZCII-2783: Do not sync data during and after A2017
+		if (Constants.isInDateBound(Integer.parseInt(entry.getStrm())))
+			map.put(entry);
 	}
 
 	// ferme le reader

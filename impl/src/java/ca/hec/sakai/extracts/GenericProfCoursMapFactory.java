@@ -10,7 +10,7 @@ public class GenericProfCoursMapFactory {
 
 	private static Log log = LogFactory.getLog(GenericProfCoursMapFactory.class);
 
-	public static Map<String, ProfCoursMapEntry> buildMap(String completeFileName)
+	public static Map<String, ProfCoursMapEntry> buildMap(String completeFileName, String [] debugCourses)
 			throws java.io.IOException {
 
 		Map<String, ProfCoursMapEntry> map = new HashMap<String, ProfCoursMapEntry>();
@@ -41,6 +41,13 @@ public class GenericProfCoursMapFactory {
 
 			if (catalogNbr != null) {
 				catalogNbr = catalogNbr.trim();
+				//-----------------------------------------------------------------------
+				//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
+				if (debugCourses != null && debugCourses.length > 0)
+					if (!Constants.isCourseInDebug(debugCourses, catalogNbr))
+						continue;
+				//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
+				//--------------------------------------------------------------------------
 			}
 
 			String key = catalogNbr + strm + sessionCode + classSection;
@@ -50,7 +57,9 @@ public class GenericProfCoursMapFactory {
 				entry = map.get(key);
 			} else {
 				entry = new ProfCoursMapEntry();
-				map.put(key, entry);
+				//ZCII-2783: Do not sync data during and after A2017
+				if (Constants.isInDateBound(Integer.parseInt(strm)))
+					map.put(key, entry);
 			}
 
 			// On ne peut pas se fier a la colonne qui contient le role dans l'extract
