@@ -2,6 +2,7 @@ package ca.hec.sakai.extracts;
 
 import java.io.*;
 
+import ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -90,12 +91,12 @@ public class GenericDetailCoursMapFactory {
 	    //-----------------------------------------------------------------------
 		//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
 		if (debugCourses != null && debugCourses.length > 0)
-			if (!Constants.isCourseInDebug(debugCourses, entry.getCatalogNbr()))
+			if (!AbstractHecQuartzJobImpl.isCourseInDebug(debugCourses, entry.getCatalogNbr()))
 				continue;
 		//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
 		//--------------------------------------------------------------------------
 		//ZCII-2783: Do not sync data during and after A2017
-		if (Constants.isInDateBound(Integer.parseInt(entry.getStrm())))
+		if (AbstractHecQuartzJobImpl.isInDateBound(Integer.parseInt(entry.getStrm())))
 			map.put(entry);
 	}
 

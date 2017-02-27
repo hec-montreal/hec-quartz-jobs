@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+import ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -53,7 +54,7 @@ public class GenericDetailSessionsMapFactory {
 	    entry.setStrmId(token[9]);
 
 		//ZCII-2783: Do not sync data during and after A2017
-		if (Constants.isInDateBound(Integer.parseInt(entry.getStrm())))
+		if (AbstractHecQuartzJobImpl.isInDateBound(Integer.parseInt(entry.getStrm())))
 			map.put(entry);
 	}
 

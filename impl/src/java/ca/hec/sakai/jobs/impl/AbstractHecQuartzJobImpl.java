@@ -272,5 +272,35 @@ public abstract class AbstractHecQuartzJobImpl implements AbstractHecQuartzJob {
 
     }
 
+    String [] debug_courses = null;
+
+    public String [] getDebugCourses (){
+        return debug_courses;
+    }
+
+    public boolean isSynchroOnDebug(){
+        String debugCourses = org.sakaiproject.component.cover.ServerConfigurationService.getString("coursemanagement.debug.courses", null);
+
+        if (debugCourses != null && !debugCourses.isEmpty()){
+            debug_courses = debugCourses.split(",");
+            return true;
+        }
+
+
+        return false;
+
+    }
+
+    public static boolean isCourseInDebug (String [] debugCourses, String coEid){
+        for (String debugCourse: debugCourses ){
+            if (coEid.contains(debugCourse))
+                return true;
+        }
+        return false;
+    }
+
+    public static final boolean isInDateBound (int strm){
+        return strm < FINAL_DATE ;
+    }
 
 }

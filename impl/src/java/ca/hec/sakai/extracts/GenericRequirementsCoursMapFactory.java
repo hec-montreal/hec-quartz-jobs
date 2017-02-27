@@ -26,6 +26,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 
+import ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -83,7 +84,7 @@ public class GenericRequirementsCoursMapFactory {
 			//-----------------------------------------------------------------------
 			//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
 			if (debugCourses != null && debugCourses.length > 0)
-				if (!Constants.isCourseInDebug(debugCourses, catalogNbr))
+				if (!AbstractHecQuartzJobImpl.isCourseInDebug(debugCourses, catalogNbr))
 					continue;
 			//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
 			//--------------------------------------------------------------------------

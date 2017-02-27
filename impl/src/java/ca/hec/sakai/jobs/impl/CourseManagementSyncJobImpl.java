@@ -137,20 +137,6 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
      */
     private static final int MAX_TITLE_BYTE_LENGTH = 100;
 
-    String [] DEBUG_COURSES = null;
-
-    public boolean isSynchroOnDebug(){
-        String debugCourses = ServerConfigurationService.getString("coursemanagement.debug.courses", null);
-
-        if (debugCourses != null && !debugCourses.isEmpty()){
-          DEBUG_COURSES = debugCourses.split(",");
-          return true;
-        }
-
-
-        return false;
-
-    }
 
     public void setCourseEventSynchroJob(
             CourseEventSynchroJob courseEventSynchroJob) {
@@ -816,6 +802,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
 
             try {
 
+                //If we are on debug mode, retrieve classes
                 isSynchroOnDebug();
 
                 detailSessionMap =
@@ -840,11 +827,11 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                 + File.separator + COURS_FILE);
                 detailCoursMap =
                         GenericDetailCoursMapFactory.buildMap(directory
-                                + File.separator + COURS_FILE, DEBUG_COURSES);
+                                + File.separator + COURS_FILE, getDebugCourses());
 
                 profCoursMap =
                         GenericProfCoursMapFactory.buildMap(directory
-                                + File.separator + PROF_FILE, DEBUG_COURSES);
+                                + File.separator + PROF_FILE, getDebugCourses());
 
                 etudCoursMap =
                         GenericEtudiantCoursMapFactory.getInstance(directory
@@ -852,7 +839,7 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                 etudCoursMap =
                         GenericEtudiantCoursMapFactory.buildMap(directory
                                         + File.separator + ETUDIANT_FILE, detailCoursMap,
-                                detailSessionMap, DEBUG_COURSES);
+                                detailSessionMap, getDebugCourses());
 
                 programmeEtudesMap =
                         GenericProgrammeEtudesMapFactory.getInstance(directory
@@ -866,13 +853,13 @@ public class CourseManagementSyncJobImpl extends AbstractHecQuartzJobImpl implem
                                 + File.separator + REQUIREMENTS);
                 requirementsCoursMap =
                         GenericRequirementsCoursMapFactory.buildMap(directory
-                                + File.separator + REQUIREMENTS, DEBUG_COURSES);
+                                + File.separator + REQUIREMENTS, getDebugCourses());
 
                 // We first retrieve the current values in the system for the same
                 log.info("Finished reading extracts. Now updating the Course Management");
                 // time period as the extracts
 
-                if (DEBUG_COURSES == null || DEBUG_COURSES.length == 0)
+                if (debug_courses == null || debug_courses.length == 0)
                     retrieveCurrentCMContent();
 
                 // We load academic careers

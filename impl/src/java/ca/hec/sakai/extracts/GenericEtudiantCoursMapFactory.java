@@ -3,6 +3,7 @@ package ca.hec.sakai.extracts;
 import java.util.*;
 import java.io.*;
 
+import ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -68,7 +69,7 @@ public class GenericEtudiantCoursMapFactory {
 			//-----------------------------------------------------------------------
 			//DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG MODE-DEBUG
 			if (debugCourses != null && debugCourses.length > 0)
-				if (!Constants.isCourseInDebug(debugCourses, catalogNbr))
+				if (!AbstractHecQuartzJobImpl.isCourseInDebug(debugCourses, catalogNbr))
 					continue;
 			//END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE-END DEBUG MODE
 			//--------------------------------------------------------------------------
@@ -79,7 +80,7 @@ public class GenericEtudiantCoursMapFactory {
 	    } else {
 		entry = new EtudiantCoursMapEntry(emplId);
 			//ZCII-2783: Do not sync data during and after A2017
-			if (Constants.isInDateBound(Integer.parseInt(strm)))
+			if (AbstractHecQuartzJobImpl.isInDateBound(Integer.parseInt(strm)))
 				map.put(entry);
 	    }
 
