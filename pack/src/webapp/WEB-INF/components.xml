@@ -65,82 +65,11 @@
 	</bean>
 	
 
-	<bean id="ca.hec.sakai.jobs.api.CourseEventSynchroJob"
-		class="ca.hec.sakai.jobs.impl.CourseEventSynchroJobImpl">
-		<property name="dataSource" ref="javax.sql.DataSource" />
-	</bean>
-	
-	<bean id="createCalendarEventsJob"
-		class="ca.hec.sakai.jobs.impl.CreateCalendarEventsJobImpl"
-		parent="abstractHecQuartzJob">
-		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
-		<property name="dataSource" ref="javax.sql.DataSource" />
-	</bean>
-
-	<bean id="offSitesjob"
-		class="ca.hec.sakai.jobs.impl.OfficialSitesJobImpl"
-		parent="abstractHecQuartzJob">
-	</bean>
-
 	<bean id="hecOffSitesjob"
 		  class="ca.hec.sakai.jobs.impl.HecOfficialSitesJobImpl"
 		  parent="abstractHecQuartzJob">
 	</bean>
 
-	<bean id="heccmjob" class="ca.hec.sakai.jobs.impl.CourseManagementSyncJobImpl" parent="abstractHecQuartzJob">
-		<property name="courseEventSynchroJob" ref="ca.hec.sakai.jobs.api.CourseEventSynchroJob"/> 
-	</bean>
-	
-	 <bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.heccmjob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
-
-		<property name="beanId">
-			<value>heccmjob</value>
-		</property>
-
-		<property name="jobName">
-			<value>HEC Course Management Job Synchronizer</value>
-		</property>
-
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-	</bean> 
-
-	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createCalendarEventsJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
-
-		<property name="beanId">
-			<value>createCalendarEventsJob</value>
-		</property>
-
-		<property name="jobName">
-			<value>Create Calendar Events Job</value>
-		</property>
-
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-	</bean>
-
-	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.offSitesjob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
-
-		<property name="beanId">
-			<value>offSitesjob</value>
-		</property>
-
-		<property name="jobName">
-			<value>Official Sites Creation Job</value>
-		</property>
-
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecOffSitesjob"
 		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"

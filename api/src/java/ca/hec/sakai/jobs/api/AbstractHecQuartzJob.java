@@ -39,6 +39,13 @@ public interface AbstractHecQuartzJob extends Job{
 
     public final static String DIRECTORY_SITE = "directory";
 
+    public final static String SUMMER = "E";
+
+    public final static String WINTER = "H";
+
+    public final static String FALL = "A";
+
+
     public static final int FINAL_DATE = 2173;
 
     public PropertyResourceBundle getResouceBundle(ContentResource resource);
