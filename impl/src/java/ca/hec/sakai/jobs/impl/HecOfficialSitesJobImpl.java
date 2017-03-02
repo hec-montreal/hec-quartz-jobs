@@ -1,5 +1,6 @@
 package ca.hec.sakai.jobs.impl;
 
+import ca.hec.commons.utils.FormatUtils;
 import ca.hec.sakai.jobs.api.HecOfficialSitesJob;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -12,69 +13,148 @@ import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Site;
+import org.sakaiproject.site.api.SiteAdvisor;
+import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.tool.api.SessionManager;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import org.sakaiproject.component.section.sakai.SectionManagerImpl;
 
 /**
- * Created by 11091096 on 2017-02-07.
+ * Created by mame-awa.diop@hec.ca on 2017-02-07.
  */
 
-public class HecOfficialSitesJobImpl extends AbstractHecQuartzJobImpl implements HecOfficialSitesJob {
+public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     private static Log log = LogFactory.getLog(HecOfficialSitesJobImpl.class);
 
 
+    protected CourseManagementAdministration cmAdmin;
+    protected CourseManagementService cmService;
+    protected SiteService siteService;
+    protected SessionManager sessionManager;
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        String sessions = context.getMergedJobDataMap().getString("sessions");
+        String sessionStart = context.getMergedJobDataMap().getString("sessionStart");
+        String sessionEnd = context.getMergedJobDataMap().getString("sessionEnd");
         String courses = context.getMergedJobDataMap().getString("courses");
         String programs = context.getMergedJobDataMap().getString("programs");
         String departments = context.getMergedJobDataMap().getString("departments");
-       System.out.println (sessions + " la session");
 
-       List<CourseOffering> selectedCO = getSelectedCO(sessions, courses, programs, departments);
-        System.out.println(selectedCO);
-        loginToSakai("admin");
-        for (CourseOffering courseOff: selectedCO){
-            createSite(courseOff);
+        List<AcademicSession> selectedSessions = getSessions(sessionStart, sessionEnd);
+
+        List<CourseOffering> selectedCO = getSelectedCO(selectedSessions, courses, programs, departments);
+
+        Session session = sessionManager.getCurrentSession();
+        try {
+            session.setUserEid("admin");
+            session.setUserId("admin");
+            for (CourseOffering courseOff: selectedCO){
+               createSite(courseOff);
+            }
+        } finally {
+            session.clear();
         }
-        logoutFromSakai();
+
+    }
+
+    private List<AcademicSession> getSessions (String sessionStart, String sessionEnd){
+        List<AcademicSession> offSessions = new ArrayList<AcademicSession>();
+        Date startDate = getDate(sessionStart);
+        Date endDate = getDate(sessionEnd);
+        List<AcademicSession> allSessions = cmService.getAcademicSessions();
+
+        for(AcademicSession session: allSessions){
+            if (session.getStartDate().after(startDate) && session.getEndDate().before(endDate))
+                offSessions.add(session);
+        }
+        //Retrieve current sessions if no session
+        if (offSessions.size() == 0) {
+            offSessions = cmService.getCurrentAcademicSessions();
+        }
+
+        return offSessions;
     }
 
 
-    private List<CourseOffering> getSelectedCO (String sessions, String courses, String programs, String departments){
+    private List<CourseOffering> getSelectedCO (List<AcademicSession> selectedSessions, String courses, String programs, String departments){
         List<CourseOffering> selectedCO = new ArrayList<CourseOffering>();
-        String [] selectedSessions, selectedCourses, selectedPrograms, selectedDepartments;
+        String [] selectedCourses, selectedPrograms, selectedDepartments;
 
-        if (sessions != null && !sessions.isEmpty()) {
-            //Retrieve selected sessions
-            selectedSessions = splitProperty(sessions);
-            List<AcademicSession> offSessions = getSessions(selectedSessions);
-
-        }
 
         if (programs != null && !programs.isEmpty()){
-            //Retrieve selected programs
-
+            selectedPrograms = splitProperty(programs);
+            selectedCO.addAll(getSelectedCOByPrograms(selectedPrograms, selectedSessions));
         }
 
         if (departments != null && !departments.isEmpty()){
-            //Retrieve selected departments
-
+            selectedDepartments = splitProperty(departments);
+            selectedCO.addAll(getSelectedCOByDepartments(selectedDepartments, selectedSessions));
         }
 
         if (courses != null && !courses.isEmpty()) {
-            //Retrieve selected courses
             selectedCourses = splitProperty(courses);
-            List<CanonicalCourse> offCanonicalCourses = getCanonicalCourses(selectedCourses);
-            for(CanonicalCourse offCanCourse: offCanonicalCourses){
-                selectedCO.addAll(cmService.findActiveCourseOfferingsInCanonicalCourse(offCanCourse.getEid()));
-            }
+            selectedCO.addAll(getSelectedCOByCourses(selectedCourses, selectedSessions));
+        }
+       return selectedCO;
+    }
 
-            System.out.print(selectedCO);
+    private List<CourseOffering> getSelectedCOByDepartments ( String [] selectedDepartments, List<AcademicSession> offSessions){
+        List<CourseOffering> selectedCO = new ArrayList<CourseOffering>();
+        CourseSet department = null;
+        for (int i=0; i< selectedDepartments.length; i++){
+            department = cmService.getCourseSet(selectedDepartments[i]);
+            if (department == null){
+                log.warn(selectedDepartments[i] + " is not a valid department");
+                continue;
+            }
+            for (AcademicSession session: offSessions){
+                selectedCO.addAll(cmService.findCourseOfferings(department.getEid(), session.getEid()));
+            }
         }
 
+
+        return selectedCO;
+    }
+
+    private List<CourseOffering> getSelectedCOByPrograms ( String [] selectedPrograms, List<AcademicSession> offSessions){
+        List<CourseOffering> selectedCO = new ArrayList<CourseOffering>();
+        AcademicCareer acadCareer = null;
+        for (int i=0; i<selectedPrograms.length; i++){
+            acadCareer = cmService.getAcademicCareer(selectedPrograms[i]);
+            if (acadCareer == null){
+                log.warn( acadCareer + " is not a valid program");
+                continue;
+            }
+
+            for (AcademicSession session: offSessions){
+                selectedCO.addAll(cmService.findCourseOfferingsByAcadCareerAndAcademicSession(acadCareer.getEid(), session.getEid()));
+            }
+
+        }
+
+        return selectedCO;
+    }
+
+    private List<CourseOffering> getSelectedCOByCourses ( String [] selectedCourses,List<AcademicSession> offSessions ){
+        List<CourseOffering> selectedCO= new ArrayList<CourseOffering>();
+        List<CourseOffering> tempCO =  new ArrayList<CourseOffering>();
+        List<CanonicalCourse> cannCourses = getCanonicalCourses(selectedCourses);
+        for (CanonicalCourse cann: cannCourses){
+            tempCO.addAll(cmService.getCourseOfferingsInCanonicalCourse(cann.getEid()));
+        }
+        for( CourseOffering courseOff: tempCO){
+            for (AcademicSession session: offSessions){
+                if ((courseOff.getAcademicSession().getEid()).equals(session.getEid()))
+                    selectedCO.add(courseOff);
+            }
+        }
 
 
         return selectedCO;
@@ -86,18 +166,6 @@ public class HecOfficialSitesJobImpl extends AbstractHecQuartzJobImpl implements
         return null;
     }
 
-    private List<AcademicSession> getSessions (String[] sessions){
-        List<AcademicSession> offSessions = new ArrayList<AcademicSession>();
-        for (String session: sessions){
-            if (cmService.isAcademicSessionDefined(session))
-                offSessions.add(cmService.getAcademicSession(session));
-            else
-                log.info (session + " is not a valid session eid");
-        }
-        System.out.println(offSessions);
-        return offSessions;
-    }
-
     private List<CanonicalCourse> getCanonicalCourses(String[] courses){
         List<CanonicalCourse> offCanonicalCourses = new ArrayList<CanonicalCourse>();
         for (String course: courses){
@@ -106,47 +174,146 @@ public class HecOfficialSitesJobImpl extends AbstractHecQuartzJobImpl implements
             else
                 log.info (course + " is not a valid session eid");
         }
-        System.out.println(offCanonicalCourses);
         return offCanonicalCourses;
     }
 
-    private Site createSite (CourseOffering courseOffering){
+    public Site createSite (CourseOffering courseOffering){
         try {
-            Site templateSite = siteService.getSite("hec-template");
-            Site createdSite = siteService.addSite(courseOffering.getEid(), templateSite);
-            createdSite.setProviderGroupId(courseOffering.getEid());
+            Site createdSite = null;
+
+            Site templateSite = siteService.getSite(HEC_TEMPLATE_SITE);
+            String siteName = getSiteName(courseOffering);
+
+            if (!siteService.siteExists(siteName)) {
+                createdSite = siteService.addSite(getSiteName(courseOffering), templateSite);
+            }
+            else
+                createdSite = siteService.getSite(siteName);
 
             //Set site properties
-            createdSite.setTitle(courseOffering.getTitle());
-            ResourcePropertiesEdit rpe = createdSite.getPropertiesEdit();
-            rpe.addProperty(Site.PROP_SITE_TERM, courseOffering.getAcademicSession().getTitle());
-            rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
+            setSiteProperties(createdSite, courseOffering);
 
             //Associate to sections
-            String providerGroupId = "";
-            Set<Section> sections = cmService.getSections(courseOffering.getEid());
-            for (Section section : sections) {
-                //TODO: Remove after tenjin deploy
-                if (providerGroupId.length() > 0 && !providerGroupId.endsWith("00"))
-                    providerGroupId += "+";
-                providerGroupId += section.getEid();
-            }
+            setProviderId(createdSite, courseOffering);
 
-            if (providerGroupId.length() > 0)
-                createdSite.setProviderGroupId(providerGroupId);
-
+            //Save3Update site properties, tools and providerId
             siteService.save(createdSite);
+
+            //Update site membership
+            List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors();
+            for (SiteAdvisor secManager: siteAdvisors)
+                secManager.update(createdSite);
+
             return createdSite;
         } catch (IdUnusedException e) {
-            e.printStackTrace();
+            log.error(HEC_TEMPLATE_SITE + " does not exist" + e.getMessage());
         } catch (IdUsedException e) {
-            e.printStackTrace();
+           log.warn(getSiteName(courseOffering) + "already exist");
         } catch (PermissionException e) {
-            e.printStackTrace();
+            log.warn("You are not allowed to create " + getSiteName(courseOffering));
         } catch (IdInvalidException e) {
-            e.printStackTrace();
+            log.error(HEC_TEMPLATE_SITE + " or " + getSiteName(courseOffering) + " is not a valid siteId");
         }
 
         return null;
     }
+
+    private void setSiteProperties (Site site, CourseOffering courseOffering){
+        site.setTitle(getSiteName(courseOffering));
+        ResourcePropertiesEdit rpe = site.getPropertiesEdit();
+        rpe.addProperty(Site.PROP_SITE_TERM, courseOffering.getAcademicSession().getTitle());
+        rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
+
+   }
+
+   private void setProviderId (Site site, CourseOffering courseOffering){
+       String providerGroupId = (site.getProviderGroupId() == null ? "": site.getProviderGroupId());
+       String sectionEid = null;
+       Set<Section> sections = cmService.getSections(courseOffering.getEid());
+       for (Section section : sections) {
+           updateSectionTitle(section);
+           sectionEid = section.getEid();
+           //TODO: Remove after tenjin deploy
+           if (!sectionEid.isEmpty() && !sectionEid.endsWith("00") && !providerGroupId.contains(sectionEid)) {
+               providerGroupId += section.getEid() + "+";
+           }
+       }
+       if(providerGroupId.endsWith("+"))
+           providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
+
+       if (providerGroupId.length() > 0)
+           site.setProviderGroupId(providerGroupId);
+   }
+
+    //TODO: Remove after tenjin deploy
+   private void updateSectionTitle(Section section){
+       String [] courseAndSection = (section.getEid()).split("21721");
+       if (courseAndSection.length == 2){
+           section.setTitle(courseAndSection[1]);
+           cmAdmin.updateSection(section);
+       }
+
+   }
+    public void setSiteService(SiteService siteService) {
+        this.siteService = siteService;
+    }
+
+    public void setCmService(CourseManagementService cmService) {
+        this.cmService = cmService;
+    }
+    public void setCmAdmin(CourseManagementAdministration cmAdmin) {
+        this.cmAdmin = cmAdmin;
+    }
+    public void setSessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; }
+
+    public String getSiteName(CourseOffering courseOff) {
+        String siteName = null;
+        String canCourseId = (courseOff.getCanonicalCourseEid()).trim();
+        AcademicSession session = courseOff.getAcademicSession();
+        String sessionId = session.getEid();
+
+        String courseId = FormatUtils.formatCourseId(canCourseId);
+        String sessionTitle = getSessionName(session);
+        String periode = null;
+
+        if (sessionId.matches(".*[pP].*")) {
+            periode = sessionId.substring(sessionId.length() - 2);
+        }
+
+        if (periode == null)
+            siteName = courseId + "." + sessionTitle;
+        else
+            siteName = courseId + "." + sessionTitle + "." + periode;
+
+        return siteName;
+    }
+
+    public String getSessionName(AcademicSession session) {
+        String sessionName = null;
+        String sessionId = session.getEid();
+        Date startDate = session.getStartDate();
+        String year = startDate.toString().substring(0, 4);
+
+        if ((sessionId.charAt(3)) == '1')
+            sessionName = WINTER + year;
+        if ((sessionId.charAt(3)) == '2')
+            sessionName = SUMMER + year;
+        if ((sessionId.charAt(3)) == '3')
+            sessionName = FALL + year;
+
+        return sessionName;
+    }
+
+    private Date getDate(String date) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+        Date convertedDate = null;
+        try {
+            convertedDate = dateFormat.parse(date);
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+        return convertedDate;
+
+    }
+
 }

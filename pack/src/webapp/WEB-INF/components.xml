@@ -5,57 +5,6 @@
      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
 
-	<bean id="ca.hec.sakai.jobs.api.ConfigurationService"
-		class="ca.hec.sakai.jobs.impl.ConfigurationServiceImpl"
-		init-method="init" >
-
-		<property name="contentHostingService"
-			ref="org.sakaiproject.content.api.ContentHostingService" />
-		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager" />
-		<property name="eventTrackingService" ref="org.sakaiproject.event.api.EventTrackingService" />
-		<property name="securityService" ref="org.sakaiproject.authz.api.SecurityService" />
-	</bean>
-
-	<bean id="abstractHecQuartzJob" abstract="true"
-		  class="ca.hec.sakai.jobs.impl.AbstractHecQuartzJobImpl">
-		<property name="adminConfigService"
-				  ref="ca.hec.sakai.jobs.api.ConfigurationService" />
-		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
-		<property name="cmAdmin"
-				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
-		<property name="cmService"
-				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
-		<property name="contentHostingService"
-				  ref="org.sakaiproject.content.api.ContentHostingService" />
-	<!--	<property name="coRelationDao"
-				  ref="org.sakaiquebec.opensyllabus.common.dao.CORelationDao" />-->
-		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
-		<property name="eventTrackingService"
-				  ref="org.sakaiproject.event.api.EventTrackingService" />
-		<!--<property name="osylContentService"
-				  ref="org.sakaiquebec.opensyllabus.common.api.OsylContentService" />
-		<property name="osylDirectoryService"
-				  ref="org.sakaiquebec.opensyllabus.common.api.OsylDirectoryService" />
-		<property name="osylManagerService"
-				  ref="org.sakaiquebec.opensyllabus.manager.api.OsylManagerService" />
-		<property name="osylPublishService"
-				  ref="org.sakaiquebec.opensyllabus.common.api.OsylPublishService" />
-		<property name="osylSiteService"
-				  ref="org.sakaiquebec.opensyllabus.common.api.OsylSiteService" />
-		<property name="resourceDao"
-				  ref="org.sakaiquebec.opensyllabus.common.dao.ResourceDao" />
-	-->	<property name="serverConfigService"
-				  ref="org.sakaiproject.component.api.ServerConfigurationService" />
-		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
-		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
-		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
-		<property name="usageSessionService"
-				  ref="org.sakaiproject.event.api.UsageSessionService" />
-		<property name="userDirectoryService"
-				  ref="org.sakaiproject.user.api.UserDirectoryService" />
-	</bean>
-
-
 	<!-- enable the configuration of transactional behavior based on annotations -->
 	<tx:annotation-driven transaction-manager="transactionManager"  />
 
@@ -63,11 +12,16 @@
 		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="javax.sql.DataSource" />
 	</bean>
-	
+
 
 	<bean id="hecOffSitesjob"
-		  class="ca.hec.sakai.jobs.impl.HecOfficialSitesJobImpl"
-		  parent="abstractHecQuartzJob">
+		  class="ca.hec.sakai.jobs.impl.HecOfficialSitesJobImpl">
+		<property name="cmAdmin"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
+		<property name="cmService"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 	</bean>
 
 
@@ -90,9 +44,15 @@
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="sessions"/>
-					<property name="descriptionResourceKey" value="sessions.description"/>
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="sessionStart"/>
+					<property name="descriptionResourceKey" value="sessionStart.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="sessionEnd"/>
+					<property name="descriptionResourceKey" value="sessionEnd.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
@@ -116,6 +76,5 @@
 			</set>
 		</property>
 	</bean>
-
 
 </beans>

@@ -43,7 +43,12 @@
       <groupId>org.sakaiproject.edu-services.course-management</groupId>
       <artifactId>coursemanagement-api</artifactId>
      </dependency>
-    <dependency>
+      <dependency>
+          <groupId>org.sakaiproject.edu-services.sections</groupId>
+          <artifactId>sections-impl</artifactId>
+          <version>${sakai.version}</version>
+      </dependency>
+      <dependency>
       <groupId>org.sakaiproject.calendar</groupId>
       <artifactId>sakai-calendar-api</artifactId>
      </dependency>
