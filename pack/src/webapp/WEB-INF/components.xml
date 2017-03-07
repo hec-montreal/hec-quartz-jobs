@@ -15,7 +15,7 @@
 
 
 	<bean id="hecOffSitesjob"
-		  class="ca.hec.sakai.jobs.impl.HecOfficialSitesJobImpl">
+		  class="ca.hec.jobs.impl.HecOfficialSitesJobImpl">
 		<property name="cmAdmin"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
 		<property name="cmService"
@@ -40,7 +40,7 @@
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
-		<property name="resourceBundleBase" value="ca.hec.sakai.jobs.bundle.HecOfficialSitesJobMessages"/>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.HecOfficialSitesJobMessages"/>
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
@@ -76,5 +76,52 @@
 			</set>
 		</property>
 	</bean>
+
+	<bean id="hecCreateCalendarEventsJob"
+		  class="ca.hec.jobs.impl.HecCalendarEventsJobImpl">
+		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
+		<property name="cmAdmin"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
+		<property name="cmService"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+		<property name="jdbcTemplate">
+			<bean class="org.springframework.jdbc.core.JdbcTemplate">
+				<constructor-arg type="javax.sql.DataSource">
+					<ref bean="javax.sql.DataSource" />
+				</constructor-arg>
+				<property name="ignoreWarnings" value="false" />
+			</bean>
+		</property>
+	</bean>
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCreateCalendarEventsJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecCreateCalendarEventsJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Create Calendar Events Job</value>
+		</property>
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.HecOfficialSitesJobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="piloteE2017Courses"/>
+					<property name="descriptionResourceKey" value="piloteE2017Courses.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+			</set>
+		</property>
+
+	</bean>
+
 
 </beans>
