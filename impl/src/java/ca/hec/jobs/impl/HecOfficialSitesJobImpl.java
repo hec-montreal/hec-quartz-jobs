@@ -1,7 +1,8 @@
-package ca.hec.sakai.jobs.impl;
+package ca.hec.jobs.impl;
 
 import ca.hec.commons.utils.FormatUtils;
-import ca.hec.sakai.jobs.api.HecOfficialSitesJob;
+import ca.hec.jobs.api.HecOfficialSitesJob;
+import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
@@ -33,10 +34,13 @@ import org.sakaiproject.component.section.sakai.SectionManagerImpl;
 public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     private static Log log = LogFactory.getLog(HecOfficialSitesJobImpl.class);
 
-
+    @Setter
     protected CourseManagementAdministration cmAdmin;
+    @Setter
     protected CourseManagementService cmService;
+    @Setter
     protected SiteService siteService;
+    @Setter
     protected SessionManager sessionManager;
 
     @Override
@@ -254,19 +258,8 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        }
 
    }
-    public void setSiteService(SiteService siteService) {
-        this.siteService = siteService;
-    }
 
-    public void setCmService(CourseManagementService cmService) {
-        this.cmService = cmService;
-    }
-    public void setCmAdmin(CourseManagementAdministration cmAdmin) {
-        this.cmAdmin = cmAdmin;
-    }
-    public void setSessionManager(SessionManager sessionManager) { this.sessionManager = sessionManager; }
-
-    public String getSiteName(CourseOffering courseOff) {
+     public String getSiteName(CourseOffering courseOff) {
         String siteName = null;
         String canCourseId = (courseOff.getCanonicalCourseEid()).trim();
         AcademicSession session = courseOff.getAcademicSession();

@@ -1,4 +1,4 @@
-package ca.hec.sakai.jobs.api;
+package ca.hec.jobs.api;
 
 import org.quartz.Job;
 import org.sakaiproject.coursemanagement.api.AcademicSession;
