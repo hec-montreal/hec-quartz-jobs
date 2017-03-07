@@ -129,7 +129,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), piloteE2017Courses.split(",")))
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")))
 					continue;
 
 				String siteId = getSiteId(
@@ -231,7 +231,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), piloteE2017Courses.split(",")))
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getEventId(), piloteE2017Courses.split(",")))
 					continue;
 
 				String siteId = getSiteId(
@@ -572,9 +572,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 		return null;
 	}
 
-	private boolean inE2017Pilote (String courseId, String [] piloteE2017){
+	private boolean inE2017Pilote (String courseId, String sessioId, String [] piloteE2017){
 		for (String exception: piloteE2017){
-			if (courseId.equals(exception))
+			if (courseId.equals(exception) && sessioId.equals("2172"))
 				return true;
 		}
 		return false;
