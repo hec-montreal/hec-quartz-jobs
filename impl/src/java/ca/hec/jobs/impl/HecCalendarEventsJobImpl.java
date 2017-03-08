@@ -233,7 +233,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getEventId(), piloteE2017Courses.split(",")))
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")))
 					continue;
 
 				String siteId = getSiteId(
