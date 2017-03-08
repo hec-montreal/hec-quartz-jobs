@@ -123,6 +123,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 			boolean calendarFound = false;
 			CourseOffering courseOffering = null;
 			Group eventGroup = null;
+			Site site = null;
 
 			log.info("loop and add " + eventsAdd.size() + " events");
 			for (HecEvent event : eventsAdd) {
@@ -150,7 +151,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						calendarFound = true;
 
 						// retrieve course offering to see if the course is MBA
-						Site site = siteService.getSite(siteId);
+						site = siteService.getSite(siteId);
 						eventGroup = getGroup(site.getGroups(), event.getSection());
 						Section section = cmService.getSection(eventGroup.getProviderGroupId());
 						courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
@@ -191,6 +192,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 					}
 
 					if (createEvent) {
+						eventGroup = getGroup(site.getGroups(), event.getSection());
 						eventId = createCalendarEvent(
 								calendar,
 								event.getStartTime(),
@@ -252,7 +254,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						calendarFound = true;
 
 						// retrieve course offering to see if the course is MBA
-						Site site = siteService.getSite(siteId);
+						site = siteService.getSite(siteId);
 						eventGroup = getGroup(site.getGroups(), event.getSection());
 						Section section = cmService.getSection(eventGroup.getProviderGroupId());
 						courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
@@ -276,7 +278,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 					if ((!courseOffering.getAcademicCareer().equals(CAREER_MBA) && !siteId.contains("DF")) ||
 							event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) ||
 							event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
-
+						eventGroup = getGroup(site.getGroups(), event.getSection());
 						updateSuccess = updateCalendarEvent(
 								calendar,
 								event.getEventId(),
