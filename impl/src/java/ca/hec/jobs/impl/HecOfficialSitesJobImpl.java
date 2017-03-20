@@ -75,7 +75,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         List<AcademicSession> allSessions = cmService.getAcademicSessions();
 
         for(AcademicSession session: allSessions){
-            if (session.getStartDate().after(startDate) && session.getEndDate().before(endDate))
+            if (session.getStartDate().compareTo(startDate) >= 0 && session.getEndDate().compareTo(endDate) <= 0)
                 offSessions.add(session);
         }
         //Retrieve current sessions if no session
@@ -251,7 +251,8 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
     //TODO: Remove after tenjin deploy
    private void updateSectionTitle(Section section){
-       String [] courseAndSection = (section.getEid()).split("21721");
+       AcademicSession session = cmService.getCourseOffering(section.getCourseOfferingEid()).getAcademicSession();
+       String [] courseAndSection = (section.getEid()).split(session.getEid());
        if (courseAndSection.length == 2){
            section.setTitle(courseAndSection[1]);
            cmAdmin.updateSection(section);
