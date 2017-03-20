@@ -254,7 +254,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        AcademicSession session = cmService.getCourseOffering(section.getCourseOfferingEid()).getAcademicSession();
        String [] courseAndSection = (section.getEid()).split(session.getEid());
        if (courseAndSection.length == 2){
-           section.setTitle(courseAndSection[1]);
+           section.setTitle(getSiteName(cmService.getCourseOffering(section.getCourseOfferingEid())) + " - " + courseAndSection[1]);
            cmAdmin.updateSection(section);
        }
 
