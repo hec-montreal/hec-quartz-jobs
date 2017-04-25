@@ -576,7 +576,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 	private boolean inE2017Pilote (String courseId, String sessioId, String [] piloteE2017){
 		for (String exception: piloteE2017){
-			if (courseId.equals(exception) && sessioId.equals("2171"))
+			if (courseId.equals(exception) && sessioId.equals("2172"))
 				return true;
 		}
 		return false;
