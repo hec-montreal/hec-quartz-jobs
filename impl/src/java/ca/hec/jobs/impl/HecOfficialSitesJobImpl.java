@@ -229,6 +229,12 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
         rpe.addProperty("title", courseOffering.getTitle());
 
+        if (courseOffering.getLang().equals("en"))
+            rpe.addProperty("hec_syllabus_locale", "en_US");
+        else if (courseOffering.getLang().equals("es"))
+            rpe.addProperty("hec_syllabus_locale", "es_ES");
+        else
+            rpe.addProperty("hec_syllabus_locale", "fr_CA");
    }
 
    private void setProviderId (Site site, CourseOffering courseOffering){
