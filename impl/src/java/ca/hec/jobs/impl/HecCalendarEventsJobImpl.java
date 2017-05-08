@@ -68,7 +68,7 @@ import java.util.List;
 public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 	private static Log log = LogFactory.getLog(HecCalendarEventsJobImpl.class);
-	private static ResourceLoader rb = new ResourceLoader("ca.hec.jobs.bundle.CMJobMessages");
+	private static ResourceLoader rb = new ResourceLoader("ca.hec.jobs.bundle.JobMessages");
 
 	private final String EVENT_TYPE_CLASS_SESSION = "Class session";
 	private final String EVENT_TYPE_EXAM = "Exam";

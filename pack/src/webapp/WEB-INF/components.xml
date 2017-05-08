@@ -14,6 +14,67 @@
 	</bean>
 
 
+	<bean id="hecCMSynchroJob"
+		  class="ca.hec.jobs.impl.HECCMSynchroJobImpl">
+		<property name="cmAdmin"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
+		<property name="cmService"
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HECCMSynchroJobImpl"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecCMSynchroJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Course Management Data Synchronisation Job</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="cmSessionStart"/>
+					<property name="descriptionResourceKey" value="cmSessionStart.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="cmSessionEnd"/>
+					<property name="descriptionResourceKey" value="cmSessionEnd.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="cmCourses"/>
+					<property name="descriptionResourceKey" value="cmCourses.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="cmPrograms"/>
+					<property name="descriptionResourceKey" value="cmPrograms.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="cmDepartments"/>
+					<property name="descriptionResourceKey" value="cmDepartments.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+			</set>
+		</property>
+	</bean>
+
 	<bean id="hecOffSitesjob"
 		  class="ca.hec.jobs.impl.HecOfficialSitesJobImpl">
 		<property name="cmAdmin"
@@ -23,7 +84,6 @@
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 	</bean>
-
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecOffSitesjob"
 		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
@@ -40,37 +100,37 @@
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
-		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.HecOfficialSitesJobMessages"/>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="true"/>
-					<property name="labelResourceKey" value="sessionStart"/>
-					<property name="descriptionResourceKey" value="sessionStart.description"/>
+					<property name="labelResourceKey" value="officialSitesSessionStart"/>
+					<property name="descriptionResourceKey" value="officialSitesSessionStart.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="true"/>
-					<property name="labelResourceKey" value="sessionEnd"/>
-					<property name="descriptionResourceKey" value="sessionEnd.description"/>
+					<property name="labelResourceKey" value="officialSitesSessionEnd"/>
+					<property name="descriptionResourceKey" value="officialSitesSessionEnd.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="courses"/>
-					<property name="descriptionResourceKey" value="courses.description"/>
+					<property name="labelResourceKey" value="officialSitesCourses"/>
+					<property name="descriptionResourceKey" value="officialSitesCourses.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="programs"/>
-					<property name="descriptionResourceKey" value="programs.description"/>
+					<property name="labelResourceKey" value="officialSitesPrograms"/>
+					<property name="descriptionResourceKey" value="officialSitesPrograms.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="departments"/>
-					<property name="descriptionResourceKey" value="departments.description"/>
+					<property name="labelResourceKey" value="officialSitesDepartments"/>
+					<property name="descriptionResourceKey" value="officialSitesDepartments.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 			</set>
@@ -109,13 +169,13 @@
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
-		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.HecOfficialSitesJobMessages"/>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="true"/>
-					<property name="labelResourceKey" value="piloteE2017Courses"/>
-					<property name="descriptionResourceKey" value="piloteE2017Courses.description"/>
+					<property name="labelResourceKey" value="officialSites.piloteE2017Courses"/>
+					<property name="descriptionResourceKey" value="officialSites.piloteE2017Courses.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 			</set>

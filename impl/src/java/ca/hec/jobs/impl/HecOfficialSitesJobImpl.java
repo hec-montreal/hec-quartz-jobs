@@ -45,11 +45,11 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
-        String sessionStart = context.getMergedJobDataMap().getString("sessionStart");
-        String sessionEnd = context.getMergedJobDataMap().getString("sessionEnd");
-        String courses = context.getMergedJobDataMap().getString("courses");
-        String programs = context.getMergedJobDataMap().getString("programs");
-        String departments = context.getMergedJobDataMap().getString("departments");
+        String sessionStart = context.getMergedJobDataMap().getString("officialSitesSessionStart");
+        String sessionEnd = context.getMergedJobDataMap().getString("officialSitesSessionEnd");
+        String courses = context.getMergedJobDataMap().getString("officialSitesCourses");
+        String programs = context.getMergedJobDataMap().getString("officialSitesPrograms");
+        String departments = context.getMergedJobDataMap().getString("officialSitesDepartments");
 
         List<AcademicSession> selectedSessions = getSessions(sessionStart, sessionEnd);
 
