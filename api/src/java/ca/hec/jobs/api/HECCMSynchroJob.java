@@ -30,8 +30,6 @@ public interface HECCMSynchroJob  extends Job {
     public final static String EXTRACTS_PATH_CONFIG_KEY =
             "coursemanagement.extract.files.path";
 
-    public final static String SECRETARY_ROLE = "SEC";
-
     public final static String ACTIVE_STATUS = "active";
 
     public final static String COORDONNATEUR_ROLE = "C";
@@ -64,4 +62,14 @@ public interface HECCMSynchroJob  extends Job {
     public final static String CERTIFICAT = "CERT";
 
     public final String A2017_LIMITE = "2017-08-26";
+
+    public final static String CANCELED_SECTION = "X";
+
+    public final static String ACTIVE_SECTION = "A";
+
+    public static final int MAX_TITLE_BYTE_LENGTH = 100;
+
+    public static final String INSTRUCTOR_ROLE = "Enseignant";
+
+    public static final String COORDINATOR_ROLE = "Coordonnateur";
 }
