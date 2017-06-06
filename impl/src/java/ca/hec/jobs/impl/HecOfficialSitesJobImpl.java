@@ -229,6 +229,12 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
         rpe.addProperty("title", courseOffering.getTitle());
 
+        if (courseOffering.getLang().equals("en"))
+            rpe.addProperty("hec_syllabus_locale", "en_US");
+        else if (courseOffering.getLang().equals("es"))
+            rpe.addProperty("hec_syllabus_locale", "es_ES");
+        else
+            rpe.addProperty("hec_syllabus_locale", "fr_CA");
    }
 
    private void setProviderId (Site site, CourseOffering courseOffering){
@@ -243,18 +249,16 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
                providerGroupId += section.getEid() + "+";
            }
            //TODO: Remove after tenjin deploy
+           //Make sure coordinator is in course offering membership
            Set <Membership> courseOfferingCoordinator = cmService.getCourseOfferingMemberships(courseOffering.getEid());
            if (sectionEid.endsWith("00") || courseOfferingCoordinator.size() > 0){
-               Set<Membership> coordinators;
-               if (courseOfferingCoordinator.size() > 0)
-                   coordinators = courseOfferingCoordinator;
-               else
-                   coordinators = cmService.getSectionMemberships(sectionEid);
+               Set<Membership> coordinators  = cmService.getSectionMemberships(sectionEid);
                Set<Section> courseSections = cmService.getSections(courseOffering.getEid());
+               //Remove all section memberships
                for (Membership coordinator: coordinators){
                    for ( Section courseSection : courseSections) {
                        if (cmService.isSectionDefined(courseSection.getEid()))
-                       cmAdmin.addOrUpdateSectionMembership(coordinator.getUserId(), coordinator.getRole(), courseSection.getEid(), coordinator.getStatus());
+                       cmAdmin.removeSectionMembership(coordinator.getUserId(), courseSection.getEid());
                    }
                }
 
