@@ -44,10 +44,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private String[] token;
     private BufferedReader breader = null;
     private String buffer = null;
-    List<String> synchronizedSections;
-    List<String> synchronizedCourseOfferings;
-    Set <String> currentStudentPerSection;
-    Set <String> addedStudentPerSection;
+    Map<String, Set<EnrollmentSet>> studentEnrollmentSetsToDelete;
+    Map<String, Set<String>> instructorsToDelete;
+    Map<String, Set<Membership>> coordinatorsToDelete;
+    Date startTime, endTime;
+    List<String> selectedSessions, selectedCourses;
+
 
 
     @Override
@@ -65,24 +67,29 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
-            System.out.println("Starting HEC CM Data Synchro job");
+            startTime = new Date();
+            selectedSessions = new ArrayList<String>();
+            selectedCourses = new ArrayList<String>();
 
-            loadProgEtudes();
+            System.out.println("Starting HEC CM Data Synchro job at " + startTime);
+
+            //loadProgEtudes();
 
             loadSessions();
 
-            loadServEnseignements();
+            //loadServEnseignements();
 
             loadCourses();
 
             loadInstructeurs();
 
-            addedStudentPerSection = new HashSet<String>();
             loadEtudiants();
-            currentStudentPerSection = cmService.findCurrentEnrollmentIds();
-            System.out.println (" la taille " + currentStudentPerSection.size());
-            currentStudentPerSection.removeAll(addedStudentPerSection);
-            System.out.println (" la taille apres " + currentStudentPerSection.size());
+
+            removeEntriesToDelete();
+
+            endTime = new Date();
+
+            System.out.println("Ending HEC CM Data Synchro job at " + endTime + " Synchro lasted " + (endTime.getTime()-startTime.getTime()));
 
         } finally {
             session.clear();
@@ -96,16 +103,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private void loadCourses (){
         String courseId, strm, sessionCode, catalogNbr, classSection, courseTitleLong, langue, acadOrg, strmId, acadCareer, classStat;
         String unitsMinimum, typeEvaluation, instructionMode;
-        AcademicSession session;
-        CanonicalCourse canonicalCourse;
-        CourseOffering courseOffering;
-        Section section;
-        EnrollmentSet enrollmentSet;
         String sectionId, enrollmentSetId, courseOfferingId, courseSetId, canonicalCourseId, title, description;
-        int compte = 0;
         try {
-            synchronizedCourseOfferings = new ArrayList<String>();
-            synchronizedSections = new ArrayList<String>();
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory+ File.separator + COURS_FILE), "ISO-8859-1"));
 
@@ -114,9 +113,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             breader.readLine();
 
             // fait le tour des lignes du fichier
-            while ((buffer = breader.readLine()) != null && compte <= 5) {
+            while ((buffer = breader.readLine()) != null ) {
                 token = buffer.split(delimeter);
-                compte++;
                 courseId = token[0];
                 strm = token[1];
                 sessionCode= token[2];
@@ -144,44 +142,57 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 courseOfferingId = catalogNbr.trim()+strm;
                 courseSetId = acadOrg;
 
-                synchronizedSections.add(sectionId);
-                synchronizedCourseOfferings.add(courseOfferingId);
-                //Add active classes
-                if (ACTIVE_SECTION.equalsIgnoreCase(classStat)){
+                if (acadCareer.equalsIgnoreCase(CERTIFICAT))
+                    selectedCourses.add(sectionId);
 
-                    canonicalCourseId = catalogNbr.trim();
-                    title = truncateStringBytes(courseTitleLong, MAX_TITLE_BYTE_LENGTH, Charset.forName("utf-8"));
-                    description = courseTitleLong;
-                    courseSetId = acadOrg;
+                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId) ) {
+                    //Add active classes
+                    if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
-                    //Create or Update canonical course
-                    canonicalCourse = syncCanonicalCourse(canonicalCourseId, title, description);
+                        canonicalCourseId = catalogNbr.trim();
+                        title = truncateStringBytes(courseTitleLong, MAX_TITLE_BYTE_LENGTH, Charset.forName("utf-8"));
+                        description = courseTitleLong;
+                        courseSetId = acadOrg;
 
-                    //Link canonical course to course set
-                    if (cmService.isCourseSetDefined(courseSetId)) {
-                        cmAdmin.removeCanonicalCourseFromCourseSet(courseSetId,
-                                canonicalCourseId);
-                        cmAdmin.addCanonicalCourseToCourseSet(courseSetId,
-                                canonicalCourseId);
+                        //Create or Update canonical course
+                        syncCanonicalCourse(canonicalCourseId, title, description);
+
+                        //Link canonical course to course set
+                        if (cmService.isCourseSetDefined(courseSetId)) {
+                            cmAdmin.removeCanonicalCourseFromCourseSet(courseSetId,
+                                    canonicalCourseId);
+                            cmAdmin.addCanonicalCourseToCourseSet(courseSetId,
+                                    canonicalCourseId);
+                            System.out.println("Lier le canonical course " + canonicalCourseId + " au course set " + courseSetId);
+                        }
+
+                        //Create or Update course offering
+                        syncCourseOffering(courseOfferingId, langue, typeEvaluation, unitsMinimum, acadCareer, classStat,
+                                title, description, strmId, canonicalCourseId);
+
+                        //Link course offering to course set
+                        if (cmService.isCourseSetDefined(courseSetId)) {
+                            cmAdmin.removeCourseOfferingFromCourseSet(courseSetId,
+                                    courseOfferingId);
+                            cmAdmin.addCourseOfferingToCourseSet(courseSetId,
+                                    courseOfferingId);
+                            System.out.println("Lier le course offering" + courseOfferingId + " au course set " + courseSetId);
+                        }
+
+                        //Create or Update enrollmentSet
+                        syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
+
+                        //Create or Update section
+                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, langue,
+                                typeEvaluation, courseOfferingId, instructionMode);
+                    } else {
+                        //Remove the section
+                        if (cmService.isSectionDefined(sectionId)) {
+                            cmAdmin.removeSection(sectionId);
+                            cmAdmin.removeEnrollmentSet(enrollmentSetId);
+                            System.out.println("Supprimer la section " + sectionId);
+                        }
                     }
-
-                    //Create or Update course offering
-                   courseOffering =  syncCourseOffering (courseOfferingId, langue, typeEvaluation, unitsMinimum, acadCareer, classStat,
-                            title, description,strmId, instructionMode, canonicalCourseId);
-
-                    //Link course offering to course set
-                    if (cmService.isCourseSetDefined(courseSetId)) {
-                        cmAdmin.removeCourseOfferingFromCourseSet(courseSetId,
-                                courseOfferingId);
-                        cmAdmin.addCourseOfferingToCourseSet(courseSetId,
-                                courseOfferingId);
-                    }
-
-                    //Create or Update enrollmentSet
-                    enrollmentSet = syncEnrollmentSet(enrollmentSetId,description, classSection, acadOrg, unitsMinimum, courseOfferingId);
-
-                    //Create or Update section
-                    section = syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, langue, typeEvaluation, courseOfferingId);
                 }
             }
             // ferme le tampon
@@ -199,21 +210,23 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
 
     private Section syncSection (String sectionId, String category, String description, String enrollmentSetId,
-                                 String sectionTitle, String lang, String typeEvaluation, String courseOfferingId){
+                                 String sectionTitle, String lang, String typeEvaluation, String courseOfferingId,
+                                 String instructionMode){
         Section section = null;
 
         if (cmService.isSectionDefined(sectionId)){
             section = cmService.getSection(sectionId);
             section.setCategory(category);
-            section.setDescription(description);
+            section.setDescription(description );
             section.setTitle(sectionTitle);
             section.setLang(lang);
             section.setTypeEvaluation(typeEvaluation);
+            section.setInstructionMode(instructionMode);
             cmAdmin.updateSection(section);
             System.out.println(" update section " + sectionId);
         }else{
             section = cmAdmin.createSection(sectionId, sectionTitle, description, category,
-                     null, courseOfferingId, enrollmentSetId, lang, typeEvaluation);
+                     null, courseOfferingId, enrollmentSetId, lang, typeEvaluation, instructionMode);
             System.out.println(" create section " + sectionId);
         }
         return section;
@@ -242,8 +255,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     private CourseOffering syncCourseOffering (String courseOfferingId, String lang, String typeEvaluation,
                                                String credits, String acadCareer, String classStatus,String title,
-                                               String description, String sessionId, String instructionMode,
-                                               String canonicalCourseId){
+                                               String description, String sessionId, String canonicalCourseId){
         CourseOffering courseOffering = null;
         AcademicSession session = cmService.getAcademicSession(sessionId);
         if (cmService.isCourseOfferingDefined(courseOfferingId)){
@@ -257,7 +269,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             courseOffering.setLang(lang);
             courseOffering.setAcademicCareer(acadCareer);
             courseOffering.setCredits(credits);
-            courseOffering.setInstructionMode(instructionMode);
             cmAdmin.updateCourseOffering(courseOffering);
             System.out.println("Course offering update " + courseOfferingId);
         }else {
@@ -267,7 +278,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     session.getEid(), canonicalCourseId,
                     session.getStartDate(), session
                             .getEndDate(), lang, acadCareer,
-                    credits, null, instructionMode);
+                    credits, null);
             System.out.println("Course offering add " + courseOfferingId);
         }
         return courseOffering;
@@ -298,12 +309,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private void loadInstructeurs() {
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
         EnrollmentSet enrollmentSet;
-        String enrollmentSetId, sectionId;
-        Set <String> officialInstructors;
+        String enrollmentSetEid, sectionId;
+        Set <String> officialInstructors, instructors;
+        Set <Membership> coordinators;
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory + File.separator + SESSION_FILE), "ISO-8859-1"));
 
+
+            instructorsToDelete = new HashMap<String, Set<String>>();
+            coordinatorsToDelete = new HashMap<String, Set<Membership>>();
 
             // We remove the first line containing the title
             breader.readLine();
@@ -322,21 +337,56 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 strmId= token[7];
 
                 sectionId = catalogNbr.trim()+strm+classSection;
-                enrollmentSetId = sectionId;
+                enrollmentSetEid = sectionId;
 
-                if (INSTRUCTOR_ROLE.equalsIgnoreCase(role)){
-                    enrollmentSet = cmService.getEnrollmentSet(enrollmentSetId);
-                    officialInstructors = enrollmentSet.getOfficialInstructors();
-                    if (officialInstructors == null){
-                        officialInstructors = new HashSet <String> ();
+                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId)) {
+                    if (coordinatorsToDelete.get(enrollmentSetEid) == null)
+                        coordinatorsToDelete.put(enrollmentSetEid, cmService.getSectionMemberships(sectionId));
+
+                    coordinators = coordinatorsToDelete.get(enrollmentSetEid);
+
+                    if (INSTRUCTOR_ROLE.equalsIgnoreCase(role)) {
+                        enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
+                        officialInstructors = enrollmentSet.getOfficialInstructors();
+
+                        if (instructorsToDelete.get(enrollmentSetEid) == null)
+                            instructorsToDelete.put(enrollmentSetEid, officialInstructors);
+
+                        if (officialInstructors == null) {
+                            officialInstructors = new HashSet<String>();
+                        }
+                        officialInstructors.add(emplId);
+                        enrollmentSet.setOfficialInstructors(officialInstructors);
+                        cmAdmin.updateEnrollmentSet(enrollmentSet);
+                        System.out.println("Update enrollmentSet " + enrollmentSetEid + " avec les official instructors " + officialInstructors.toString());
+
+                        //Update list of instructors to delete
+                        instructors = instructorsToDelete.get(enrollmentSetEid);
+                        instructors.remove(emplId);
+                        if (instructors.size() == 0)
+                            instructorsToDelete.remove(enrollmentSetEid);
+                        else
+                            instructorsToDelete.put(enrollmentSetEid, instructors);
+
                     }
-                    officialInstructors.add(emplId);
-                    enrollmentSet.setOfficialInstructors(officialInstructors);
-                    cmAdmin.updateEnrollmentSet(enrollmentSet);
-                }
 
-                if (COORDINATOR_ROLE.equalsIgnoreCase(role)){
-                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetId,ACTIVE_STATUS);
+                    if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
+                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                        System.out.println("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateur " + emplId);
+
+                        //Update list of coordinators to delete
+                        for (Membership coordinator : coordinators) {
+                            if (coordinator.getUserId().equals(emplId)) {
+                                coordinators.remove(coordinator);
+                                break;
+                            }
+                        }
+                        if (coordinators.size() > 0)
+                            coordinatorsToDelete.remove(enrollmentSetEid);
+                        else
+                            coordinatorsToDelete.put(enrollmentSetEid, coordinators);
+
+                    }
                 }
             }
             // ferme le tampon
@@ -356,10 +406,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      */
     private void loadEtudiants(){
         String emplId, catalogNbr, strm, sessionCode, classSection, status, strmId;
-        String sectionId, enrollmentSetId;
+        String sectionId, enrollmentSetEid;
         EnrollmentSet enrollmentSet;
-        String enrollmentId;
-        int count = 0;
+        Set<EnrollmentSet> tempEnrollmentSet;
+
+        studentEnrollmentSetsToDelete = new HashMap<String, Set<EnrollmentSet>>();
 
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
@@ -372,7 +423,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             // fait le tour des lignes du fichier
             while ((buffer = breader.readLine()) != null) {
                 token = buffer.split(delimeter);
-
                 emplId = token[0];
                 catalogNbr = (token[1]).trim();
                 strm = token[2];
@@ -381,26 +431,36 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 status= token[5];
                 strmId= token[6];
 
-                sectionId = catalogNbr.trim()+strm+classSection;
-                enrollmentSetId = sectionId;
+               sectionId = catalogNbr.trim()+strm+classSection;
+                enrollmentSetEid = sectionId;
+                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId)) {
+                    if (sectionId != null) {
+                        if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
+                            enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
+                            cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetEid, ENROLLMENT_STATUS, enrollmentSet.getDefaultEnrollmentCredits(), GRADING_SCHEME);
+                            System.out.println("Create or Update enrollment " + enrollmentSetEid + " pout " + emplId);
+                            //add user to map of enrollments to delete later
+                            if (studentEnrollmentSetsToDelete.get(emplId) == null) {
+                                tempEnrollmentSet = cmService.findCurrentlyEnrolledEnrollmentSets(emplId);
+                                studentEnrollmentSetsToDelete.put(emplId, tempEnrollmentSet);
+                                System.out.println(" On a ajouté pour " + emplId + " : " + tempEnrollmentSet.size());
+                            }
 
-                if (sectionId != null){
-                    if(cmService.isEnrollmentSetDefined(enrollmentSetId)){
-                        enrollmentSet = cmService.getEnrollmentSet(enrollmentSetId);
-                        cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetId, ENROLLMENT_STATUS, enrollmentSet.getDefaultEnrollmentCredits(), GRADING_SCHEME);
-                        enrollmentId = cmService.findEnrollmentId(emplId, enrollmentSetId);
-                        count++;
-                        addedStudentPerSection.add(enrollmentId);
+                            //remove the course from the list enrollments to delete
+                            tempEnrollmentSet = studentEnrollmentSetsToDelete.get(emplId);
+                            tempEnrollmentSet.remove(cmService.getEnrollmentSet(enrollmentSetEid));
+                            if (tempEnrollmentSet.size() > 0)
+                                studentEnrollmentSetsToDelete.put(emplId, tempEnrollmentSet);
+                            else
+                                studentEnrollmentSetsToDelete.remove(emplId);
+
+                            System.out.println(enrollmentSetEid + " a  été enlevé pour " + emplId + " il reste " + tempEnrollmentSet.size());
+
+                        }
+
                     }
-
                 }
-
-
-
-
-            }
-
-            System.out.println("on a mis à jour " + count + " enrollment");
+           }
             // ferme le tampon
             breader.close();
 
@@ -414,6 +474,45 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     }
 
+    public void removeEntriesToDelete (){
+
+        //Remove outdated instructors
+        Set<String> instructorKetSet = instructorsToDelete.keySet();
+        Set<String> instructors, officialInstructors;
+        EnrollmentSet enrollmentSet;
+        for (String instrKey: instructorKetSet){
+            instructors = instructorsToDelete.get(instrKey);
+            enrollmentSet = cmService.getEnrollmentSet(instrKey);
+            officialInstructors = enrollmentSet.getOfficialInstructors();
+            for(String instructor: instructors){
+                officialInstructors.remove(instructor);
+            }
+            enrollmentSet.setOfficialInstructors(officialInstructors);
+            cmAdmin.updateEnrollmentSet(enrollmentSet);
+            System.out.println ("Remove instructor " + enrollmentSet.getEid() + " avec les official instructors " + officialInstructors.toString());
+        }
+
+        //Remove outdated coordinators
+        Set <String> coordinatorKeySet = coordinatorsToDelete.keySet();
+        Set <Membership> coordinators;
+        for (String coorKey: coordinatorKeySet){
+            coordinators = coordinatorsToDelete.get(coorKey);
+            for (Membership coordinator: coordinators){
+                cmAdmin.removeSectionMembership(coordinator.getUserId(), coorKey);
+                System.out.println ("Remove coordinator " + coordinator.getUserId() + " dans le site " + coordinator.toString());
+            }
+        }
+        // Remove outdated enrollments
+        Set <String> keySet =  studentEnrollmentSetsToDelete.keySet();
+        Set<EnrollmentSet> enrollmentSets;
+        for (String key: keySet){
+            enrollmentSets = studentEnrollmentSetsToDelete.get(key);
+            for (EnrollmentSet enrollmSet: enrollmentSets){
+                cmAdmin.removeEnrollment(key, enrollmSet.getEid());
+                System.out.println ("Remove student " + enrollmSet.getEid() + " matricule " + key);
+            }
+        }
+    }
 
     /**
      * Method used to create academic sessions
@@ -456,8 +555,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     session.setStartDate(beginDate);
                     session.setEndDate(endDate);
                     cmAdmin.updateAcademicSession(session);
+                    System.out.println("Update session " + strm);
+
+                    if (endDate.before(DateFormat.getDateInstance().parse(A2017_LIMITE))){
+                        selectedSessions.add(strm);
+                    }
                 } else{
                     session = cmAdmin.createAcademicSession(strmId, title, descShortAnglais, beginDate, endDate );
+                    System.out.println("Create session " + strm);
                 }
 
                 if (today.after(beginDate) && today.before(endDate))

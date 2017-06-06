@@ -61,7 +61,7 @@ public interface HECCMSynchroJob  extends Job {
      */
     public final static String CERTIFICAT = "CERT";
 
-    public final String A2017_LIMITE = "2017-08-26";
+    public final String A2017_LIMITE = "2017-12-26";
 
     public final static String CANCELED_SECTION = "X";
 
