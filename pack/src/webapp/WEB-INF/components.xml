@@ -173,9 +173,13 @@
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="true"/>
+					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="officialSites.piloteE2017Courses"/>
 					<property name="descriptionResourceKey" value="officialSites.piloteE2017Courses.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="officialSites.piloteA2017Courses"/>
 					<property name="descriptionResourceKey" value="officialSites.piloteA2017Courses.description"/>
 					<property name="defaultValue" value=""/>
