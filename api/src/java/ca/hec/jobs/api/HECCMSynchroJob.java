@@ -23,6 +23,8 @@ public interface HECCMSynchroJob  extends Job {
 
     public final static String PROG_ETUD_FILE = "programme_etudes.dat";
 
+    public final static String INSTRUCTION_MODE = "mode_enseignement.dat";
+
     public final static String CHARGE_FORMATION = "charge_formation.dat";
 
     public final static String REQUIREMENTS = "cours_exigence.dat";
@@ -72,4 +74,5 @@ public interface HECCMSynchroJob  extends Job {
     public static final String INSTRUCTOR_ROLE = "Enseignant";
 
     public static final String COORDINATOR_ROLE = "Coordonnateur";
+
 }
