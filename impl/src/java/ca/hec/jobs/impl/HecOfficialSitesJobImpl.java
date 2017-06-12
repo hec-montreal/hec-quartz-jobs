@@ -21,10 +21,8 @@ import org.sakaiproject.tool.api.SessionManager;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+
 import org.sakaiproject.component.section.sakai.SectionManagerImpl;
 
 /**
@@ -67,6 +65,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         }
 
     }
+
 
     private List<AcademicSession> getSessions (String sessionStart, String sessionEnd){
         List<AcademicSession> offSessions = new ArrayList<AcademicSession>();
@@ -282,7 +281,33 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
    }
 
-     public String getSiteName(CourseOffering courseOff) {
+   private Map<String, List<Section>> getSiteNamesForCourse (CourseOffering courseOffering){
+       Map<String, List<Section>> sitesToCreate = new HashMap<String, List<Section>>();
+       Set<Section> sections = cmService.getSections(courseOffering.getEid());
+       String siteName = null;
+       List<Section> assignedSections ;
+
+       for (Section section: sections){
+            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE))
+                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE))
+               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE))
+               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL))
+               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_PRESENTIEL;
+           else
+               siteName = getSiteName(courseOffering);
+
+            if (sitesToCreate.containsKey(siteName)){
+
+            }
+       }
+
+       return sitesToCreate;
+   }
+
+   public String getSiteName(CourseOffering courseOff) {
         String siteName = null;
         String canCourseId = (courseOff.getCanonicalCourseEid()).trim();
         AcademicSession session = courseOff.getAcademicSession();

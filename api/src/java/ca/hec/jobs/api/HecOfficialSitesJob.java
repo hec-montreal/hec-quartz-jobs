@@ -18,6 +18,15 @@ public interface HecOfficialSitesJob extends Job {
 
     public final static String HEC_TEMPLATE_SITE = "hec-template";
 
+
+    public static final String MODE_ENSEIGNEMENT_EN_LIGNE = "WW";
+
+    public static final String MODE_ENSEIGNEMENT_PRESENTIEL = "P";
+
+    public static final String MODE_ENSEIGNEMENT_HYBRIDE = "AL";
+
+    public static final String MODE_ENSEIGNEMENT_AUTRE = "IS";
+
     public Site createSite (CourseOffering courseOffering);
 
     public String getSiteName(CourseOffering courseOff);

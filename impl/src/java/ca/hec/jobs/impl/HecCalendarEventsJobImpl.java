@@ -104,6 +104,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 		int addcount = 0, updatecount = 0, deletecount = 0;
 
 		String piloteE2017Courses = context.getMergedJobDataMap().getString("piloteE2017Courses");
+		String piloteA2017Courses = context.getMergedJobDataMap().getString("piloteA2017Courses");
 		Session session = sessionManager.getCurrentSession();
 		try {
 			session.setUserEid("admin");
@@ -130,7 +131,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")))
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
+						!inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))
 					continue;
 
 				String siteId = getSiteId(
@@ -577,6 +579,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 	private boolean inE2017Pilote (String courseId, String sessioId, String [] piloteE2017){
 		for (String exception: piloteE2017){
 			if (courseId.equals(exception) && sessioId.equals("2172"))
+				return true;
+		}
+		return false;
+	}
+
+	private boolean inA2017Pilote (String courseId, String sessioId, String [] piloteA2017){
+		for (String exception: piloteA2017){
+			if (courseId.equals(exception) && sessioId.equals("2173"))
 				return true;
 		}
 		return false;
