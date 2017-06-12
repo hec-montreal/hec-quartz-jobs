@@ -103,8 +103,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 		log.info("starting CreateCalendarEventsJob");
 		int addcount = 0, updatecount = 0, deletecount = 0;
 
-		String piloteE2017Courses = context.getMergedJobDataMap().getString("piloteE2017Courses");
-		String piloteA2017Courses = context.getMergedJobDataMap().getString("piloteA2017Courses");
+		String piloteE2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteE2017Courses");
+		String piloteA2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteA2017Courses");
 		Session session = sessionManager.getCurrentSession();
 		try {
 			session.setUserEid("admin");
