@@ -115,7 +115,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 			String order_by = " order by CATALOG_NBR, STRM, CLASS_SECTION ";
 
 			List<HecEvent> eventsAdd = jdbcTemplate.query(
-					select_from + "where (EVENT_ID is null and (STATE is null or STATE <> 'D'))" + order_by,
+					select_from + "where (EVENT_ID is null and ( STATE = 'A'))" + order_by,
 					new HecEventRowMapper());
 
 			// keep track of the last event's site id, calendar and courseOffering, so we can use the calendar if it was already found
@@ -131,7 +131,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) &&
 						!inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))
 					continue;
 
@@ -235,7 +235,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")))
+				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(","))&&
+						!inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))
 					continue;
 
 				String siteId = getSiteId(
