@@ -77,19 +77,19 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             loadInstructionMode();
 
-            //loadProgEtudes();
+            loadProgEtudes();
 
             loadSessions();
 
-            //loadServEnseignements();
+            loadServEnseignements();
 
-            //loadCourses();
+            loadCourses();
 
-            //loadInstructeurs();
+            loadInstructeurs();
 
-            //loadEtudiants();
+            loadEtudiants();
 
-            //removeEntriesToDelete();
+            removeEntriesMarkedToDelete();
 
             endTime = new Date();
 
@@ -490,7 +490,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     }
 
-    public void removeEntriesToDelete (){
+    public void removeEntriesMarkedToDelete(){
 
         //Remove outdated instructors
         Set<String> instructorKetSet = instructorsToDelete.keySet();
