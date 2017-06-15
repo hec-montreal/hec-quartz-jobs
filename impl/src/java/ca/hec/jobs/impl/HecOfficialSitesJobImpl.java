@@ -53,13 +53,16 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
         List<CourseOffering> selectedCO = getSelectedCO(selectedSessions, courses, programs, departments);
 
+        Map<String, List<Section>> sitesToCreate;
+
         Session session = sessionManager.getCurrentSession();
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
             for (CourseOffering courseOff: selectedCO){
-               createSite(courseOff);
-            }
+                sitesToCreate = getSitesToCreateForCourseOffering(courseOff);
+                sitesToCreate.forEach((siteName,sections) -> createSite(siteName, sections));
+             }
         } finally {
             session.clear();
         }
@@ -180,24 +183,23 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         return offCanonicalCourses;
     }
 
-    public Site createSite (CourseOffering courseOffering){
+    private Site createSite (String siteName, List<Section> sections){
         try {
             Site createdSite = null;
 
             Site templateSite = siteService.getSite(HEC_TEMPLATE_SITE);
-            String siteName = getSiteName(courseOffering);
 
             if (!siteService.siteExists(siteName)) {
-                createdSite = siteService.addSite(getSiteName(courseOffering), templateSite);
+                createdSite = siteService.addSite(siteName, templateSite);
             }
             else
                 createdSite = siteService.getSite(siteName);
 
             //Set site properties
-            setSiteProperties(createdSite, courseOffering);
+            setSiteProperties(createdSite, siteName,  sections);
 
             //Associate to sections
-            setProviderId(createdSite, courseOffering);
+            setProviderId(createdSite, sections);
 
             //Save3Update site properties, tools and providerId
             siteService.save(createdSite);
@@ -211,18 +213,23 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         } catch (IdUnusedException e) {
             log.error(HEC_TEMPLATE_SITE + " does not exist" + e.getMessage());
         } catch (IdUsedException e) {
-           log.warn(getSiteName(courseOffering) + "already exist");
+           log.warn(siteName + "already exist");
         } catch (PermissionException e) {
-            log.warn("You are not allowed to create " + getSiteName(courseOffering));
+            log.warn("You are not allowed to create " + siteName);
         } catch (IdInvalidException e) {
-            log.error(HEC_TEMPLATE_SITE + " or " + getSiteName(courseOffering) + " is not a valid siteId");
+            log.error(HEC_TEMPLATE_SITE + " or " + siteName + " is not a valid siteId");
         }
 
         return null;
     }
 
-    private void setSiteProperties (Site site, CourseOffering courseOffering){
-        site.setTitle(getSiteName(courseOffering));
+    private void setSiteProperties (Site site, String siteName,  List<Section> sections){
+        Section sectionRef = sections.get(0);
+        CourseOffering courseOffering = cmService.getCourseOffering(sectionRef.getCourseOfferingEid());
+
+        site.setTitle(siteName);
+        site.setDescription(sectionRef.getDescription());
+
         ResourcePropertiesEdit rpe = site.getPropertiesEdit();
         rpe.addProperty(Site.PROP_SITE_TERM, courseOffering.getAcademicSession().getTitle());
         rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
@@ -236,10 +243,9 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             rpe.addProperty("hec_syllabus_locale", "fr_CA");
    }
 
-   private void setProviderId (Site site, CourseOffering courseOffering){
-       String providerGroupId = (site.getProviderGroupId() == null ? "": site.getProviderGroupId());
+   private void setProviderId (Site site, List<Section> sections){
+       String providerGroupId = "";
        String sectionEid = null;
-       Set<Section> sections = cmService.getSections(courseOffering.getEid());
        for (Section section : sections) {
            updateSectionTitle(section);
            sectionEid = section.getEid();
@@ -249,13 +255,14 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
            }
            //TODO: Remove after tenjin deploy
            //Make sure coordinator is in course offering membership
+           Section sectionRef = sections.get(0);
+           CourseOffering courseOffering = cmService.getCourseOffering(sectionRef.getCourseOfferingEid());
            Set <Membership> courseOfferingCoordinator = cmService.getCourseOfferingMemberships(courseOffering.getEid());
            if (sectionEid.endsWith("00") || courseOfferingCoordinator.size() > 0){
                Set<Membership> coordinators  = cmService.getSectionMemberships(sectionEid);
-               Set<Section> courseSections = cmService.getSections(courseOffering.getEid());
                //Remove all section memberships
                for (Membership coordinator: coordinators){
-                   for ( Section courseSection : courseSections) {
+                   for ( Section courseSection : sections) {
                        if (cmService.isSectionDefined(courseSection.getEid()))
                        cmAdmin.removeSectionMembership(coordinator.getUserId(), courseSection.getEid());
                    }
@@ -281,33 +288,52 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
    }
 
-   private Map<String, List<Section>> getSiteNamesForCourse (CourseOffering courseOffering){
+   private Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering){
        Map<String, List<Section>> sitesToCreate = new HashMap<String, List<Section>>();
        Set<Section> sections = cmService.getSections(courseOffering.getEid());
-       String siteName = null;
-       List<Section> assignedSections ;
+       String siteName = null, siteNameAutre = null, siteNameEnligne = null, siteNameHybride = null;
+       List<Section> assignedSections   = new ArrayList<Section>();
+       List<Section> assignedSectionsAutre  = new ArrayList<Section>();
+       List<Section> assignedSectionsEnligne  = new ArrayList<Section>();
+       List<Section> assignedSectionsHybride  = new ArrayList<Section>();
 
        for (Section section: sections){
-            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE))
-                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
-           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE))
-               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
-           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE))
-               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
-           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL))
-               siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_PRESENTIEL;
-           else
-               siteName = getSiteName(courseOffering);
-
-            if (sitesToCreate.containsKey(siteName)){
-
+            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
+                siteNameAutre = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
+                assignedSectionsAutre.add(section);
             }
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
+                siteNameEnligne = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
+                assignedSectionsEnligne.add(section);
+            }
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
+                siteNameHybride = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
+                assignedSectionsHybride.add(section);
+            }
+           else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
+                siteName = getSiteName(courseOffering);
+                assignedSections.add(section);
+           }
+           else {
+                siteName = getSiteName(courseOffering);
+                assignedSections.add(section);
+            }
+
        }
+
+       if (assignedSectionsAutre.size() > 0)
+          sitesToCreate.put(siteNameAutre, assignedSectionsAutre);
+       if (assignedSectionsHybride.size() > 0)
+           sitesToCreate.put(siteNameHybride, assignedSectionsHybride);
+       if (assignedSectionsEnligne.size() > 0)
+           sitesToCreate.put(siteNameEnligne, assignedSectionsEnligne);
+        if (assignedSections.size() > 0)
+           sitesToCreate.put(siteName, assignedSections);
 
        return sitesToCreate;
    }
 
-   public String getSiteName(CourseOffering courseOff) {
+   private String getSiteName(CourseOffering courseOff) {
         String siteName = null;
         String canCourseId = (courseOff.getCanonicalCourseEid()).trim();
         AcademicSession session = courseOff.getAcademicSession();
@@ -329,7 +355,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         return siteName;
     }
 
-    public String getSessionName(AcademicSession session) {
+    private String getSessionName(AcademicSession session) {
         String sessionName = null;
         String sessionId = session.getEid();
         Date startDate = session.getStartDate();

@@ -1,9 +1,6 @@
 package ca.hec.jobs.api;
 
 import org.quartz.Job;
-import org.sakaiproject.coursemanagement.api.AcademicSession;
-import org.sakaiproject.coursemanagement.api.CourseOffering;
-import org.sakaiproject.site.api.Site;
 
 /**
  * Created by mame-awa.diop@hec.ca on 2017-02-07.
@@ -27,10 +24,5 @@ public interface HecOfficialSitesJob extends Job {
 
     public static final String MODE_ENSEIGNEMENT_AUTRE = "IS";
 
-    public Site createSite (CourseOffering courseOffering);
-
-    public String getSiteName(CourseOffering courseOff);
-
-    public String getSessionName(AcademicSession session);
 
 }

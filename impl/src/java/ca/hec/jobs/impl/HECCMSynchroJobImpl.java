@@ -218,22 +218,24 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                                  String sectionTitle, String lang, String typeEvaluation, String courseOfferingId,
                                  String instructionMode){
         Section section = null;
-        String instrModeDescription = null;
+        String instrModeDescription = null, newDescription = null;
         InstructionMode instrMode;
 
 
         if (instructionMode != null){
             instrMode = this.instructionMode.get(instructionMode);
-            if (lang.equals("fr")){
+            if (lang.equals("fr_CA")){
                 instrModeDescription = instrMode.getDescrShort();
             }else{
                 instrModeDescription = instrMode.getDescrAng();
             }
         }
+
+        newDescription = description + (instrModeDescription != null? " ( " + instrModeDescription + " )": "");
         if (cmService.isSectionDefined(sectionId)){
             section = cmService.getSection(sectionId);
             section.setCategory(category);
-            section.setDescription(description + (instrModeDescription != null? "( " + instrModeDescription + " )": ""));
+            section.setDescription(newDescription);
             section.setTitle(sectionTitle);
             section.setLang(lang);
             section.setTypeEvaluation(typeEvaluation);
@@ -241,7 +243,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             cmAdmin.updateSection(section);
             log.info(" update section " + sectionId);
         }else{
-            section = cmAdmin.createSection(sectionId, sectionTitle, description, category,
+            section = cmAdmin.createSection(sectionId, sectionTitle, newDescription, category,
                      null, courseOfferingId, enrollmentSetId, lang, typeEvaluation, instructionMode);
             log.info(" create section " + sectionId);
         }
