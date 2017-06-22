@@ -131,14 +131,15 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) &&
-						!inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))
+				if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(","))||
+						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
 				String siteId = getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
 						event.getSessionCode());
+
 
 				String eventId = null;
 
@@ -172,6 +173,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				// only attempt event creation if the calendar was found
 				if (courseOffering != null && calendarFound) {
+
 					boolean createEvent = true;
 
 					if (event.getStartTime().getYear() != event.getEndTime().getYear() ||
@@ -235,8 +237,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
 				//TODO: Remove after tenjin deploy
 				//Do not treat if not in pilote
-				if (!inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(","))&&
-						!inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))
+				if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(","))||
+						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
 				String siteId = getSiteId(
@@ -273,8 +275,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						e.printStackTrace();
 					}
 				}
-
-				if (courseOffering != null && calendarFound) {
+if (courseOffering != null && calendarFound) {
 
 					// don't bother adding the events if this is an MBA site (ZCII-1495) or DF (ZCII-1665)
 					// and the event is not a final or mid-term (intratrimestriel) exam
