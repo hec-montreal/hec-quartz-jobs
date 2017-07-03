@@ -85,7 +85,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 	@Setter
 	private JdbcTemplate jdbcTemplate;
 	@Setter
-	protected SiteIdFormatHelper siteNameSupplier;
+	protected SiteIdFormatHelper siteIdFormatHelper;
 	@Setter
 	protected CourseManagementAdministration cmAdmin;
 	@Setter
@@ -136,7 +136,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
-				String siteId = siteNameSupplier.getSiteId(
+				String siteId = siteIdFormatHelper.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
 						event.getSessionCode(), event.getInstructionMode());
@@ -242,7 +242,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
-				String siteId = siteNameSupplier.getSiteId(
+				String siteId = siteIdFormatHelper.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
 						event.getSessionCode(), event.getInstructionMode());

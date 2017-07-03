@@ -18,8 +18,6 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
     @Setter
     protected CourseManagementService cmService;
 
-    String fallSession = "2173";
-
     @Override
     public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering) {
         Map<String, List<Section>> sitesToCreate = new HashMap<String, List<Section>>();
@@ -33,23 +31,19 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
 
         for (Section section: sections){
 
-            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
                 siteNameAutre = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
                 assignedSectionsAutre.add(section);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)
-                    && sessionEid.equalsIgnoreCase(fallSession)){
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
                 siteNameEnligne = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
                 assignedSectionsEnligne.add(section);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
                 siteNameHybride = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
                 assignedSectionsHybride.add(section);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
                 siteName = getSiteName(courseOffering);
                 assignedSections.add(section);
             }
@@ -81,23 +75,19 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         String siteName = null;
 
         for (Section section: sections){
-            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
                 siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
                 sectionsSiteName.put(section.getEid(), siteName);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)
-                    && sessionEid.equalsIgnoreCase(fallSession)){
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
                 siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
                 sectionsSiteName.put(section.getEid(), siteName);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
                 siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
                 sectionsSiteName.put(section.getEid(), siteName);
             }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)
-                    && sessionEid.equalsIgnoreCase(fallSession)) {
+            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
                 siteName = getSiteName(courseOffering);
                 sectionsSiteName.put(section.getEid(), siteName);
             }
@@ -118,20 +108,16 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         CourseOffering courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
         String sessionEid = courseOffering.getAcademicSession().getEid();
 
-        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)
-                && sessionEid.equalsIgnoreCase(fallSession)) {
+        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
             siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)
-                && sessionEid.equalsIgnoreCase(fallSession)){
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
             siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)
-                && sessionEid.equalsIgnoreCase(fallSession)) {
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
             siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)
-                && sessionEid.equalsIgnoreCase(fallSession)) {
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
             siteName = getSiteName(courseOffering);
         }
         else {
@@ -148,20 +134,16 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         if (!session_code.equals("1"))
             siteId += "." + session_code;
 
-        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)
-                && session_code.equalsIgnoreCase(fallSession)) {
+        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
             siteId = siteId + "-" + MODE_ENSEIGNEMENT_AUTRE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)
-                && session_code.equalsIgnoreCase(fallSession)){
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
             siteId = siteId +  "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)
-                && session_code.equalsIgnoreCase(fallSession)) {
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
             siteId = siteId +  "-" + MODE_ENSEIGNEMENT_HYBRIDE;
         }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)
-                && session_code.equalsIgnoreCase(fallSession)) {
+        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
             siteId = siteId ;
         }
         else {

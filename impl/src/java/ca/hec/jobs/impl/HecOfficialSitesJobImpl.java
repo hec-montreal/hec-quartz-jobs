@@ -48,7 +48,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     @Setter
     protected EntityManager entityManager;
     @Setter
-    protected SiteIdFormatHelper siteNameSupplier;
+    protected SiteIdFormatHelper siteIdFormatHelper;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -69,7 +69,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             session.setUserEid("admin");
             session.setUserId("admin");
             for (CourseOffering courseOff: selectedCO){
-                sitesToCreate = siteNameSupplier.getSitesToCreateForCourseOffering(courseOff);
+                sitesToCreate = siteIdFormatHelper.getSitesToCreateForCourseOffering(courseOff);
                 sitesToCreate.forEach((siteName,sections) -> createSite(siteName, sections));
              }
         } finally {

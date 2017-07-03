@@ -15,8 +15,7 @@
 
 
 	<bean id="ca.hec.api.SiteIdFormatHelper"
-		  class="ca.hec.impl.SiteIdFormatHelperImpl"
-		  init-method="init">
+		  class="ca.hec.impl.SiteIdFormatHelperImpl">
 		<property name="cmService"
 			  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 	</bean>
@@ -93,7 +92,8 @@
 		<property name="chs" ref="org.sakaiproject.content.api.ContentHostingService" />
 		<property name="entityManager"
 				  ref="org.sakaiproject.entity.api.EntityManager" />
-		<property name="ca.hec.api.SiteIdFormatHelper" />
+		<property name="siteIdFormatHelper"
+				  ref="ca.hec.api.SiteIdFormatHelper" />
 
 
 	</bean>
@@ -157,7 +157,8 @@
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
 		<property name="cmService"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
-		<property name="ca.hec.api.SiteIdFormatHelper" />
+		<property name="siteIdFormatHelper"
+				  ref="ca.hec.api.SiteIdFormatHelper" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="jdbcTemplate">
