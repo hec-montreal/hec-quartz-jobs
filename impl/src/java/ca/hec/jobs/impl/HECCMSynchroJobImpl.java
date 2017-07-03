@@ -142,15 +142,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
 
 
-                sectionId = catalogNbr.trim()+strm+classSection;
+                sectionId = catalogNbr.trim()+strmId+classSection;
                 enrollmentSetId = sectionId;
-                courseOfferingId = catalogNbr.trim()+strm;
+                courseOfferingId = catalogNbr.trim()+strmId;
                 courseSetId = acadOrg;
 
                 if (acadCareer.equalsIgnoreCase(CERTIFICAT))
                     selectedCourses.add(sectionId);
 
-                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId) ) {
+                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
                     //Add active classes
                     if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
@@ -354,10 +354,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 role= token[6];
                 strmId= token[7];
 
-                sectionId = catalogNbr.trim()+strm+classSection;
+                sectionId = catalogNbr.trim()+strmId+classSection;
                 enrollmentSetEid = sectionId;
 
-                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId)) {
+                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                     if (coordinatorsToDelete.get(enrollmentSetEid) == null)
                         coordinatorsToDelete.put(enrollmentSetEid, cmService.getSectionMemberships(sectionId));
 
@@ -449,9 +449,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 status= token[5];
                 strmId= token[6];
 
-               sectionId = catalogNbr.trim()+strm+classSection;
+               sectionId = catalogNbr.trim()+strmId+classSection;
                 enrollmentSetEid = sectionId;
-                if (selectedSessions.contains(strm) && selectedCourses.contains(sectionId)) {
+                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                     if (sectionId != null) {
                         if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
                             enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
@@ -574,13 +574,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     session.setStartDate(beginDate);
                     session.setEndDate(endDate);
                     cmAdmin.updateAcademicSession(session);
-                    log.info("Update session " + strm);
+                    log.info("Update session " + strmId);
 
-                    selectedSessions.add(strm);
+                    selectedSessions.add(strmId);
 
                     } else{
                         session = cmAdmin.createAcademicSession(strmId, title, descShortAnglais, beginDate, endDate );
-                        log.info("Create session " + strm);
+                        log.info("Create session " + strmId);
                     }
 
                     if (today.after(beginDate) && today.before(endDate))
@@ -612,7 +612,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      * Method used to create academic careers.
      */
     public void loadProgEtudes() {
-        String acadCareerId, strm, descFrancais, descAnglais;
+        String acadCareerId, descFrancais, descAnglais;
         AcademicCareer acadCareer = null;
 
         try {
