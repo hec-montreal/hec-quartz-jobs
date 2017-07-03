@@ -106,7 +106,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      */
     private void loadCourses (){
         String courseId, strm, sessionCode, catalogNbr, classSection, courseTitleLong, langue, acadOrg, strmId, acadCareer, classStat;
-        String unitsMinimum, typeEvaluation, instructionMode;
+        String unitsMinimum, typeEvaluation, instructionMode, shortLang;
         String sectionId, enrollmentSetId, courseOfferingId, courseSetId, canonicalCourseId, title, description;
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
@@ -142,6 +142,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
 
 
+                //Set langue
+                shortLang = setLangue(langue);
+
                 sectionId = catalogNbr.trim()+strmId+classSection;
                 enrollmentSetId = sectionId;
                 courseOfferingId = catalogNbr.trim()+strmId;
@@ -172,7 +175,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         }
 
                         //Create or Update course offering
-                        syncCourseOffering(courseOfferingId, langue, typeEvaluation, unitsMinimum, acadCareer, classStat,
+                        syncCourseOffering(courseOfferingId, shortLangue, typeEvaluation, unitsMinimum, acadCareer, COURSE_OFF_STATUS,
                                 title, description, strmId, canonicalCourseId);
 
                         //Link course offering to course set
@@ -188,7 +191,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
 
                         //Create or Update section
-                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, langue,
+                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLangue,
                                 typeEvaluation, courseOfferingId, instructionMode);
                     } else {
                         //Remove the section
@@ -270,6 +273,21 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return enrollmentSet;
     }
 
+    public String  setLangue(String langStr) {
+        String lang = null;
+        if (langStr == null || langStr.equals("")
+                || langStr.matches("FRAN(�|.+)AIS")) {
+            lang = FRENCH;
+        } else if (langStr.equals("ANGLAIS")) {
+            lang = ENGLISH;
+        } else if (langStr.equals("ESPAGNOL")) {
+            lang = SPANISH;
+        } else {
+             lang = FRENCH;
+        }
+
+        return lang;
+    }
 
     private CourseOffering syncCourseOffering (String courseOfferingId, String lang, String typeEvaluation,
                                                String credits, String acadCareer, String classStatus,String title,
