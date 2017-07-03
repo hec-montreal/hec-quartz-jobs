@@ -20,7 +20,7 @@
  ******************************************************************************/
 package ca.hec.jobs.impl;
 
-import ca.hec.commons.utils.FormatUtils;
+import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.HecCalendarEventsJob;
 import lombok.Data;
 import lombok.Setter;
@@ -84,7 +84,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 	private CalendarService calendarService;
 	@Setter
 	private JdbcTemplate jdbcTemplate;
-
+	@Setter
+	protected SiteIdFormatHelper siteNameSupplier;
 	@Setter
 	protected CourseManagementAdministration cmAdmin;
 	@Setter
@@ -135,10 +136,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
-				String siteId = getSiteId(
+				String siteId = siteNameSupplier.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
-						event.getSessionCode());
+						event.getSessionCode(), event.getInstructionMode());
 
 
 				String eventId = null;
@@ -241,10 +242,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
 					continue;
 
-				String siteId = getSiteId(
+				String siteId = siteNameSupplier.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
-						event.getSessionCode());
+						event.getSessionCode(), event.getInstructionMode());
 
 				boolean updateSuccess = false;
 
@@ -469,15 +470,6 @@ if (courseOffering != null && calendarFound) {
 		}
 	}
 
-	private String getSiteId(String catalog_nbr, String session_id, String session_code) {
-		String siteId = FormatUtils.formatCourseId(catalog_nbr);
-		siteId += "." + FormatUtils.getSessionName(session_id);
-
-		if (!session_code.equals("1"))
-			siteId += "." + session_code;
-
-		return siteId;
-	}
 
 	private String getEventTitle(String siteId, String type, Integer seq_num) {
 
@@ -539,7 +531,7 @@ if (courseOffering != null && calendarFound) {
 
 	@Data
 	private class HecEvent {
-		String catalogNbr, sessionId, sessionCode, section, state, examType, location, description, eventId;
+		String catalogNbr, sessionId, sessionCode, section, state, examType, location, description, eventId, instructionMode;
 		Integer sequenceNumber;
 		Date startTime, endTime;
 	}
@@ -562,6 +554,7 @@ if (courseOffering != null && calendarFound) {
 			event.setDescription(rs.getString("DESCR"));
 			event.setEventId(rs.getString("EVENT_ID"));
 			event.setState(rs.getString("STATE"));
+			event.setInstructionMode(rs.getString("INSTRUCTION_MODE"));
 
 			return event;
 		}

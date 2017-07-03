@@ -24,5 +24,7 @@ public interface HecOfficialSitesJob extends Job {
 
     public static final String MODE_ENSEIGNEMENT_AUTRE = "IS";
 
+    public final static String RESOURCES_TOOL_ID = "sakai.resources";
+
 
 }
