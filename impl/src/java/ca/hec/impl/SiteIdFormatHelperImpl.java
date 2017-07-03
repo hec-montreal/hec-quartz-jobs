@@ -127,29 +127,11 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
     }
 
     @Override
-    public String getSiteId(String catalog_nbr, String session_id, String session_code, String instructionMode) {
-        String siteId = FormatUtils.formatCourseId(catalog_nbr);
-        siteId += "." + FormatUtils.getSessionName(session_id);
+    public String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName) {
+        String sectionEid = catalog_nbr+session_id+session_code+sectionName;
+        Section section = cmService.getSection(sectionEid);
 
-        if (!session_code.equals("1"))
-            siteId += "." + session_code;
-
-        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
-            siteId = siteId + "-" + MODE_ENSEIGNEMENT_AUTRE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
-            siteId = siteId +  "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
-            siteId = siteId +  "-" + MODE_ENSEIGNEMENT_HYBRIDE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
-            siteId = siteId ;
-        }
-        else {
-            siteId = siteId ;
-        }
-        return null;
+        return getSiteId( section);
     }
 
     private String getSiteName(CourseOffering courseOff) {

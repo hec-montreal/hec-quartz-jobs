@@ -139,7 +139,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 				String siteId = siteIdFormatHelper.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
-						event.getSessionCode(), event.getInstructionMode());
+						event.getSessionCode(), event.getSection());
 
 
 				String eventId = null;
@@ -245,7 +245,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 				String siteId = siteIdFormatHelper.getSiteId(
 						event.getCatalogNbr(),
 						event.getSessionId(),
-						event.getSessionCode(), event.getInstructionMode());
+						event.getSessionCode(), event.getSection());
 
 				boolean updateSuccess = false;
 
@@ -531,7 +531,7 @@ if (courseOffering != null && calendarFound) {
 
 	@Data
 	private class HecEvent {
-		String catalogNbr, sessionId, sessionCode, section, state, examType, location, description, eventId, instructionMode;
+		String catalogNbr, sessionId, sessionCode, section, state, examType, location, description, eventId;
 		Integer sequenceNumber;
 		Date startTime, endTime;
 	}
@@ -554,7 +554,6 @@ if (courseOffering != null && calendarFound) {
 			event.setDescription(rs.getString("DESCR"));
 			event.setEventId(rs.getString("EVENT_ID"));
 			event.setState(rs.getString("STATE"));
-			event.setInstructionMode(rs.getString("INSTRUCTION_MODE"));
 
 			return event;
 		}

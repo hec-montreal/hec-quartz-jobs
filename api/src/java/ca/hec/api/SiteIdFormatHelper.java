@@ -53,8 +53,8 @@ public interface SiteIdFormatHelper {
      * @param catalog_nbr
      * @param session_id
      * @param session_code
-     * @param instructionMode
+     * @param sectionName
      * @return siteId
      */
-    String getSiteId(String catalog_nbr, String session_id, String session_code, String instructionMode);
+    String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName);
 }

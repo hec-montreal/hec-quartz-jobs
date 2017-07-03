@@ -390,7 +390,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                     if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                        log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateur " + emplId);
+                        log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
                         //Update list of coordinators to delete
                         for (Membership coordinator : coordinators) {
@@ -456,7 +456,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
                             enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
                             cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetEid, ENROLLMENT_STATUS, enrollmentSet.getDefaultEnrollmentCredits(), GRADING_SCHEME);
-                            log.info("Create or Update enrollment " + enrollmentSetEid + " pout " + emplId);
+                            log.info("Create or Update enrollment " + enrollmentSetEid + " pour " + emplId);
                             //add user to map of enrollments to delete later
                             if (studentEnrollmentSetsToDelete.get(emplId) == null) {
                                 tempEnrollmentSet = cmService.findCurrentlyEnrolledEnrollmentSets(emplId);
