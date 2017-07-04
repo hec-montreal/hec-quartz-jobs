@@ -129,7 +129,12 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
     @Override
     public String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName) {
         String sectionEid = catalog_nbr+session_id+session_code+sectionName;
-        Section section = cmService.getSection(sectionEid);
+        Section section = null;
+
+        if (cmService.isSectionDefined(sectionEid))
+            section = cmService.getSection(sectionEid);
+        else
+            return null;
 
         return getSiteId( section);
     }

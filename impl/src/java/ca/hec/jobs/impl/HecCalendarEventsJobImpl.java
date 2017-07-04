@@ -141,6 +141,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						event.getSessionId(),
 						event.getSessionCode(), event.getSection());
 
+				if (siteId == null)
+					continue;
 
 				String eventId = null;
 
@@ -247,6 +249,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						event.getSessionId(),
 						event.getSessionCode(), event.getSection());
 
+				if (siteId == null)
+					continue;
+
 				boolean updateSuccess = false;
 
 				if (!siteId.equals(previousSiteId))
@@ -276,7 +281,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 						e.printStackTrace();
 					}
 				}
-if (courseOffering != null && calendarFound) {
+
+				if (courseOffering != null && calendarFound) {
 
 					// don't bother adding the events if this is an MBA site (ZCII-1495) or DF (ZCII-1665)
 					// and the event is not a final or mid-term (intratrimestriel) exam
