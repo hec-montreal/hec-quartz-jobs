@@ -350,7 +350,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set <Membership> coordinators;
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
-                    directory + File.separator + SESSION_FILE), "ISO-8859-1"));
+                    directory + File.separator + PROF_FILE), "ISO-8859-1"));
 
 
             instructorsToDelete = new HashMap<String, Set<String>>();
@@ -513,10 +513,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     public void removeEntriesMarkedToDelete(){
 
         //Remove outdated instructors
-        Set<String> instructorKetSet = instructorsToDelete.keySet();
+        Set<String> instructorKeySet = instructorsToDelete.keySet();
         Set<String> instructors, officialInstructors;
         EnrollmentSet enrollmentSet;
-        for (String instrKey: instructorKetSet){
+        for (String instrKey: instructorKeySet){
             instructors = instructorsToDelete.get(instrKey);
             enrollmentSet = cmService.getEnrollmentSet(instrKey);
             officialInstructors = enrollmentSet.getOfficialInstructors();
