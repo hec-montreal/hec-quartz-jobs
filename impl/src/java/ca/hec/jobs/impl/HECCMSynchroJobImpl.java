@@ -175,7 +175,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         }
 
                         //Create or Update course offering
-                        syncCourseOffering(courseOfferingId, shortLangue, typeEvaluation, unitsMinimum, acadCareer, COURSE_OFF_STATUS,
+                        syncCourseOffering(courseOfferingId, shortLang, typeEvaluation, unitsMinimum, acadCareer, COURSE_OFF_STATUS,
                                 title, description, strmId, canonicalCourseId);
 
                         //Link course offering to course set
@@ -191,7 +191,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
 
                         //Create or Update section
-                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLangue,
+                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLang,
                                 typeEvaluation, courseOfferingId, instructionMode);
                     } else {
                         //Remove the section
