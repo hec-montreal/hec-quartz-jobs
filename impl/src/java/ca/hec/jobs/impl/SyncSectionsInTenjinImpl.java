@@ -3,23 +3,17 @@ package ca.hec.jobs.impl;
 import ca.hec.jobs.api.SyncSectionsInTenjin;
 import ca.hec.tenjin.api.SyllabusService;
 import ca.hec.tenjin.api.dao.SyllabusDao;
-import ca.hec.tenjin.api.model.syllabus.Syllabus;
-import ca.hec.tenjin.api.exception.NoSiteException;
-import ca.hec.tenjin.api.exception.DeniedAccessException;
 import lombok.Setter;
 import org.apache.log4j.Logger;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
-import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.tool.api.Session;
-import org.sakaiproject.site.api.Group;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Date;
 
 /**
  * Created by 11091096 on 2017-05-08.
@@ -46,7 +40,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
         String startDate = jobExecutionContext.getMergedJobDataMap().getString("syncSectionsInTenjin.startDate");
-
+/*
         Date startingDate = getDate(startDate);
         Date createdOn = null;
         int counter = 0;
@@ -59,7 +53,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
         List<Syllabus> syllabi;
         Syllabus common = null;
         //Use groupIds
-        Set<String> syllabusSections, newSyllabusSections, oldSyllabusSections;
+        List<String> syllabusSections, newSyllabusSections, oldSyllabusSections;
         Collection<Group> siteGroups = null;
 
         Session session = sessionManager.getCurrentSession();
@@ -90,29 +84,30 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
                         for (Syllabus syllabus : syllabi) {
                             if (syllabus.getCommon())
                                 common = syllabus;
-                            syllabusSections = syllabus.getSections();
-                            newSyllabusSections = new HashSet<String>();
-                            oldSyllabusSections = new HashSet<String>();
+                            syllabusSections = syllabusDao.getSyllabusSections(syllabus.getId().toString());
+                            newSyllabusSections = new ArrayList<String>();
+                            oldSyllabusSections = new ArrayList<String>();
                             if (syllabusSections != null) {
                                 for (String section : syllabusSections) {
-                                    if (providerIds.contains(section)) {
+                                    System.out.println("Section ou groupId " + section);
+                                    /*if (providerIds.contains(section)) {
                                         newSyllabusSections.add(section);
                                         providerIds.remove(section);
                                     } else {
                                         oldSyllabusSections.add(section);
-                                    }
-                                }
-                                if (!providerIds.isEmpty()) {
+                                    }*/
+                                //}
+                               /* if (!providerIds.isEmpty()) {
                                     newSyllabusSections.addAll(providerIds);
                                 }
                                 for (String oldSectionId : oldSyllabusSections) {
                                     syllabusDao.deleteSection(syllabus.getId().toString(), oldSectionId);
                                 }
-                                System.out.println("To delete " + oldSyllabusSections.toString());
-                            }
+                                System.out.println("To delete " + oldSyllabusSections.toString());*/
+                            //}
 
                             //Add new sections to common
-                            if (common != null)
+                           /* if (common != null)
                                 for (String newSectionId : newSyllabusSections) {
                                     syllabusDao.addSection(common.getId().toString(), newSectionId);
                                 }
@@ -132,7 +127,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
             session.clear();
         }
 
-
+*/
     }
 
     private Date getDate(String date) {
