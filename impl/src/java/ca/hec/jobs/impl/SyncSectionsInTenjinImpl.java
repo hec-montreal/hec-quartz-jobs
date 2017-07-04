@@ -3,17 +3,23 @@ package ca.hec.jobs.impl;
 import ca.hec.jobs.api.SyncSectionsInTenjin;
 import ca.hec.tenjin.api.SyllabusService;
 import ca.hec.tenjin.api.dao.SyllabusDao;
+import ca.hec.tenjin.api.model.syllabus.Syllabus;
+import ca.hec.tenjin.api.exception.NoSiteException;
+import ca.hec.tenjin.api.exception.DeniedAccessException;
 import lombok.Setter;
 import org.apache.log4j.Logger;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.Session;
+import org.sakaiproject.site.api.Group;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 
 /**
  * Created by 11091096 on 2017-05-08.
@@ -39,7 +45,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
-        /*String startDate = jobExecutionContext.getMergedJobDataMap().getString("syncSectionsInTenjin.startDate");
+        String startDate = jobExecutionContext.getMergedJobDataMap().getString("syncSectionsInTenjin.startDate");
 
         Date startingDate = getDate(startDate);
         Date createdOn = null;
@@ -125,7 +131,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
         } finally {
             session.clear();
         }
-*/
+
 
     }
 
