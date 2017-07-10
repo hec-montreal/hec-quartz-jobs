@@ -3,17 +3,22 @@ package ca.hec.jobs.impl;
 import ca.hec.jobs.api.SyncSectionsInTenjin;
 import ca.hec.tenjin.api.SyllabusService;
 import ca.hec.tenjin.api.dao.SyllabusDao;
+import ca.hec.tenjin.api.exception.NoSyllabusException;
+import ca.hec.tenjin.api.model.syllabus.Syllabus;
 import lombok.Setter;
 import org.apache.log4j.Logger;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.site.api.Group;
+import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.*;
 
 /**
  * Created by 11091096 on 2017-05-08.
@@ -40,20 +45,19 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
         String startDate = jobExecutionContext.getMergedJobDataMap().getString("syncSectionsInTenjin.startDate");
-/*
+
         Date startingDate = getDate(startDate);
         Date createdOn = null;
         int counter = 0;
-        String providerId;
-        Site site;
+        Site site = null;
         List<String> providerIds;
 
 
-        List<Site> allSites = siteService.getSites(SiteService.SelectionType.ANY, "course", null, null, SiteService.SortType.CREATED_ON_DESC, null);
-        List<Syllabus> syllabi;
+        List<Site> allSites = siteService.getSites(SiteService.SelectionType.ACCESS, "course", null, null, SiteService.SortType.CREATED_ON_DESC, null);
+        Map<String, Object> sectionsBySyllabus;
         Syllabus common = null;
         //Use groupIds
-        List<String> syllabusSections, newSyllabusSections, oldSyllabusSections;
+        List<String>  newProviderIds;
         Collection<Group> siteGroups = null;
 
         Session session = sessionManager.getCurrentSession();
@@ -67,67 +71,52 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
                 createdOn = site.getCreatedDate();
                 if (site.getId().equalsIgnoreCase("30-400-13.E2017")) {
                     if (createdOn.before(startingDate))
-                        continue;
+                        break;
                     if (site.getProviderGroupId() == null || site.getProviderGroupId().isEmpty())
                         continue;
                     System.out.println(site.getProviderGroupId());
-                    providerId = site.getProviderGroupId();
-                    try {
+                    siteGroups = site.getGroups();
+                    newProviderIds = new ArrayList<String>();
+                    sectionsBySyllabus = syllabusDao.getSectionsBySyllabus(site.getId());
+                    common = syllabusDao.getCommonSyllabus(site.getId());
 
-                        providerIds = new ArrayList<String>();
-                        Collections.addAll(providerIds, providerId.split("\\+"));
+                    //Make sure all the sections in Tenjin are up to date
+                    for (Group group : siteGroups) {
+                        //If there is no providerId, the group does not come from an official section
+                        if (group.getProviderGroupId() == null)
+                            continue;
+                      if (sectionsBySyllabus.containsKey(group.getId())) {
+                          sectionsBySyllabus.remove(group.getId());
 
-                        syllabi = syllabusService.getSyllabusList(site.getId());
+                          System.out.println("Section ou groupId " + group.getProviderGroupId() + " est correctement enregistré");
 
-                        //Make sure all the sections in Tenjin are up to date
-                        //Delete cancelled sections
-                        for (Syllabus syllabus : syllabi) {
-                            if (syllabus.getCommon())
-                                common = syllabus;
-                            syllabusSections = syllabusDao.getSyllabusSections(syllabus.getId().toString());
-                            newSyllabusSections = new ArrayList<String>();
-                            oldSyllabusSections = new ArrayList<String>();
-                            if (syllabusSections != null) {
-                                for (String section : syllabusSections) {
-                                    System.out.println("Section ou groupId " + section);
-                                    /*if (providerIds.contains(section)) {
-                                        newSyllabusSections.add(section);
-                                        providerIds.remove(section);
-                                    } else {
-                                        oldSyllabusSections.add(section);
-                                    }*/
-                                //}
-                               /* if (!providerIds.isEmpty()) {
-                                    newSyllabusSections.addAll(providerIds);
-                                }
-                                for (String oldSectionId : oldSyllabusSections) {
-                                    syllabusDao.deleteSection(syllabus.getId().toString(), oldSectionId);
-                                }
-                                System.out.println("To delete " + oldSyllabusSections.toString());*/
-                            //}
+                      }
+                        else {
+                            //Add new section to common
+                            newProviderIds.add(group.getId());
+                            syllabusDao.addSection(common.getId().toString(), group.getId());
+                          System.out.println("Section ou groupId " + group.getProviderGroupId() + " est ajouté au common");
 
-                            //Add new sections to common
-                           /* if (common != null)
-                                for (String newSectionId : newSyllabusSections) {
-                                    syllabusDao.addSection(common.getId().toString(), newSectionId);
-                                }
-
-
-                        }
-
-                    } catch (NoSiteException e) {
-                        //Will not happen but just in case
-                        log.error(e.getMessage());
-                    } catch (DeniedAccessException e) {
-                        log.error("You are not allowed to access syllabi for the site " + site.getId() + " " + e.getMessage());
+                      }
                     }
+
+                    //Delete cancelled sections
+                    for (String sectionId : sectionsBySyllabus.keySet()) {
+                        syllabusDao.deleteSection(sectionsBySyllabus.get(sectionId).toString(), sectionId);
+                        System.out.println("Section ou groupId " + sectionId + " pour le site " + site.getId()
+                                + " du syllabus " + sectionsBySyllabus.get(sectionId) + " a été retiré");
+
+                    }
+
                 }
             } while (createdOn.after(startingDate));
+        } catch (NoSyllabusException e) {
+            e.printStackTrace();
         } finally {
             session.clear();
         }
 
-*/
+
     }
 
     private Date getDate(String date) {
@@ -135,7 +124,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
         Date convertedDate = null;
         try {
             convertedDate = dateFormat.parse(date);
-         } catch (ParseException e) {
+        } catch (ParseException e) {
             e.printStackTrace();
         }
         return convertedDate;
