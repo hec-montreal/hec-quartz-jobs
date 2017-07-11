@@ -53,7 +53,7 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
         List<String> providerIds;
 
 
-        List<Site> allSites = siteService.getSites(SiteService.SelectionType.ACCESS, "course", null, null, SiteService.SortType.CREATED_ON_DESC, null);
+        List<Site> allSites = siteService.getSites(SiteService.SelectionType.NON_USER, "course", null, null, SiteService.SortType.CREATED_ON_DESC, null);
         Map<String, Object> sectionsBySyllabus;
         Syllabus common = null;
         //Use groupIds
@@ -69,15 +69,14 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
             do {
                 site = allSites.get(counter++);
                 createdOn = site.getCreatedDate();
-                if (site.getId().equalsIgnoreCase("30-400-13.E2017")) {
-                    if (createdOn.before(startingDate))
-                        break;
-                    if (site.getProviderGroupId() == null || site.getProviderGroupId().isEmpty())
-                        continue;
-                    System.out.println(site.getProviderGroupId());
-                    siteGroups = site.getGroups();
-                    newProviderIds = new ArrayList<String>();
-                    sectionsBySyllabus = syllabusDao.getSectionsBySyllabus(site.getId());
+                if (createdOn.before(startingDate))
+                    break;
+                if (site.getProviderGroupId() == null || site.getProviderGroupId().isEmpty())
+                    continue;
+                siteGroups = site.getGroups();
+                newProviderIds = new ArrayList<String>();
+                sectionsBySyllabus = syllabusDao.getSectionsBySyllabus(site.getId());
+                if (sectionsBySyllabus != null && sectionsBySyllabus.keySet().size() >0) {
                     common = syllabusDao.getCommonSyllabus(site.getId());
 
                     //Make sure all the sections in Tenjin are up to date
@@ -85,30 +84,29 @@ public class SyncSectionsInTenjinImpl implements SyncSectionsInTenjin {
                         //If there is no providerId, the group does not come from an official section
                         if (group.getProviderGroupId() == null)
                             continue;
-                      if (sectionsBySyllabus.containsKey(group.getId())) {
-                          sectionsBySyllabus.remove(group.getId());
+                        if (sectionsBySyllabus.containsKey(group.getId())) {
+                            sectionsBySyllabus.remove(group.getId());
 
-                          System.out.println("Section ou groupId " + group.getProviderGroupId() + " est correctement enregistré");
+                            log.info("Section ou groupId " + group.getProviderGroupId() + " est correctement enregistré");
 
-                      }
-                        else {
+                        } else {
                             //Add new section to common
                             newProviderIds.add(group.getId());
                             syllabusDao.addSection(common.getId().toString(), group.getId());
-                          System.out.println("Section ou groupId " + group.getProviderGroupId() + " est ajouté au common");
+                            log.info("Section ou groupId " + group.getProviderGroupId() + " est ajouté au common");
 
-                      }
+                        }
                     }
 
                     //Delete cancelled sections
                     for (String sectionId : sectionsBySyllabus.keySet()) {
                         syllabusDao.deleteSection(sectionsBySyllabus.get(sectionId).toString(), sectionId);
-                        System.out.println("Section ou groupId " + sectionId + " pour le site " + site.getId()
+                        log.info("Section ou groupId " + sectionId + " pour le site " + site.getId()
                                 + " du syllabus " + sectionsBySyllabus.get(sectionId) + " a été retiré");
 
                     }
-
                 }
+
             } while (createdOn.after(startingDate));
         } catch (NoSyllabusException e) {
             e.printStackTrace();
