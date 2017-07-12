@@ -18,10 +18,10 @@
  * limitations under the License.
  *
  ******************************************************************************/
-package ca.hec.jobs.impl;
+package ca.hec.jobs.impl.calendar;
 
 import ca.hec.api.SiteIdFormatHelper;
-import ca.hec.jobs.api.HecCalendarEventsJob;
+import ca.hec.jobs.api.calendar.HecCalendarEventsJob;
 import lombok.Data;
 import lombok.Setter;
 import org.apache.commons.logging.Log;

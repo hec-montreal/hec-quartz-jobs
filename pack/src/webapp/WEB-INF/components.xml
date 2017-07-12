@@ -21,7 +21,7 @@
 	</bean>
 
 	<bean id="hecCMSynchroJob"
-		  class="ca.hec.jobs.impl.HECCMSynchroJobImpl">
+		  class="ca.hec.jobs.impl.coursemanagement.HECCMSynchroJobImpl">
 		<property name="cmAdmin"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
 		<property name="cmService"
@@ -65,24 +65,12 @@
 					<property name="descriptionResourceKey" value="cmCourses.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="cmPrograms"/>
-					<property name="descriptionResourceKey" value="cmPrograms.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="cmDepartments"/>
-					<property name="descriptionResourceKey" value="cmDepartments.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
 			</set>
 		</property>
 	</bean>
 
 	<bean id="hecOffSitesjob"
-		  class="ca.hec.jobs.impl.HecOfficialSitesJobImpl">
+		  class="ca.hec.jobs.impl.site.HecOfficialSitesJobImpl">
 		<property name="cmAdmin"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
 		<property name="cmService"
@@ -151,7 +139,7 @@
 	</bean>
 
 	<bean id="hecCreateCalendarEventsJob"
-		  class="ca.hec.jobs.impl.HecCalendarEventsJobImpl">
+		  class="ca.hec.jobs.impl.calendar.HecCalendarEventsJobImpl">
 		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
 		<property name="cmAdmin"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
@@ -204,42 +192,5 @@
 
 	</bean>
 
-	<bean id="syncSectionsInTenjin"
-		  class="ca.hec.jobs.impl.SyncSectionsInTenjinImpl">
-		<property name="cmService"
-				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
-		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
-		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
-		<property name="syllabusService" ref="ca.hec.tenjin.api.SyllabusService" />
-		<property name="syllabusDao" ref="ca.hec.tenjin.api.dao.SyllabusDao" />
-	</bean>
-
-	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.syncSectionsInTenjin"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
-		  init-method="init">
-
-		<property name="beanId">
-			<value>syncSectionsInTenjin</value>
-		</property>
-
-		<property name="jobName">
-			<value>HEC synchronize sections in Tenjin</value>
-		</property>
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
-		<property name="configurableJobProperties">
-			<set>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="syncSectionsInTenjin.startDate"/>
-					<property name="descriptionResourceKey" value="syncSectionsInTenjin.startDate.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-			</set>
-		</property>
-
-	</bean>
 
 </beans>

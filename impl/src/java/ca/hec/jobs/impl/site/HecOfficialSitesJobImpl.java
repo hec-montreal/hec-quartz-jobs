@@ -1,7 +1,7 @@
-package ca.hec.jobs.impl;
+package ca.hec.jobs.impl.site;
 
 import ca.hec.api.SiteIdFormatHelper;
-import ca.hec.jobs.api.HecOfficialSitesJob;
+import ca.hec.jobs.api.site.HecOfficialSitesJob;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;

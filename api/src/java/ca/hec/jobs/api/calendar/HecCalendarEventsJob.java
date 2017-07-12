@@ -1,4 +1,4 @@
-package ca.hec.jobs.api;
+package ca.hec.jobs.api.calendar;
 
 import org.quartz.Job;
 

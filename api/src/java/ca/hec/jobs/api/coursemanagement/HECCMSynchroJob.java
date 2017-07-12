@@ -1,11 +1,11 @@
-package ca.hec.jobs.api;
+package ca.hec.jobs.api.coursemanagement;
 
 import org.quartz.Job;
 
 /**
  * Created by 11091096 on 2017-04-25.
  */
-public interface HECCMSynchroJob  extends Job {
+public interface  HECCMSynchroJob  extends Job {
 
     public final static String SESSION_FILE = "session.dat";
 
@@ -63,7 +63,7 @@ public interface HECCMSynchroJob  extends Job {
      */
     public final static String CERTIFICAT = "CERT";
 
-    public final String A2017_LIMITE = "2017-12-26";
+    public final String PILOTE_A2017 = "2173";
 
     public final static String CANCELED_SECTION = "X";
 
