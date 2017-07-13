@@ -47,12 +47,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private String[] token;
     private BufferedReader breader = null;
     private String buffer = null;
-    List<String> studentEnrollmentsToDelete;
-    Map<String, Set<String>> instructorsToDelete;
-    Map<String, Set<Membership>> coordinatorsToDelete;
+    Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete;
     Date startTime, endTime;
     //Data to work on
-    List<String> selectedSessions, selectedCourses;
+    Set<String> selectedSessions, selectedCourses;
     Map<String, InstructionMode> instructionMode;
 
 
@@ -76,8 +74,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
-            selectedSessions = new ArrayList<String>();
-            selectedCourses = new ArrayList<String>();
+            selectedSessions = new HashSet<String>();
+            selectedCourses = new HashSet<String>();
             startTime = new Date();
             log.info("Starting HEC CM Data Synchro job at " + startTime);
 
@@ -96,7 +94,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             loadEtudiants();
 
-            //removeEntriesMarkedToDelete();
+            removeEntriesMarkedToDelete();
 
             endTime = new Date();
 
@@ -356,17 +354,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      */
     private void loadInstructeurs() {
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
-        EnrollmentSet enrollmentSet;
         String enrollmentSetEid, sectionId;
-        Set <String> officialInstructors, instructors;
-        Set <Membership> coordinators;
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory + File.separator + PROF_FILE), "ISO-8859-1"));
 
 
-            instructorsToDelete = new HashMap<String, Set<String>>();
-            coordinatorsToDelete = new HashMap<String, Set<Membership>>();
+            instructorsToDelete = getInstructorsInPreviousSynchro();
+            coordinatorsToDelete = getCoordinatorsInPreviousSynchro();
 
             // We remove the first line containing the title
             breader.readLine();
@@ -431,25 +426,59 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             officialInstructors.add(emplId);
             enrollmentSet.setOfficialInstructors(officialInstructors);
             cmAdmin.updateEnrollmentSet(enrollmentSet);
+            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " with official instructors " + officialInstructors.toString());
-
         }
 
         if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
             cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+            coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
         }
     }
 
+    public Set<String> getInstructorsInPreviousSynchro (){
+        Set<String> courses = new HashSet<String>();
+        Set<String> instructorsBySection = new HashSet <String>();
+
+        courses.addAll(selectedCourses);
+        EnrollmentSet enrollmentSet = null;
+        Set<String> officialInstructors = new HashSet <String>();
+
+        for (String enrollmentSetEid: courses){
+            enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
+            officialInstructors = enrollmentSet.getOfficialInstructors();
+            for (String offInstructor: officialInstructors){
+                instructorsBySection.add(offInstructor + ";"+enrollmentSetEid);
+            }
+        }
+        return instructorsBySection;
+    }
+
+    public Set<String> getCoordinatorsInPreviousSynchro (){
+        Set<String> courses = new HashSet<String>();
+        Set<String> instructorsBySection = new HashSet <String>();
+
+        courses.addAll(selectedCourses);
+        Set<Membership> memberships= null;
+        EnrollmentSet enrollmentSet = null;
+        Set<String> officialInstructors = new HashSet <String>();
+
+        for (String enrollmentSetEid: courses){
+            memberships = cmService.getSectionMemberships(enrollmentSetEid);
+            for (Membership membership: memberships){
+                instructorsBySection.add(membership.getUserId() + ";"+enrollmentSetEid);
+            }
+        }
+        return instructorsBySection;
+    }
     /**
      * Method used to create students
      */
     private void loadEtudiants(){
         String emplId, catalogNbr, strm, sessionCode, classSection, status, strmId;
         String sectionId, enrollmentSetEid;
-        EnrollmentSet enrollmentSet;
-        Set<EnrollmentSet> tempEnrollmentSet;
 
         //get entries from last synchro
         studentEnrollmentsToDelete = getStudentsInPreviousSynchro();
@@ -486,10 +515,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         studentEnrollmentsToDelete.removeAll(Arrays.asList(emplId + ";" + enrollmentSetEid));
                     }
                 }
-
             }
-
-            System.out.println( "les étudiants seront supprimés " + studentEnrollmentsToDelete.toString());
             // ferme le tampon
             breader.close();
 
@@ -517,57 +543,50 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
     }
 
-    public List<String> getStudentsInPreviousSynchro (){
-        List<String> sessions = new ArrayList<String>();
-        List<String> courses = new ArrayList<String>();
-        List<String> studentsBySection = new ArrayList <String>();
+    public Set<String> getStudentsInPreviousSynchro (){
+        Set<String> courses = new HashSet<String>();
+        Set<String> studentsBySection = new HashSet <String>();
 
-        sessions.addAll(selectedSessions);
         courses.addAll(selectedCourses);
-        String courseOfferingEid;
-        Set<EnrollmentSet> enrollmentSets;
-        Set<Enrollment> enrollments;
+        Set<Enrollment> enrollments = null;
 
-        for (String strmId: selectedSessions){
-            for (String enrollmentSetEid: courses){
-                enrollments = cmService.getEnrollments(enrollmentSetEid);
-                for (Enrollment enrollment: enrollments)
-                    studentsBySection.add(enrollment.getUserId()+";"+enrollmentSetEid);
-            }
-
+        for (String enrollmentSetEid: courses){
+            enrollments = cmService.getEnrollments(enrollmentSetEid);
+            for (Enrollment enrollment: enrollments)
+                studentsBySection.add(enrollment.getUserId()+";"+enrollmentSetEid);
         }
-
         return studentsBySection;
     }
 
     public void removeEntriesMarkedToDelete(){
+         EnrollmentSet enrollmentSet;
+         Set<String> officialInstructors;
+
+        //Remove outdated students
+        String[] values = null;
+        for (String entry: studentEnrollmentsToDelete){
+            values = entry.split(";");
+            cmAdmin.removeEnrollment(values[0], values[1]);
+        }
 
         //Remove outdated instructors
-        Set<String> instructorKeySet = instructorsToDelete.keySet();
-        Set<String> instructors, officialInstructors;
-        EnrollmentSet enrollmentSet;
-        for (String instrKey: instructorKeySet){
-            instructors = instructorsToDelete.get(instrKey);
-            enrollmentSet = cmService.getEnrollmentSet(instrKey);
+        for (String entry: instructorsToDelete){
+            values = entry.split(";");
+            enrollmentSet = cmService.getEnrollmentSet(values[1]);
             officialInstructors = enrollmentSet.getOfficialInstructors();
-            for(String instructor: instructors){
-                officialInstructors.remove(instructor);
-            }
+            officialInstructors.remove(values[0]);
             enrollmentSet.setOfficialInstructors(officialInstructors);
             cmAdmin.updateEnrollmentSet(enrollmentSet);
             log.info ("Remove instructor " + enrollmentSet.getEid() + " avec les official instructors " + officialInstructors.toString());
         }
 
         //Remove outdated coordinators
-        Set <String> coordinatorKeySet = coordinatorsToDelete.keySet();
-        Set <Membership> coordinators;
-        for (String coorKey: coordinatorKeySet){
-            coordinators = coordinatorsToDelete.get(coorKey);
-            for (Membership coordinator: coordinators){
-                cmAdmin.removeSectionMembership(coordinator.getUserId(), coorKey);
-                log.info ("Remove coordinator " + coordinator.getUserId() + " dans le site " + coordinator.toString());
-            }
+        for (String entry: coordinatorsToDelete){
+            values = entry.split(";");
+            cmAdmin.removeSectionMembership(values[0], values[1]);
+            log.info ("Remove coordinator " + values[0] + " dans le site " + values[1]);
         }
+
 
     }
 
