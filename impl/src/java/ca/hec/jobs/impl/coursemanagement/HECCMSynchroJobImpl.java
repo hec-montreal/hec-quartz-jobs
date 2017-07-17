@@ -447,10 +447,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set<String> officialInstructors = new HashSet <String>();
 
         for (String enrollmentSetEid: courses){
-            enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
-            officialInstructors = enrollmentSet.getOfficialInstructors();
-            for (String offInstructor: officialInstructors){
-                instructorsBySection.add(offInstructor + ";"+enrollmentSetEid);
+            if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
+                enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
+                officialInstructors = enrollmentSet.getOfficialInstructors();
+                for (String offInstructor : officialInstructors) {
+                    instructorsBySection.add(offInstructor + ";" + enrollmentSetEid);
+                }
             }
         }
         return instructorsBySection;
@@ -466,9 +468,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set<String> officialInstructors = new HashSet <String>();
 
         for (String enrollmentSetEid: courses){
-            memberships = cmService.getSectionMemberships(enrollmentSetEid);
-            for (Membership membership: memberships){
-                instructorsBySection.add(membership.getUserId() + ";"+enrollmentSetEid);
+            if (cmService.isSectionDefined(enrollmentSetEid)) {
+                memberships = cmService.getSectionMemberships(enrollmentSetEid);
+                for (Membership membership : memberships) {
+                    instructorsBySection.add(membership.getUserId() + ";" + enrollmentSetEid);
+                }
             }
         }
         return instructorsBySection;
@@ -551,10 +555,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set<Enrollment> enrollments = null;
 
         for (String enrollmentSetEid: courses){
-            enrollments = cmService.getEnrollments(enrollmentSetEid);
-            for (Enrollment enrollment: enrollments)
-                studentsBySection.add(enrollment.getUserId()+";"+enrollmentSetEid);
+            if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
+                enrollments = cmService.getEnrollments(enrollmentSetEid);
+                for (Enrollment enrollment : enrollments)
+                    studentsBySection.add(enrollment.getUserId() + ";" + enrollmentSetEid);
+            }
         }
+
         return studentsBySection;
     }
 
