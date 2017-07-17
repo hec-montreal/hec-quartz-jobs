@@ -10,7 +10,7 @@ import org.quartz.Job;
  * @author 11183065
  *
  */
-public interface CourseEventSynchroJob extends Job {
+public interface HecCourseEventSynchroJob extends Job {
 
 
 }

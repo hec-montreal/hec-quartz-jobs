@@ -21,7 +21,7 @@
 package ca.hec.jobs.impl.calendar;
 
 import ca.hec.api.SiteIdFormatHelper;
-import ca.hec.jobs.api.calendar.CourseEventSynchroJob;
+import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
 import ca.hec.jobs.api.calendar.HecCalendarEventsJob;
 import lombok.Data;
 import lombok.Setter;
@@ -96,7 +96,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     @Setter
     protected SessionManager sessionManager;
     @Setter
-    protected CourseEventSynchroJob courseEventSynchroJob;
+    protected HecCourseEventSynchroJob courseEventSynchroJob;
 
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
@@ -135,8 +135,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
+                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
+                    deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
+                            event.getSection(), event.getExamType(), event.getSequenceNumber());
                     continue;
+                }
+
 
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
@@ -242,8 +246,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(","))))
+                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
+                    clearHecEventState(event.getEventId(), event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
+                            event.getSection(), event.getExamType(), event.getSequenceNumber());
                     continue;
+                }
 
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
@@ -385,30 +392,30 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         CalendarEvent event;
 
         List<Group> groups = new ArrayList<>();
-        if (sectionGroup != null && sectionGroup.getProviderGroupId() != null)
-            groups.add(sectionGroup);
+            if (sectionGroup != null && sectionGroup.getProviderGroupId() != null)
+                groups.add(sectionGroup);
 
-        try {
-            // add event to calendar
-            event = calendar.addEvent(
-                    TimeService.newTimeRange(TimeService.newTime(startTime.getTime()), TimeService.newTime(endTime.getTime()), true, false),
-                    title,
-                    description,
-                    type,
-                    location,
-                    CalendarEvent.EventAccess.GROUPED,
-                    groups,
-                    EntityManager.newReferenceList());
+            try {
+                // add event to calendar
+                event = calendar.addEvent(
+                        TimeService.newTimeRange(TimeService.newTime(startTime.getTime()), TimeService.newTime(endTime.getTime()), true, false),
+                        title,
+                        description,
+                        type,
+                        location,
+                        CalendarEvent.EventAccess.GROUPED,
+                        groups,
+                        EntityManager.newReferenceList());
 
-        } catch (PermissionException e) {
-            e.printStackTrace();
-            return null;
+            } catch (PermissionException e) {
+                e.printStackTrace();
+                return null;
+            }
+
+            log.debug("created event: " + title + " in site " + calendar.getContext());
+
+            return event.getId();
         }
-
-        log.debug("created event: " + title + " in site " + calendar.getContext());
-
-        return event.getId();
-    }
 
     private boolean updateCalendarEvent(Calendar calendar, String eventId, String state,
                                         Date newStartTime, Date newEndTime, String newLocation, String newDescription, Group sectionGroup) {
@@ -417,48 +424,48 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
         CalendarEventEdit edit;
 
-        try {
-            edit = calendar.getEditEvent(eventId, CalendarService.EVENT_MODIFY_CALENDAR);
-        } catch (IdUnusedException e) {
-            log.debug("Event " + eventId + " does not exist");
-            return false;
-        } catch (NullPointerException e) {
-            log.debug("Event " + eventId + " does not exist");
-            return false;
-        } catch (Exception e) {
-            log.error("Error retrieving event " + eventId);
-            e.printStackTrace();
-            return false;
-        }
-
-        if (state.equals("M")) {
-            if (newStartTime != null && newEndTime != null)
-                edit.setRange(TimeService.newTimeRange(TimeService.newTime(newStartTime.getTime()), TimeService.newTime(newEndTime.getTime()), true, false));
-            if (newLocation != null)
-                edit.setLocation(newLocation);
-            if (newDescription != null)
-                edit.setDescription(newDescription);
-        } else if (state.equals("D")) {
             try {
-                calendar.removeEvent(edit);
-            } catch (PermissionException e) {
-                log.error("User doesn't have permission to delete event " + eventId);
+                edit = calendar.getEditEvent(eventId, CalendarService.EVENT_MODIFY_CALENDAR);
+            } catch (IdUnusedException e) {
+                log.debug("Event " + eventId + " does not exist");
+                return false;
+            } catch (NullPointerException e) {
+                log.debug("Event " + eventId + " does not exist");
+                return false;
+            } catch (Exception e) {
+                log.error("Error retrieving event " + eventId);
+                e.printStackTrace();
                 return false;
             }
-        }
 
-        //Make sure we update group
-        try {
-            List<Group> groups = new ArrayList<>();
-            groups.add(sectionGroup);
-            edit.setGroupAccess(groups, true);
-        } catch (PermissionException e) {
-            log.error("User doesn't have permission to delete event " + eventId);
-        }
+            if (state.equals("M")) {
+                if (newStartTime != null && newEndTime != null)
+                    edit.setRange(TimeService.newTimeRange(TimeService.newTime(newStartTime.getTime()), TimeService.newTime(newEndTime.getTime()), true, false));
+                if (newLocation != null)
+                    edit.setLocation(newLocation);
+                if (newDescription != null)
+                    edit.setDescription(newDescription);
+            } else if (state.equals("D")) {
+                try {
+                    calendar.removeEvent(edit);
+                } catch (PermissionException e) {
+                    log.error("User doesn't have permission to delete event " + eventId);
+                    return false;
+                }
+            }
+
+            //Make sure we update group
+            try {
+                List<Group> groups = new ArrayList<>();
+                groups.add(sectionGroup);
+                edit.setGroupAccess(groups, true);
+            } catch (PermissionException e) {
+                log.error("User doesn't have permission to delete event " + eventId);
+            }
 
 
-        calendar.commitEvent(edit);
-        log.debug("updated (" + state + ") event: " + edit.getDisplayName() + " in site " + calendar.getContext());
+            calendar.commitEvent(edit);
+            log.debug("updated (" + state + ") event: " + edit.getDisplayName() + " in site " + calendar.getContext());
 
         return true;
     }

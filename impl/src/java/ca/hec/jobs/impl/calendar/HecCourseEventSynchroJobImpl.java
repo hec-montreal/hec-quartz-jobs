@@ -1,7 +1,6 @@
 package ca.hec.jobs.impl.calendar;
 
-import ca.hec.jobs.api.calendar.CourseEventSynchroJob;
-import lombok.Setter;
+import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
@@ -11,6 +10,7 @@ import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.sql.DataSource;
 import java.io.*;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -28,18 +28,21 @@ import java.util.List;
  *
  * @author 11183065
  */
-public class CourseEventSynchroJobImpl implements CourseEventSynchroJob {
+public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
-    private static Log log = LogFactory.getLog(CourseEventSynchroJobImpl.class);
+    private static Log log = LogFactory.getLog(HecCourseEventSynchroJobImpl.class);
 
     private static final String SEPARATOR = ";";
 
-    @Setter
     private JdbcTemplate jdbcTemplate;
 
     public final static String EXTRACTS_PATH_CONFIG_KEY =
             "coursemanagement.extract.files.path";
     public final static String HORAIRES_FILE = "horaires_cours.dat";
+
+    public void setDataSource(DataSource dataSource) {
+        this.jdbcTemplate = new JdbcTemplate(dataSource);
+    }
 
     @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {

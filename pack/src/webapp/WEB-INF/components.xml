@@ -139,17 +139,17 @@
 	</bean>
 
 
-	<bean id="courseEventSynchroJob"
-		  class="ca.hec.jobs.impl.calendar.CourseEventSynchroJobImpl">
+	<bean id="hecCourseEventSynchroJob"
+		  class="ca.hec.jobs.impl.calendar.HecCourseEventSynchroJobImpl">
 		<property name="dataSource" ref="javax.sql.DataSource" />
 	</bean>
 
-	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.courseEventSynchroJob"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCourseEventSynchroJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
 		  init-method="init">
 
 		<property name="beanId">
-			<value>courseEventSynchroJob</value>
+			<value>hecCourseEventSynchroJob</value>
 		</property>
 
 		<property name="jobName">
