@@ -201,20 +201,19 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             if (!siteService.siteExists(siteName)) {
                 createdSite = siteService.addSite(siteName, templateSite);
             }
-            else
+            else {
                 createdSite = siteService.getSite(siteName);
-
-            //Set site properties
-            setSiteProperties(createdSite, siteName,  sections);
+                //Set site properties
+                setSiteProperties(createdSite, siteName, sections);
+                //Save3Update site properties, tools and providerId
+                siteService.save(createdSite);
+                //Copy template content
+                copyContent(chs.getSiteCollection(templateSite.getId()), chs.getSiteCollection(createdSite.getId()));
+            }
 
             //Associate to sections
             setProviderId(createdSite, sections);
 
-            //Save3Update site properties, tools and providerId
-            siteService.save(createdSite);
-
-            //Copy template content
-            copyContent(chs.getSiteCollection(templateSite.getId()), chs.getSiteCollection(createdSite.getId()));
 
             //Update site membership
             List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors();
@@ -256,7 +255,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         CourseOffering courseOffering = cmService.getCourseOffering(sectionRef.getCourseOfferingEid());
 
         site.setTitle(siteName);
-        site.setDescription(sectionRef.getDescription());
+        site.setShortDescription(sectionRef.getDescription());
 
         ResourcePropertiesEdit rpe = site.getPropertiesEdit();
         rpe.addProperty(Site.PROP_SITE_TERM, courseOffering.getAcademicSession().getTitle());
@@ -274,12 +273,15 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
    private void setProviderId (Site site, List<Section> sections){
        String providerGroupId = "";
        String sectionEid = null;
+       boolean updated = false;
        for (Section section : sections) {
+            sectionEid = section.getEid();
+           //TODO: Remove after tenjin deploy and leave  !providerGroupId.contains(sectionEid)
            updateSectionTitle(section);
-           sectionEid = section.getEid();
-           //TODO: Remove after tenjin deploy
            if (!sectionEid.isEmpty() && !sectionEid.endsWith("00") && !providerGroupId.contains(sectionEid)) {
+           //END TODO: Remove after tenjin deploy
                providerGroupId += section.getEid() + "+";
+               updated = true;
            }
            //TODO: Remove after tenjin deploy
            //Make sure coordinator is in course offering membership
@@ -297,12 +299,22 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
                }
 
            }
+           //END TODO: Remove after tenjin deploy
        }
        if(providerGroupId.endsWith("+"))
            providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
 
-       if (providerGroupId.length() > 0)
+       if (providerGroupId.length() > 0 && updated) {
            site.setProviderGroupId(providerGroupId);
+           try {
+               siteService.save(site);
+           } catch (IdUnusedException e) {
+               log.error(site.getId() + " does not exist" + e.getMessage());
+           } catch (PermissionException e) {
+               log.error(" You are not allowed to update " + site.getId() + " : " + e.getMessage());
+           }
+       }
+
    }
 
     //TODO: Remove after tenjin deploy
@@ -315,6 +327,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        }
 
    }
+    //END TODO: Remove after tenjin deploy
 
     private Date getDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
