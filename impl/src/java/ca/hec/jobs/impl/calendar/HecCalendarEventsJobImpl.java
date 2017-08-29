@@ -147,8 +147,13 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection());
 
-                if (siteId == null)
+                //Section not associated to site or site does not exist
+                if (siteId == null) {
+                    clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
+                            event.getSessionCode(), event.getSection(), event.getExamType(),
+                            event.getSequenceNumber());
                     continue;
+                }
 
                 String eventId = null;
 
@@ -257,8 +262,13 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection());
 
-                if (siteId == null)
+                //Section not associated to site or site does not exist
+                if (siteId == null) {
+                    clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
+                            event.getSessionCode(), event.getSection(), event.getExamType(),
+                            event.getSequenceNumber());
                     continue;
+                }
 
                 boolean updateSuccess = false;
 
