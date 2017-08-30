@@ -118,7 +118,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             String order_by = " order by CATALOG_NBR, STRM, CLASS_SECTION ";
 
             List<HecEvent> eventsAdd = jdbcTemplate.query(
-                    select_from + "where (EVENT_ID is null and ( STATE = 'A'))" + order_by,
+                    select_from + "where (EVENT_ID is null and (STATE is null or STATE <> 'D'))" + order_by,
                     new HecEventRowMapper());
 
             // keep track of the last event's site id, calendar and courseOffering, so we can use the calendar if it was already found
@@ -136,8 +136,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
                         inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
-                    deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
-                            event.getSection(), event.getExamType(), event.getSequenceNumber());
                     continue;
                 }
 
@@ -147,7 +145,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection());
 
-                //Section not associated to site or site does not exist
+                //Section does not exist
                 if (siteId == null) {
                     clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
                             event.getSessionCode(), event.getSection(), event.getExamType(),
@@ -169,6 +167,13 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         // retrieve course offering to see if the course is MBA
                         site = siteService.getSite(siteId);
                         eventGroup = getGroup(site.getGroups(), event.getSection());
+                        //Section is not associated to site
+                        if (eventGroup == null){
+                            clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
+                                    event.getSessionCode(), event.getSection(), event.getExamType(),
+                                    event.getSequenceNumber());
+                            continue;
+                        }
                         Section section = cmService.getSection(eventGroup.getProviderGroupId());
                         courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
 
@@ -198,14 +203,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 " for site " + siteId + " (end date is after start date)");
                     }
 
-                    // don't bother adding the events if this is an MBA site (ZCII-1495) or DF (ZCII-1665)
+                    // don't bother adding the events if this is DF (ZCII-1665)
                     // and the event is not a final or mid-term (intratrimestriel) exam
-                    if ((courseOffering.getAcademicCareer().equals(CAREER_MBA) || siteId.contains("DF")) &&
+                    if ((siteId.contains("DF")) &&
                             !event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) &&
                             !event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
                         createEvent = false;
                         log.debug("Skipping event creation: " + getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()) +
-                                " for site " + siteId + " (course is MBA or DF and event is not an exam)");
+                                " for site " + siteId + " (course is DF and event is not an exam)");
                     }
 
                     if (createEvent) {
@@ -252,8 +257,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
                         inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
-                    clearHecEventState(event.getEventId(), event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
-                            event.getSection(), event.getExamType(), event.getSequenceNumber());
                     continue;
                 }
 
@@ -262,11 +265,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection());
 
-                //Section not associated to site or site does not exist
+                //Section does not exist
                 if (siteId == null) {
-                    clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
-                            event.getSessionCode(), event.getSection(), event.getExamType(),
-                            event.getSequenceNumber());
+                    deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
+                            event.getSection(), event.getExamType(), event.getSequenceNumber());
                     continue;
                 }
 
@@ -284,6 +286,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         // retrieve course offering to see if the course is MBA
                         site = siteService.getSite(siteId);
                         eventGroup = getGroup(site.getGroups(), event.getSection());
+                        //Section not associated to site
+                        if (eventGroup == null){
+                            if (event.getEventId() != null)
+                                updateCalendarEvent(calendar, event.getEventId(), event.getState(),
+                                        event.getStartTime(), event.getEndTime(), event.getLocation(),
+                                        event.getDescription(), eventGroup);
+                            continue;
+                        }
                         Section section = cmService.getSection(eventGroup.getProviderGroupId());
                         courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
 
@@ -301,9 +311,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 if (courseOffering != null && calendarFound) {
 
-                    // don't bother adding the events if this is an MBA site (ZCII-1495) or DF (ZCII-1665)
+                    // don't bother adding the events if this is DF (ZCII-1665)
                     // and the event is not a final or mid-term (intratrimestriel) exam
-                    if ((!courseOffering.getAcademicCareer().equals(CAREER_MBA) && !siteId.contains("DF")) ||
+                    if (( !siteId.contains("DF")) ||
                             event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) ||
                             event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
                         eventGroup = getGroup(site.getGroups(), event.getSection());
@@ -317,7 +327,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 event.getDescription(), eventGroup);
                     } else {
                         log.debug("Skipping event update: " + getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()) +
-                                " for site " + siteId + " (course is MBA or DF and event is not an exam)");
+                                " for site " + siteId + " (course is DF and event is not an exam)");
                     }
                 }
 
