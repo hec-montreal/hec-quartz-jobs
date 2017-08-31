@@ -292,6 +292,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 updateCalendarEvent(calendar, event.getEventId(), event.getState(),
                                         event.getStartTime(), event.getEndTime(), event.getLocation(),
                                         event.getDescription(), eventGroup);
+                            deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
+                                    event.getSection(), event.getExamType(), event.getSequenceNumber());
                             continue;
                         }
                         Section section = cmService.getSection(eventGroup.getProviderGroupId());
