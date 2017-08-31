@@ -467,6 +467,22 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     edit.setLocation(newLocation);
                 if (newDescription != null)
                     edit.setDescription(newDescription);
+
+                //Make sure we update group
+                try {
+                    List<Group> groups = new ArrayList<>();
+                    groups.add(sectionGroup);
+                    edit.setGroupAccess(groups, true);
+                } catch (PermissionException e) {
+                    log.error("User doesn't have permission to update group access for event " + eventId);
+                } catch (NullPointerException e) {
+                    log.error("Section " + sectionGroup + " does not exist in site for for event " + eventId);
+                    e.printStackTrace();
+                } catch (Exception e) {
+                    log.error("Exception when updating group access for event " + eventId);
+                    e.printStackTrace();
+                }
+
             } else if (state.equals("D")) {
                 try {
                     calendar.removeEvent(edit);
@@ -475,16 +491,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     return false;
                 }
             }
-
-            //Make sure we update group
-            try {
-                List<Group> groups = new ArrayList<>();
-                groups.add(sectionGroup);
-                edit.setGroupAccess(groups, true);
-            } catch (PermissionException e) {
-                log.error("User doesn't have permission to delete event " + eventId);
-            }
-
 
             calendar.commitEvent(edit);
             log.debug("updated (" + state + ") event: " + edit.getDisplayName() + " in site " + calendar.getContext());
