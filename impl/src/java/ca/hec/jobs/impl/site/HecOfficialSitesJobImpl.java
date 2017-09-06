@@ -200,20 +200,22 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
             if (!siteService.siteExists(siteName)) {
                 createdSite = siteService.addSite(siteName, templateSite);
+
+                //Copy template content
+                copyContent(chs.getSiteCollection(templateSite.getId()), chs.getSiteCollection(createdSite.getId()));
             }
             else {
                 createdSite = siteService.getSite(siteName);
-                //Set site properties
-                setSiteProperties(createdSite, siteName, sections);
-                //Save3Update site properties, tools and providerId
-                siteService.save(createdSite);
-                //Copy template content
-                copyContent(chs.getSiteCollection(templateSite.getId()), chs.getSiteCollection(createdSite.getId()));
             }
 
             //Associate to sections
             setProviderId(createdSite, sections);
 
+            //Set site properties
+            setSiteProperties(createdSite, siteName, sections);
+
+            //Save/Update site properties, tools and providerId
+            siteService.save(createdSite);
 
             //Update site membership
             List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors();
