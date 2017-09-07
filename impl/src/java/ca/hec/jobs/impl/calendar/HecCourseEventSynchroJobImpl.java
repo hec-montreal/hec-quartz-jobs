@@ -58,11 +58,12 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
         // s'assurant que la colonne state est nulle pour toutes les lignes
         Integer activeHecEvent = jdbcTemplate.queryForObject("select count(*) from HEC_EVENT where STATE is not null", Integer.class);
 
-		/*if ((activeHecEvent != null ? activeHecEvent: 0) != 0) {
-			throw new InvalidStateException(
+		if ((activeHecEvent != null ? activeHecEvent: 0) != 0) {
+		    //Add email Service for additional precaution ?
+			throw new JobExecutionException(
 					"Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
 							+ "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
-		}*/
+		}
 
         log.info("Lecture du fichier d'extract");
         try {
