@@ -73,7 +73,7 @@ public interface  HECCMSynchroJob  extends Job {
 
     public static final int MAX_TITLE_BYTE_LENGTH = 100;
 
-    public static final String INSTRUCTOR_ROLE = "Enseignant";
+    public static final String INSTRUCTOR_ROLE = "I";
 
     public static final String COORDINATOR_ROLE = "Coordonnateur";
 
