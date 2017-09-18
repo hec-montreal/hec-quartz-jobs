@@ -36,6 +36,8 @@ public interface  HECCMSynchroJob  extends Job {
 
     public final static String COORDONNATEUR_ROLE = "C";
 
+    public final static String COORDONNATEUR_INSTRUCTOR_ROLE = "CI";
+
     public final static String CHARGE_FORMATION_ROLE = "FTL";
 
     /**

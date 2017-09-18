@@ -413,26 +413,52 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
     public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
+
+        EnrollmentSet enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);;
+        Section currentSection = cmService.getSection(enrollmentSetEid);
+
+        //Remove official instructor for test
+        enrollmentSet.setOfficialInstructors(new HashSet<String>());
+        cmAdmin.updateEnrollmentSet(enrollmentSet);
+
         if (INSTRUCTOR_ROLE.equalsIgnoreCase(role)) {
-            EnrollmentSet enrollmentSet = null;
-            Set <String> officialInstructors = null;
+            //Check if user is already coordinator
+            Set<Membership> coordinators = cmService.getCourseOfferingMemberships(currentSection.getCourseOfferingEid());
+            boolean added = false;
+            for(Membership member: coordinators) {
+                if (member.getUserId().equalsIgnoreCase(emplId)){
+                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                    added = true;
+                    log.info("Update section " + enrollmentSetEid + "'s instructor(s) with coordinator-instructor : " + emplId);
+                }
 
-            enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
-            officialInstructors = enrollmentSet.getOfficialInstructors();
-
-            if (officialInstructors == null) {
-                officialInstructors = new HashSet<String>();
+            if (!added) {
+                cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
             }
-            officialInstructors.add(emplId);
-            enrollmentSet.setOfficialInstructors(officialInstructors);
-            cmAdmin.updateEnrollmentSet(enrollmentSet);
-            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
-            log.info("Update enrollmentSet " + enrollmentSetEid + " with official instructors " + officialInstructors.toString());
+           instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
+          }
         }
 
         if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
-            cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-            coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
+            //Check if user is already instructor
+            Set<Membership> instructors = null;
+            boolean added = false;
+            Set<Section> associatedSections = cmService.getSections(currentSection.getCourseOfferingEid());
+            for (Section section: associatedSections) {
+                instructors = cmService.getSectionMemberships(section.getEid());
+                for (Membership member: instructors) {
+                    //Mettre èa jour son rôle dans la section si nécessaire
+                    if (member.getUserId().equalsIgnoreCase(emplId))
+                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, section.getEid(), ACTIVE_STATUS);
+                    log.info("Update section " + section.getEid() + "'s instructor(s) with coordinator-instructor : " + emplId);
+                }
+            }
+
+            //L'ajouter comme coordonnateur de la section s'il n'en est pas instructeur
+            if (!added)
+                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+           coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
         }
