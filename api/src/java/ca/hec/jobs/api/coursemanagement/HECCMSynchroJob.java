@@ -75,6 +75,8 @@ public interface  HECCMSynchroJob  extends Job {
 
     public static final String INSTRUCTOR_ROLE = "I";
 
+    public static final String ENSEIGNANT_ROLE = "Enseignant";
+
     public static final String COORDINATOR_ROLE = "Coordonnateur";
 
     public static final String ENGLISH = "en";
