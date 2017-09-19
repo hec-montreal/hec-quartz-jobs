@@ -377,7 +377,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 classSection= token[4];
                 role= token[6];
 
-                if (role.equalsIgnoreCase(INSTRUCTOR_ROLE)){
+                if (role.equalsIgnoreCase(ENSEIGNANT_ROLE)){
                     acadOrg= token[5];
                     strmId= token[7];
                 }else{
@@ -455,10 +455,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
             }
 
-            //L'ajouter comme coordonnateur de la section s'il n'en est pas instructeur
-            if (!added)
-                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-           coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
+            coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
         }
