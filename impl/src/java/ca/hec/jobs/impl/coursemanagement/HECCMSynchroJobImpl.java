@@ -421,23 +421,23 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         enrollmentSet.setOfficialInstructors(new HashSet<String>());
         cmAdmin.updateEnrollmentSet(enrollmentSet);
 
-        if (INSTRUCTOR_ROLE.equalsIgnoreCase(role)) {
+        if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
             //Check if user is already coordinator
             Set<Membership> coordinators = cmService.getCourseOfferingMemberships(currentSection.getCourseOfferingEid());
             boolean added = false;
             for(Membership member: coordinators) {
-                if (member.getUserId().equalsIgnoreCase(emplId)){
+                if (member.getUserId().equalsIgnoreCase(emplId)) {
                     cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                     added = true;
                     log.info("Update section " + enrollmentSetEid + "'s instructor(s) with coordinator-instructor : " + emplId);
                 }
-
+            }
             if (!added) {
                 cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                 log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
             }
-           instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
-          }
+            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
+
         }
 
         if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
