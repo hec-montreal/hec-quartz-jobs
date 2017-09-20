@@ -434,26 +434,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                 log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
             }
-
-          /*  Set<Membership> coordinators = cmService.getCourseOfferingMemberships(currentSection.getCourseOfferingEid());
-            boolean added = false;
-            for(Membership member: coordinators) {
-                if (member.getUserId().equalsIgnoreCase(emplId)) {
-                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                    added = true;
-                    log.info("Update section " + enrollmentSetEid + "'s instructor(s) with coordinator-instructor : " + emplId);
-                }
-                else
-                    //Cleanup section membership
-                    cmAdmin.removeSectionMembership(emplId, enrollmentSetEid);
-
-            }
-            if (!added) {
-                cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
-            }
-            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));*/
-
+            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
         }
 
         if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
@@ -472,21 +453,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
             }
             if (!added ){
-                cmAdmin.addOrUpdateSectionMembership(emplId, COORDINATOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                 log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
             }
-            /*boolean added = false;
-            Set<Section> associatedSections = cmService.getSections(currentSection.getCourseOfferingEid());
-            for (Section section: associatedSections) {
-                instructors = cmService.getSectionMemberships(section.getEid());
-                for (Membership member: instructors) {
-                    //Mettre èa jour son rôle dans la section si nécessaire
-                    if (member.getUserId().equalsIgnoreCase(emplId))
-                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, section.getEid(), ACTIVE_STATUS);
-                    log.info("Update section " + section.getEid() + "'s instructor(s) with coordinator-instructor : " + emplId);
-                }
-            }*/
-
             coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
