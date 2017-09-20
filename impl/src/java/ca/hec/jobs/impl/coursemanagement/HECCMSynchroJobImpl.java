@@ -422,18 +422,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         cmAdmin.updateEnrollmentSet(enrollmentSet);
 
         if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
-            //Check if user is already coordinator
-            Set<Membership> members = cmService.getSectionMemberships(enrollmentSetEid);
-            boolean added = false;
-            for (Membership member: members){
-                if (member.getUserId().equalsIgnoreCase(emplId)){
-                    added = true;
-                }
-            }
-            if (!added){
-                cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
-            }
+            //Sans risque puisque le fichier d'extract affiche les enseignants avant les coordonnateurs
+            cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+            log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+
             instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
         }
 
@@ -452,10 +444,26 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     }
                 }
             }
-            if (!added ){
-                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+
+            if (!added ) {
+                //Make sure the other sections does not have the user as coordinator-instructor
+                Map<String, String> userAccesses = cmService.findSectionRoles(emplId);
+                String userAccess;
+                String thisCourseOffering, userAccessCourseOffering;
+                thisCourseOffering = cmService.getSection(enrollmentSetEid).getCourseOfferingEid();
+                for (String sectionId : userAccesses.keySet()) {
+                    userAccess = userAccesses.get(sectionId);
+                    userAccessCourseOffering =cmService.getSection(sectionId).getCourseOfferingEid();
+                    if ((thisCourseOffering.equals(userAccessCourseOffering))
+                            && userAccess.equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE))
+                        added = true;
+                }
+                if (!added) {
+                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                    log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+                }
             }
+
             coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
             log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
 
