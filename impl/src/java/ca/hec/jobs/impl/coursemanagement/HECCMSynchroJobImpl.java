@@ -490,15 +490,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set<String> instructorsBySection = new HashSet <String>();
 
         courses.addAll(selectedCourses);
-        EnrollmentSet enrollmentSet = null;
-        Set<String> officialInstructors = new HashSet <String>();
+        Set<Membership> instructors = new HashSet <Membership>();
 
-        for (String enrollmentSetEid: courses){
-            if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
-                enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
-                officialInstructors = enrollmentSet.getOfficialInstructors();
-                for (String offInstructor : officialInstructors) {
-                    instructorsBySection.add(offInstructor + ";" + enrollmentSetEid);
+        for (String sectionEid: courses){
+            if (cmService.isSectionDefined(sectionEid)) {
+                instructors = cmService.getSectionMemberships(sectionEid);
+                for (Membership member : instructors) {
+                    if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE))
+                        instructorsBySection.add(member.getUserId() + ";" + sectionEid);
                 }
             }
         }
@@ -510,15 +509,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Set<String> instructorsBySection = new HashSet <String>();
 
         courses.addAll(selectedCourses);
-        Set<Membership> memberships= null;
-        EnrollmentSet enrollmentSet = null;
-        Set<String> officialInstructors = new HashSet <String>();
+        Set<Membership> instructors = new HashSet <Membership>();
 
-        for (String enrollmentSetEid: courses){
-            if (cmService.isSectionDefined(enrollmentSetEid)) {
-                memberships = cmService.getSectionMemberships(enrollmentSetEid);
-                for (Membership membership : memberships) {
-                    instructorsBySection.add(membership.getUserId() + ";" + enrollmentSetEid);
+        for (String sectionEid: courses){
+            if (cmService.isSectionDefined(sectionEid)) {
+                instructors = cmService.getSectionMemberships(sectionEid);
+                for (Membership member : instructors) {
+                    if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)
+                            || member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE))
+                        instructorsBySection.add(member.getUserId() + ";" + sectionEid);
                 }
             }
         }
