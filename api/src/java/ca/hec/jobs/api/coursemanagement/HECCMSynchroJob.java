@@ -67,6 +67,8 @@ public interface  HECCMSynchroJob  extends Job {
 
     public final String PILOTE_A2017 = "2173";
 
+    public final String PILOTE_H2018 = "2181";
+
     public final static String CANCELED_SECTION = "X";
 
     public final static String ACTIVE_SECTION = "A";

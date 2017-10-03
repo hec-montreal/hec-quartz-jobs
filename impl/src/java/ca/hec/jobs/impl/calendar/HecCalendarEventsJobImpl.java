@@ -108,6 +108,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         int addcount = 0, updatecount = 0, deletecount = 0;
         String piloteE2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteE2017Courses");
         String piloteA2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteA2017Courses");
+        String piloteH2018Courses = context.getMergedJobDataMap().getString("officialSitesPiloteH2018Courses");
         Session session = sessionManager.getCurrentSession();
         try {
             session.setUserEid("admin");
@@ -135,7 +136,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
+                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
+                        inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
                     continue;
                 }
 
@@ -256,7 +258,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
                 if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")))){
+                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
+                        inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
                     continue;
                 }
 
@@ -613,6 +616,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     private boolean inA2017Pilote(String courseId, String sessioId, String[] piloteA2017) {
         for (String exception : piloteA2017) {
             if (courseId.equals(exception) && sessioId.equals("2173"))
+                return true;
+        }
+        return false;
+    }
+
+    private boolean inH2018Pilote(String courseId, String sessioId, String[] piloteH2018) {
+        for (String exception : piloteH2018) {
+            if (courseId.equals(exception) && sessioId.equals("2181"))
                 return true;
         }
         return false;

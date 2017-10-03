@@ -160,7 +160,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         selectedCourses.add(sectionId);
 
                 } else
-                    if (acadCareer.equalsIgnoreCase(CERTIFICAT) && PILOTE_A2017.equalsIgnoreCase(strm) )
+                    if (acadCareer.equalsIgnoreCase(CERTIFICAT) && (PILOTE_A2017.equalsIgnoreCase(strm)
+                    || PILOTE_H2018.equalsIgnoreCase(strm)))
                         selectedCourses.add(sectionId);
 
                 if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
@@ -450,11 +451,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 Map<String, String> userAccesses = cmService.findSectionRoles(emplId);
                 String userAccess;
                 String thisCourseOffering, userAccessCourseOffering;
-                thisCourseOffering = cmService.getSection(enrollmentSetEid).getCourseOfferingEid();
+                Section thisSection =  cmService.getSection(enrollmentSetEid);
+                Section section;
+                thisCourseOffering = thisSection.getCourseOfferingEid();
                 for (String sectionId : userAccesses.keySet()) {
                     userAccess = userAccesses.get(sectionId);
-                    userAccessCourseOffering =cmService.getSection(sectionId).getCourseOfferingEid();
-                    if ((thisCourseOffering.equals(userAccessCourseOffering))
+                    section = cmService.getSection(sectionId);
+                    userAccessCourseOffering = section.getCourseOfferingEid();
+                    if ((thisCourseOffering.equals(userAccessCourseOffering) && thisSection.getInstructionMode().equalsIgnoreCase(section.getInstructionMode()))
                             && userAccess.equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE))
                         added = true;
                 }
@@ -472,13 +476,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     private void removeCoordinatorInMemberships(String sectionEid, String emplId){
         Section theSection = cmService.getSection(sectionEid);
+        String theCourseOffering = theSection.getCourseOfferingEid();
         Set<Section> associatedSections = cmService.getSections(theSection.getCourseOfferingEid());
         Set<Membership> coordinators;
         for (Section section: associatedSections) {
             coordinators = cmService.getSectionMemberships(section.getEid());
             for (Membership member: coordinators) {
                 //Mettre a jour son rôle dans la section
-                if (member.getUserId().equalsIgnoreCase(emplId) && member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE))
+                if (member.getUserId().equalsIgnoreCase(emplId) && member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE)
+                        && section.getInstructionMode().equalsIgnoreCase(theSection.getInstructionMode()))
                     cmAdmin.removeSectionMembership(emplId, section.getEid());
             }
         }
@@ -687,8 +693,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     }
                 }
                 else {
-                    //TODO: remove after pilote A2017
-                    if (PILOTE_A2017.equalsIgnoreCase(strm)) {
+                    //TODO: remove after pilote A2017, H2018
+                    if (PILOTE_A2017.equalsIgnoreCase(strm) || PILOTE_H2018.equalsIgnoreCase(strm)) {
                         //END TODO
                         session = saveOrUpdateSession(strmId, strm, title, descShortAnglais, beginDate, endDate);
                         selectedSessions.add(strmId);
