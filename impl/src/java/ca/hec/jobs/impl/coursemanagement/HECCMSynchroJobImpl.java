@@ -416,6 +416,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
 
+        if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(enrollmentSetEid)) {
+            log.warn("The section " + enrollmentSetEid + " does not exist");
+            return;
+        }
         EnrollmentSet enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);;
         Section currentSection = cmService.getSection(enrollmentSetEid);
 
@@ -476,6 +480,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
     private void removeCoordinatorInMemberships(String sectionEid, String emplId){
+        if (!cmService.isEnrollmentSetDefined(sectionEid) || !cmService.isSectionDefined(sectionEid)) {
+            log.warn("The section " + sectionEid + " does not exist");
+            return;
+        }
         Section theSection = cmService.getSection(sectionEid);
         String theCourseOffering = theSection.getCourseOfferingEid();
         Set<Section> associatedSections = cmService.getSections(theSection.getCourseOfferingEid());
@@ -587,6 +595,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
     public void addOrUpdateEtudiants(String sectionId, String enrollmentSetEid, String emplId){
+        if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(sectionId)) {
+            log.warn("The section " + enrollmentSetEid + " does not exist");
+            return;
+        }
         EnrollmentSet enrollmentSet = null;
         if (sectionId != null) {
             if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
