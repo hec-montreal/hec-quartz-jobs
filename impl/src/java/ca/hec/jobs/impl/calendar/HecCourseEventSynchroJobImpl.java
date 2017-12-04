@@ -1,11 +1,13 @@
 package ca.hec.jobs.impl.calendar;
 
 import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
+import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.email.cover.EmailService;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,9 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
     private static final String SEPARATOR = ";";
 
+    @Setter
+    private EmailService emailService;
+
     private JdbcTemplate jdbcTemplate;
 
     public final static String EXTRACTS_PATH_CONFIG_KEY =
@@ -59,7 +64,13 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
         Integer activeHecEvent = jdbcTemplate.queryForObject("select count(*) from HEC_EVENT where STATE is not null", Integer.class);
 
 		if ((activeHecEvent != null ? activeHecEvent: 0) != 0) {
-		    //Add email Service for additional precaution ?
+		    emailService.send("zonecours2@hec.ca", "zonecours2@hec.ca", "La job de synchro des événements d'agenda a échoué",
+	                "\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\n" +
+	       	                "Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
+	       	                + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.",
+	                null, null, null);
+	            log.error("Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
+	                    + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
 			throw new JobExecutionException(
 					"Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
 							+ "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
