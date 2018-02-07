@@ -600,15 +600,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             return;
         }
         EnrollmentSet enrollmentSet = null;
-        Enrollment enrollment = null;
         if (sectionId != null) {
             if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
                 enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);
-                enrollment = cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetEid, ENROLLMENT_STATUS,
+                cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetEid, ENROLLMENT_STATUS,
                         enrollmentSet.getDefaultEnrollmentCredits(), GRADING_SCHEME);
-                if (!enrollment.isDropped()) {
-                    enrollment.setDropped(false);
-                }
                 log.info("Create or Update enrollment " + enrollmentSetEid + " for " + emplId);
 
             }
@@ -643,7 +639,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         for (String entry: studentEnrollmentsToDelete){
             values = entry.split(";");
             cmAdmin.removeEnrollment(values[0], values[1]);
-            log.info ("Remove student " + values[0] + " from " + values[1]);
         }
 
         //Remove outdated instructors
