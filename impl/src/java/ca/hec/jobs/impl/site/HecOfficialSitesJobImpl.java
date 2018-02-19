@@ -264,12 +264,15 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
         rpe.addProperty("title", courseOffering.getTitle());
 
-        if (courseOffering.getLang().equals("en"))
+        if (courseOffering.getLang().equals("en")) {
             rpe.addProperty("hec_syllabus_locale", "en_US");
-        else if (courseOffering.getLang().equals("es"))
+        }
+        else if (courseOffering.getLang().equals("es")) {
             rpe.addProperty("hec_syllabus_locale", "es_ES");
-        else
+        }
+        else {
             rpe.addProperty("hec_syllabus_locale", "fr_CA");
+        }
    }
 
    private void setProviderId (Site site, List<Section> sections){
@@ -278,30 +281,10 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        boolean updated = false;
        for (Section section : sections) {
             sectionEid = section.getEid();
-           //TODO: Remove after tenjin deploy and leave  !providerGroupId.contains(sectionEid)
-           updateSectionTitle(section);
-           if (!sectionEid.isEmpty() && !sectionEid.endsWith("00") && !providerGroupId.contains(sectionEid)) {
-           //END TODO: Remove after tenjin deploy
+           if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
                providerGroupId += section.getEid() + "+";
                updated = true;
            }
-           //TODO: Remove after tenjin deploy
-           //Make sure coordinator is in course offering membership
-           Section sectionRef = sections.get(0);
-           CourseOffering courseOffering = cmService.getCourseOffering(sectionRef.getCourseOfferingEid());
-           Set <Membership> courseOfferingCoordinator = cmService.getCourseOfferingMemberships(courseOffering.getEid());
-           if (sectionEid.endsWith("00") || courseOfferingCoordinator.size() > 0){
-               Set<Membership> coordinators  = cmService.getSectionMemberships(sectionEid);
-               //Remove all section memberships
-               for (Membership coordinator: coordinators){
-                   for ( Section courseSection : sections) {
-                       if (cmService.isSectionDefined(courseSection.getEid()))
-                       cmAdmin.removeSectionMembership(coordinator.getUserId(), courseSection.getEid());
-                   }
-               }
-
-           }
-           //END TODO: Remove after tenjin deploy
        }
        if(providerGroupId.endsWith("+"))
            providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
@@ -318,18 +301,6 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        }
 
    }
-
-    //TODO: Remove after tenjin deploy
-   private void updateSectionTitle(Section section){
-       AcademicSession session = cmService.getCourseOffering(section.getCourseOfferingEid()).getAcademicSession();
-       String [] courseAndSection = (section.getEid()).split(session.getEid());
-       if (courseAndSection.length == 2){
-           section.setTitle(courseAndSection[1]);
-           cmAdmin.updateSection(section);
-       }
-
-   }
-    //END TODO: Remove after tenjin deploy
 
     private Date getDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
