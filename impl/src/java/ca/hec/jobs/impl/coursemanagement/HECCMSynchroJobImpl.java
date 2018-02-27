@@ -157,13 +157,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
-                    if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr))
+                    if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
                         selectedCourses.add(sectionId);
-
-                } else
-                    if (acadCareer.equalsIgnoreCase(CERTIFICAT) && (PILOTE_A2017.equalsIgnoreCase(strm)
-                    || PILOTE_H2018.equalsIgnoreCase(strm)))
-                        selectedCourses.add(sectionId);
+                    }
+                } else if ((!PILOTE_A2017.equalsIgnoreCase(strm) && !PILOTE_H2018.equalsIgnoreCase(strm))
+                    || acadCareer.equalsIgnoreCase(CERTIFICAT))
+                {
+                    // treat courses not in pilote sessions (or if it is, only certificat)
+                    selectedCourses.add(sectionId);
+                }
 
                 if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
                     //Add active classes
@@ -679,7 +681,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private void loadSessions (){
         String acadCareerId, strm, descFrancais, descShortFrancais, descAnglais, descShortAnglais, sessionCode, strmId, title;
         Date beginDate, endDate;
-        AcademicSession session;
         Date today = new Date();
 
         List<String> currentSessions = new ArrayList<String>();
@@ -711,17 +712,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (debugMode.isInDebugSessions(beginDate, endDate)) {
-                        session = saveOrUpdateSession(strmId, strm, title, descShortAnglais, beginDate, endDate);
+                        saveOrUpdateSession(strmId, strm, title, descShortAnglais, beginDate, endDate);
                         selectedSessions.add(strmId);
                     }
                 }
                 else {
-                    //TODO: remove after pilote A2017, H2018
-                    if (PILOTE_A2017.equalsIgnoreCase(strm) || PILOTE_H2018.equalsIgnoreCase(strm)) {
-                        //END TODO
-                        session = saveOrUpdateSession(strmId, strm, title, descShortAnglais, beginDate, endDate);
-                        selectedSessions.add(strmId);
-                    }
+                    saveOrUpdateSession(strmId, strm, title, descShortAnglais, beginDate, endDate);
+                    selectedSessions.add(strmId);
                 }
 
                 if (today.after(beginDate) && today.before(endDate))
