@@ -135,12 +135,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
-                if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
+                if (Integer.valueOf(event.getSessionId()) < 2182 &&
+                        !(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
                         inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
                         inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
                     continue;
                 }
-
 
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
@@ -257,7 +257,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 //TODO: Remove after tenjin deploy
                 //Do not treat if not in pilote
-                if (!(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
+                if (Integer.valueOf(event.getSessionId()) < 2182 &&
+                        !(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
                         inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
                         inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
                     continue;
