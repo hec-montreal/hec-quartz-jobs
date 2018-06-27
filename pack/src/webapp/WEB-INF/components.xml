@@ -80,10 +80,10 @@
 		<property name="chs" ref="org.sakaiproject.content.api.ContentHostingService" />
 		<property name="entityManager"
 				  ref="org.sakaiproject.entity.api.EntityManager" />
+   		<property name="authzGroupService"
+			ref="org.sakaiproject.authz.api.AuthzGroupService" />
 		<property name="siteIdFormatHelper"
 				  ref="ca.hec.api.SiteIdFormatHelper" />
-
-
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecOffSitesjob"
