@@ -7,10 +7,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.AuthzGroup;
-import org.sakaiproject.authz.api.AuthzGroupService;
-import org.sakaiproject.authz.api.AuthzPermissionException;
-import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.coursemanagement.api.*;
 import org.sakaiproject.entity.api.EntityManager;
@@ -21,7 +17,6 @@ import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteAdvisor;
 import org.sakaiproject.site.api.SiteService;
@@ -54,9 +49,6 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     protected EntityManager entityManager;
     @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
-    @Setter
-    protected AuthzGroupService authzGroupService;
-   
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -283,81 +275,32 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         }
    }
 
-	private void setProviderId(Site site, List<Section> sections) {
-		String providerGroupId = "";
-		String sectionEid = null;
-		boolean updated = false;
-		List<String> newProviderIdList = new ArrayList<String>();
-		
-		// Collect old sections
-		String oldProviderId = site.getProviderGroupId();
-		List<String> oldProviderIdList = new ArrayList<String>();
-		
-		if (oldProviderId != null) {
-			if (oldProviderId.contains("+")) {
-				Collections.addAll(oldProviderIdList, oldProviderId.split("\\+"));
-			} else {
-				oldProviderIdList.add(oldProviderId);
-			}
-		}
-		for (Section section : sections) {
-			sectionEid = section.getEid();
-			if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
-				providerGroupId += section.getEid() + "+";
-				newProviderIdList.add(sectionEid);
-				
-				// Remove the sectionEid form the old sections list
-				oldProviderIdList.remove(sectionEid);
-				updated = true;
-			}
-		}
+   private void setProviderId (Site site, List<Section> sections){
+       String providerGroupId = "";
+       String sectionEid = null;
+       boolean updated = false;
+       for (Section section : sections) {
+            sectionEid = section.getEid();
+           if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
+               providerGroupId += section.getEid() + "+";
+               updated = true;
+           }
+       }
+       if(providerGroupId.endsWith("+"))
+           providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
 
-		if (providerGroupId.endsWith("+"))
-			providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
+       if (providerGroupId.length() > 0 && updated) {
+           site.setProviderGroupId(providerGroupId);
+           try {
+               siteService.save(site);
+           } catch (IdUnusedException e) {
+               log.error(site.getId() + " does not exist" + e.getMessage());
+           } catch (PermissionException e) {
+               log.error(" You are not allowed to update " + site.getId() + " : " + e.getMessage());
+           }
+       }
 
-		if (providerGroupId.length() > 0 && updated) {
-			site.setProviderGroupId(providerGroupId);
-			try {
-				// Cleanup sites and group related to providerIds
-				cleanUpProviderId(site, oldProviderIdList, newProviderIdList);
-				
-				siteService.save(site);
-			} catch (IdUnusedException e) {
-				log.error(site.getId() + " does not exist" + e.getMessage());
-			} catch (PermissionException e) {
-				log.error(" You are not allowed to update " + site.getId() + " : " + e.getMessage());
-			}
-		}
-
-	}
-
-	private void cleanUpProviderId(Site site, List<String> oldProviderIdList, List<String> newProviderIdList) {
-		//Cleanup group no longer used in current site
-		for (Group group : site.getGroups()) {
-			if (oldProviderIdList.contains(group.getProviderGroupId())) {
-				group.setProviderGroupId("");
-			}
-
-		}
-
-		//Remove providerIds from other official sites of the same term 
-		for (String newProviderId : newProviderIdList) {
-			Set<String> groupsWithProviderId = authzGroupService.getAuthzGroupIds(newProviderId);
-			for (String groupId : groupsWithProviderId) {
-				if (!groupId.equalsIgnoreCase(site.getReference()) || !groupId.equalsIgnoreCase(site.getReference() + "/")) {
-					AuthzGroup group;
-					try {
-						group = authzGroupService.getAuthzGroup(groupId);
-						group.setProviderGroupId("");
-						authzGroupService.save(group);
-					} catch (GroupNotDefinedException | AuthzPermissionException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-			}
-		}
-	}
+   }
 
     private Date getDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
