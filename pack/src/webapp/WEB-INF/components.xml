@@ -229,6 +229,152 @@
         ref="org.sakaiproject.evaluation.logic.EvalEvaluationSetupService" /> 
     </bean>
 
+	<bean id="hecBackfillRoleRemovalJob"
+		  class="ca.hec.jobs.impl.roles.BackfillRoleRemovalJobImpl">
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+	</bean>
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecBackfillRoleRemovalJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecBackfillRoleRemovalJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Backfill Role job: remove role from sites or realms</value>
+		</property>
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="roleRemovalRoleKey"/>
+					<property name="descriptionResourceKey" value="roleRemovalRoleKey.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRemovalSiteType"/>
+					<property name="descriptionResourceKey" value="roleRemovalSiteType.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRemovalSpecificSites"/>
+					<property name="descriptionResourceKey" value="roleRemovalSpecificSites.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRemovalSiteCreationDate"/>
+					<property name="descriptionResourceKey" value="roleRemovalSiteCreationDate.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRemovalSiteName"/>
+					<property name="descriptionResourceKey" value="roleRemovalSiteName.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRemovalRealmIds"/>
+					<property name="descriptionResourceKey" value="roleRemovalRealmIds.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>				
+			</set>
+		</property>
+	</bean>
+
+
+	<bean id="hecBackfillRoleJob"
+		  class="ca.hec.jobs.impl.roles.BackfillRoleJobImpl">
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+	</bean>
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecBackfillRoleJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecBackfillRoleJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Backfill Role job: update role permissions or add new role</value>
+		</property>
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="roleKey"/>
+					<property name="descriptionResourceKey" value="roleKey.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="realmOrigin"/>
+					<property name="descriptionResourceKey" value="realmOrigin.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="groupChange"/>
+					<property name="descriptionResourceKey" value="groupChange.description"/>
+					<property name="defaultValue" value="TRUE"/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="siteChange"/>
+					<property name="descriptionResourceKey" value="siteChange.description"/>
+					<property name="defaultValue" value="TRUE"/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleSiteType"/>
+					<property name="descriptionResourceKey" value="roleSiteType.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleSpecificSites"/>
+					<property name="descriptionResourceKey" value="roleSpecificSites.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleSiteCreationDate"/>
+					<property name="descriptionResourceKey" value="roleSiteCreationDate.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleSiteName"/>
+					<property name="descriptionResourceKey" value="roleSiteName.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="roleRealmIds"/>
+					<property name="descriptionResourceKey" value="roleRealmIds.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>				
+			</set>
+		</property>
+	</bean>
+	
+	
     <bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.SoftDeleteEvaluationsJob"
  		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
 		  init-method="init">
