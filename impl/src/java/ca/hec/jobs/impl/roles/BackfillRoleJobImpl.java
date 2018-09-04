@@ -145,30 +145,17 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 
 	private void addOrUpdateRoleBySites(List<Site> sites, Role role, String siteChange, String groupChange) {
 		Role roleToUpdate = null;
-		Collection <Group> groups = null;
+		Collection <AuthzGroup> authzGroups = null;
+		AuthzGroup authzGroup = null;
 		
 		for(Site site: sites) {
-			if (siteChange.equalsIgnoreCase("TRUE")) {
-				roleToUpdate = site.getRole(role.getId());
-				if (roleToUpdate == null) {
-					try {
-						site.addRole(role.getId(), role);
-					} catch (RoleAlreadyDefinedException e) {
-						e.printStackTrace();
-					}
-				} else {
-					roleToUpdate.disallowAll();
-					roleToUpdate.allowFunctions(role.getAllowedFunctions());
-				}
-			}
-			
-			if (groupChange.equalsIgnoreCase("TRUE")) {
-				groups = site.getGroups();
-				for(Group group: groups) {
-					roleToUpdate = group.getRole(role.getId());
+			try {
+				if (siteChange.equalsIgnoreCase("TRUE")) {
+					authzGroup = authzGroupService.getAuthzGroup(site.getReference());
+						roleToUpdate = authzGroup.getRole(role.getId());
 					if (roleToUpdate == null) {
 						try {
-							group.addRole(role.getId(), role);
+							authzGroup.addRole(role.getId());
 						} catch (RoleAlreadyDefinedException e) {
 							e.printStackTrace();
 						}
@@ -176,15 +163,30 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 						roleToUpdate.disallowAll();
 						roleToUpdate.allowFunctions(role.getAllowedFunctions());
 					}
+					authzGroupService.save(authzGroup);
 				}
-			}
-			try {
-				siteService.save(site);
-			} catch (IdUnusedException e) {
+			
+				if (groupChange.equalsIgnoreCase("TRUE")) {
+					authzGroups = authzGroupService.getAuthzGroups(site.getReference(), null);
+					for(AuthzGroup authzgroup: authzGroups) {
+						roleToUpdate = authzgroup.getRole(role.getId());
+						if (roleToUpdate == null) {
+							try {
+								authzgroup.addRole(role.getId(), role);
+							} catch (RoleAlreadyDefinedException e) {
+								e.printStackTrace();
+							}
+						} else {
+							roleToUpdate.disallowAll();
+							roleToUpdate.allowFunctions(role.getAllowedFunctions());
+						}
+						authzGroupService.save(authzgroup);
+					}
+				}
+				
+			} catch (GroupNotDefinedException | AuthzPermissionException e) {
 				e.printStackTrace();
-			} catch (PermissionException e) {
-				e.printStackTrace();
-			}
+			} 
 
 		}
 	}
@@ -283,23 +285,25 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 	
 	public List<AuthzGroup> updateSiteOnlyRealms (List<Site> sites, Role role){
 		List<AuthzGroup> siteOnlyRealms = new ArrayList<AuthzGroup>();
+		AuthzGroup authzGroup = null;
 		Role siteRole = null;
 		for (Site site: sites) {
-			siteRole = site.getRole(role.getId());
-			if (siteRole == null) {
-				try {
-					site.addRole(role.getId());
-				} catch (RoleAlreadyDefinedException e) {
-					e.printStackTrace();
-				}
-			}else {
-				siteRole.disallowAll();
-				siteRole.allowFunctions(role.getAllowedFunctions());
-			}
-			
 			try {
-				siteService.save(site);
-			} catch (IdUnusedException | PermissionException e) {
+				authzGroup = authzGroupService.getAuthzGroup(site.getReference());
+				siteRole = authzGroup.getRole(role.getId());
+				if (siteRole == null) {
+					try {
+						authzGroup.addRole(role.getId());
+					} catch (RoleAlreadyDefinedException e) {
+						e.printStackTrace();
+					}
+				}else {
+					siteRole.disallowAll();
+					siteRole.allowFunctions(role.getAllowedFunctions());
+				}
+				
+				authzGroupService.save(authzGroup);
+			} catch (GroupNotDefinedException | AuthzPermissionException e) {
 				e.printStackTrace();
 			}
 		}

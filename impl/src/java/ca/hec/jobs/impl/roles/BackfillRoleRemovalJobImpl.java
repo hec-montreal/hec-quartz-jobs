@@ -3,12 +3,8 @@ package ca.hec.jobs.impl.roles;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Date;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
-
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.authz.api.AuthzGroup;
@@ -16,9 +12,7 @@ import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.exception.IdUnusedException;
-import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.javax.PagingPosition;
-import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.SiteService.SelectionType;
@@ -43,7 +37,7 @@ public class BackfillRoleRemovalJobImpl implements BackfillRoleRemovalJob {
     protected SessionManager sessionManager;
 	
     private static Logger log = LoggerFactory.getLogger(BackfillRoleRemovalJobImpl.class);
-	
+
 	@Override
 	public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
 	    String roleRemovalRoleKey = jobExecutionContext.getMergedJobDataMap().getString("roleRemovalRoleKey");
@@ -90,7 +84,7 @@ public class BackfillRoleRemovalJobImpl implements BackfillRoleRemovalJob {
 		    	removeRoleFromSitesByAuthzGroup(authzGroups, roleRemovalRoleKey);
 		    }
 		    
-		} finally {
+		}  finally {
 			session.clear();
 			log.info(count + " sites/realms has been updated");
 		}
@@ -175,35 +169,23 @@ public class BackfillRoleRemovalJobImpl implements BackfillRoleRemovalJob {
 	
 	public void removeRoleFromSitesBySiteIds (List<String> siteIds, String role) {
 		Site site = null;
-		Collection <Group> groupes = null;
+		List <AuthzGroup> authzGroups= null;
 		for (String siteId: siteIds) {
 			try {
 				site = siteService.getSite(siteId);
-				site.removeRole(role);	
-				groupes = site.getGroups();
-				for (Group groupe: groupes) {
-					groupe.removeRole(role);
-				}
-				siteService.save(site);
-			} catch (IdUnusedException | PermissionException e) {
+				authzGroups = authzGroupService.getAuthzGroups(site.getReference(), null);
+				removeRoleFromSitesByAuthzGroup(authzGroups, role);
+			} catch (IdUnusedException e) {
 				log.info("The site " + siteId + " does not exist");
 			}
 		}
 	}
 
 	public void removeRoleFromSitesBySites (List<Site> sites, String role) {
-		Collection <Group> groupes = null;
+		List <AuthzGroup> authzGroups= null;
 		for(Site site: sites) {
-			site.removeRole(role);
-			groupes = site.getGroups();
-			for (Group groupe: groupes) {
-				groupe.removeRole(role);
-			}
-			try {
-				siteService.save(site);
-			} catch (IdUnusedException | PermissionException e) {
-				log.info("The site " + site.getId() + " can not be updated");
-			}
+			authzGroups = authzGroupService.getAuthzGroups(site.getReference(), null);
+			removeRoleFromSitesByAuthzGroup(authzGroups, role);
 		}
 		
 	}
