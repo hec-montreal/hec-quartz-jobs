@@ -56,31 +56,31 @@ public class BackfillRoleRemovalJobImpl implements BackfillRoleRemovalJob {
 
 			if (roleRemovalSiteName != null && !roleRemovalSiteName.isEmpty()) {
 		    	List<String> sitesByName = getSitesByName(roleRemovalSiteName);
-		    	count = sitesByName.size();
+		    	count += sitesByName.size();
 		    	removeRoleFromSitesBySiteIds(sitesByName, roleRemovalRoleKey);
 		    }
 	
 		    if (roleRemovalSiteCreationDate != null && !roleRemovalSiteCreationDate.isEmpty()) {
 	        	List<Site> sites = getSitesByCreationDate(roleRemovalSiteCreationDate);
-	        	count = sites.size();
+	        	count += sites.size();
 	        	removeRoleFromSitesBySites(sites, roleRemovalRoleKey);
 	        }
 		    
 		    if (roleRemovalSiteType != null && !roleRemovalSiteType.isEmpty()) {
 		    	List<String> sitesByType = getSitesByType(roleRemovalSiteType);
-		    	count = sitesByType.size();
+		    	count += sitesByType.size();
 		    	removeRoleFromSitesBySiteIds(sitesByType, roleRemovalRoleKey);
 		    }
 		    
 		    if (roleRemovalSpecificSites != null  && !roleRemovalSpecificSites.isEmpty()) {
 		    	List<String> sitesById = getSitesByIds(roleRemovalSpecificSites);
-		    	count = sitesById.size();
+		    	count += sitesById.size();
 		    	removeRoleFromSitesBySiteIds(sitesById, roleRemovalRoleKey);
 		    }
 		    
 		    if (roleRemovalRealmIds != null && !roleRemovalRealmIds.isEmpty()) {
 		    	List<AuthzGroup> authzGroups = getRealmsById(roleRemovalRealmIds);
-		    	count = authzGroups.size();
+		    	count += authzGroups.size();
 		    	removeRoleFromSitesByAuthzGroup(authzGroups, roleRemovalRoleKey);
 		    }
 		    

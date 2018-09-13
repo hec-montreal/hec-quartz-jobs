@@ -80,25 +80,25 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 	
 		    if (siteCreationDate != null && !siteCreationDate.isEmpty()) {
 	        	List<Site> sites = getSitesByCreationDate(siteCreationDate);
-	        	count = sites.size();
+	        	count += sites.size();
 	        	addOrUpdateRoleBySites(sites, role, siteChange, groupChange);
 	        }
 		    
 		    if (siteType != null && !siteType.isEmpty()) {
 		    	List<Site> sitesByType = getSitesByType(siteType);
-		    	count = sitesByType.size();
+		    	count += sitesByType.size();
 		    	addOrUpdateRoleBySites(sitesByType, role, siteChange, groupChange);
 		    }
 		    
 		    if (specificSites != null  && !specificSites.isEmpty()) {
 		    	List<Site> sitesById = getSitesByIds(specificSites);
-		    	count = sitesById.size();
+		    	count += sitesById.size();
 		    	addOrUpdateRoleBySites(sitesById, role, siteChange, groupChange);
 		    }
 		    
 		    if (realmIds != null && !realmIds.isEmpty()) {
 		    	List<AuthzGroup> authzGroups = getRealmsById(realmIds);
-		    	count = authzGroups.size();
+		    	count += authzGroups.size();
 		    	addOrUpdateRoleFromSitesByAuthzGroup(authzGroups, role);
 		    }
 
