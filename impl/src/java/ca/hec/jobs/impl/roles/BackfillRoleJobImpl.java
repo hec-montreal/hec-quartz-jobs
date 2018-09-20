@@ -155,7 +155,7 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 						roleToUpdate = authzGroup.getRole(role.getId());
 					if (roleToUpdate == null) {
 						try {
-							authzGroup.addRole(role.getId());
+							authzGroup.addRole(role.getId(), role);
 						} catch (RoleAlreadyDefinedException e) {
 							e.printStackTrace();
 						}
@@ -169,6 +169,9 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 				if (groupChange.equalsIgnoreCase("TRUE")) {
 					authzGroups = authzGroupService.getAuthzGroups(site.getReference(), null);
 					for(AuthzGroup authzgroup: authzGroups) {
+						if (authzgroup.getId().endsWith(site.getId())) {
+							continue;
+						}
 						roleToUpdate = authzgroup.getRole(role.getId());
 						if (roleToUpdate == null) {
 							try {
