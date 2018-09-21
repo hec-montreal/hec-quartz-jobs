@@ -120,7 +120,7 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 			
 			if ( roleToUpdate == null) {
 				try {
-					Role newRole = authzGroup.addRole(role.getId());
+					Role newRole = authzGroup.addRole(role.getId(), role);
 					newRole.allowFunctions(role.getAllowedFunctions());
 				} catch (RoleAlreadyDefinedException e) {
 					log.error("The role already exist in the realm " + authzGroup.getId());
@@ -296,7 +296,7 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 				siteRole = authzGroup.getRole(role.getId());
 				if (siteRole == null) {
 					try {
-						authzGroup.addRole(role.getId());
+						authzGroup.addRole(role.getId(), role);
 					} catch (RoleAlreadyDefinedException e) {
 						e.printStackTrace();
 					}
