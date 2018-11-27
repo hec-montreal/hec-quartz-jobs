@@ -273,6 +273,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         else {
             rpe.addProperty("hec_syllabus_locale", "fr_CA");
         }
+	rpe.addProperty("tenjin_template", "1");
    }
 
    private void setProviderId (Site site, List<Section> sections){
