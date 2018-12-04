@@ -167,11 +167,18 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 				}
 			
 				if (groupChange.equalsIgnoreCase("TRUE")) {
-					authzGroups = authzGroupService.getAuthzGroups(site.getReference(), null);
-					for(AuthzGroup authzgroup: authzGroups) {
-						if (authzgroup.getId().endsWith(site.getId())) {
-							continue;
+					authzGroups = new ArrayList<AuthzGroup>();
+					for (Group g : site.getGroups()) {
+						Object gProp = g.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
+
+						// only modify official groups (the sections)
+						if (g.getProviderGroupId() != null &&
+								(gProp == null || gProp.equals(Boolean.FALSE.toString()))) {
+							authzGroups.add(authzGroupService.getAuthzGroup(g.getReference()));
 						}
+					}
+
+					for(AuthzGroup authzgroup: authzGroups) {
 						roleToUpdate = authzgroup.getRole(role.getId());
 						if (roleToUpdate == null) {
 							try {
@@ -193,9 +200,6 @@ public class BackfillRoleJobImpl implements BackfillRoleJob {
 
 		}
 	}
-
-
-	
 
 	public List<Site> getSitesByName (String nameCriteria){
 		return siteService.getSites(SelectionType.NON_USER, null, nameCriteria, null, SortType.NONE, null);
