@@ -26,6 +26,7 @@ import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.coursemanagement.api.AcademicCareer;
+import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
 import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.entity.api.ResourcePropertiesEdit;
@@ -34,6 +35,10 @@ import org.sakaiproject.site.api.SiteService;
 import ca.hec.jobs.impl.AbstractQuartzJobImpl;
 
 import java.util.List;
+import java.util.Map;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
 
 /**
 * Create a hierarchy for HEC course site
@@ -71,27 +76,74 @@ public class CreateSiteHierarchyJob extends AbstractQuartzJobImpl {
     /**
      * Our logger
      */
-    private static Log log = LogFactory
-	    .getLog(CreateSiteHierarchyJob.class);
+	private static Log log = LogFactory.getLog(CreateSiteHierarchyJob.class);
 
-    
-    
-    public void execute(JobExecutionContext arg0) throws JobExecutionException {
+	public void execute(JobExecutionContext context) throws JobExecutionException {
 	loginToSakai();
 
 	long start = System.currentTimeMillis();
-	log.info("CreateSiteHierarchyJobImpl: starting");
+		log.info("Starting");
 
+		Boolean processAllSites = false;
+		String processAllSitesStr = context.getMergedJobDataMap().getString("allSites");
+		if (processAllSitesStr.toLowerCase().equals("true")) {
+			processAllSites = true;
+		}
 		
-	List<Site> allSites =
-		siteService.getSites(SiteService.SelectionType.ANY, "course",
-			null, null, SiteService.SortType.NONE, null);
+		List<Site> allSites = new ArrayList<Site>();
+		List<AcademicSession> sessions = cmService.getAcademicSessions();
+		List<AcademicSession> currentSessions = cmService.getCurrentAcademicSessions();	
+		String sessionsLogString = "";
+
+		if (processAllSites == false && currentSessions != null) {
+			String firstCurrentSessionTitle =  currentSessions.get(0).getTitle();
+			Boolean currentFound = false;
+
+			// iterate latest to oldest
+			for (int i = sessions.size()-1; i >= 0; i--) {
+				AcademicSession s = sessions.get(i);
+
+				Map<String, String> termCriteria = new HashMap<String, String>();
+				termCriteria.put("term", s.getTitle());
+
+				List<Site> sites = siteService.getSites(
+						SiteService.SelectionType.ANY, 
+						"course",
+						null, 
+						termCriteria, 
+						SiteService.SortType.NONE, 
+						null);
+
+				allSites.addAll(sites);
+				sessionsLogString += " " + s.getTitle();
+
+				if (!currentSessions.contains(s) && currentFound == true) {
+					// only treat one session after the last current
+					break;
+				}
+
+				if (s.getTitle().equals(firstCurrentSessionTitle)) {
+					currentFound = true;
+				}
+			}
+		}
+		else {
+			// just get all sites
+			allSites = siteService.getSites(
+					SiteService.SelectionType.ANY, 
+					"course",
+					null, 
+					null, 
+					SiteService.SortType.NONE, 
+					null);
+			sessionsLogString += " all";
+		}
 
 	Site site = null;
 	String [] providerIds = null;
 
-	log.info("CreateSiteHierarchyJobImpl: sites to add properties:"
-		+ allSites.size());
+		log.info("Treating the following sessions: " + sessionsLogString);
+		log.info("Adding properties to " + allSites.size() + " sites.");
 
 	for (int i = 0; i < allSites.size(); i++) {
 
@@ -150,7 +202,7 @@ public class CreateSiteHierarchyJob extends AbstractQuartzJobImpl {
 	    
 	}//end for all sites
 
-	log.info("CreateSiteHierarchyJobImpl: completed in "
+		log.info("Completed in "
 		+ (System.currentTimeMillis() - start) + " ms");
 	
 	logoutFromSakai();

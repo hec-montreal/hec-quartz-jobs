@@ -69,7 +69,6 @@ public abstract class AbstractQuartzJobImpl implements
     .getLog(AbstractQuartzJobImpl.class);
     
     // Fields and methods for spring injection
-    //protected ConfigurationService adminConfigService;
     protected AuthzGroupService authzGroupService;
     protected CourseManagementAdministration cmAdmin;
     protected CourseManagementService cmService;

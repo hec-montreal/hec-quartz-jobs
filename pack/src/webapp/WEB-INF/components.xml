@@ -538,7 +538,7 @@
 
 	<bean
 		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createSiteHierarchyjob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
 		init-method="init">
 
 		<property name="beanId">
@@ -551,6 +551,18 @@
 
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+	        <set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="allSites"/>
+					<property name="descriptionResourceKey" value="allSites.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+        	</set>
 		</property>
 	</bean>
 
