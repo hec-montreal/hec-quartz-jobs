@@ -27,6 +27,9 @@ import lombok.Data;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.PropertiesConfiguration;
+
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.calendar.api.Calendar;
@@ -54,12 +57,16 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.sql.DataSource;
+
+import java.net.URL;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 
 /**
@@ -69,8 +76,9 @@ import java.util.List;
 public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
     private static Log log = LogFactory.getLog(HecCalendarEventsJobImpl.class);
-    private static ResourceLoader rb = new ResourceLoader("ca.hec.jobs.bundle.JobMessages");
-
+    private static PropertiesConfiguration propertiesEn = null;
+    private static PropertiesConfiguration propertiesFr = null;
+	
     private final String EVENT_TYPE_CLASS_SESSION = "Class session";
     private final String EVENT_TYPE_EXAM = "Exam";
     private final String EVENT_TYPE_QUIZ = "Quiz";
@@ -79,7 +87,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     private final String PSFT_EXAM_TYPE_FINAL = "FIN";
     private final String PSFT_EXAM_TYPE_TEST = "TEST";
     private final String PSFT_EXAM_TYPE_QUIZ = "QUIZ";
-    private final String CAREER_MBA = "MBA";
 
     @Setter
     private CalendarService calendarService;
@@ -102,14 +109,34 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
+    public void init() {
+    	URL url;
+
+    	try {
+    		url = getClass().getClassLoader().getResource("ca/hec/jobs/bundle/JobMessages.properties");
+    		propertiesEn = new PropertiesConfiguration();
+    		propertiesEn.load(url);
+    		
+    		url = getClass().getClassLoader().getResource("ca/hec/jobs/bundle/JobMessages_fr_CA.properties");
+    		propertiesFr = new PropertiesConfiguration();
+    		propertiesFr.load(url);
+    	}
+    	catch (ConfigurationException e) {
+    		log.error("Cannot load properties message files");
+    	}
+    }
+    
     @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.info("starting CreateCalendarEventsJob");
         int addcount = 0, updatecount = 0, deletecount = 0;
-        String piloteE2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteE2017Courses");
-        String piloteA2017Courses = context.getMergedJobDataMap().getString("officialSitesPiloteA2017Courses");
-        String piloteH2018Courses = context.getMergedJobDataMap().getString("officialSitesPiloteH2018Courses");
         Session session = sessionManager.getCurrentSession();
+        
+        if (propertiesEn == null || propertiesFr == null) {
+        	log.error("messages are not defined!");
+        	return;
+        }
+        
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
@@ -132,16 +159,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
             log.info("loop and add " + eventsAdd.size() + " events");
             for (HecEvent event : eventsAdd) {
-
-                //TODO: Remove after tenjin deploy
-                //Do not treat if not in pilote
-                if (Integer.valueOf(event.getSessionId()) < 2182 &&
-                        !(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
-                        inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
-                    continue;
-                }
-
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
                         event.getSessionId(),
@@ -254,16 +271,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
             log.info("loop and update " + eventsUpdate.size() + " events");
             for (HecEvent event : eventsUpdate) {
-
-                //TODO: Remove after tenjin deploy
-                //Do not treat if not in pilote
-                if (Integer.valueOf(event.getSessionId()) < 2182 &&
-                        !(inE2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteE2017Courses.split(",")) ||
-                        inA2017Pilote(event.getCatalogNbr(), event.getSessionId(), piloteA2017Courses.split(",")) ||
-                        inH2018Pilote(event.getCatalogNbr(), event.getSessionId(), piloteH2018Courses.split(",")))){
-                    continue;
-                }
-
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
                         event.getSessionId(),
@@ -516,42 +523,50 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
         Site site = null;
         String courseSiteTittle = "";
+        String locale = "fr_CA";
 
         try {
             site = siteService.getSite(siteId);
             courseSiteTittle = site.getProperties().getPropertyFormatted("title");
+            locale = site.getProperties().getProperty("hec_syllabus_locale");
         } catch (IdUnusedException e) {
             log.error("The site " + siteId + "does not exist");
         }
 
-
+        PropertiesConfiguration msgs = null;
+        if (locale.equals("en_US")) {
+        	msgs = propertiesEn;
+        }
+        else {
+        	msgs = propertiesFr;
+        }
+        
         if (type.equals(" ")) {
             if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + rb.getFormattedMessage("calendar.event-title.session", new Object[]{seq_num, siteId}) + ")");
+                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.session") + " " + seq_num + ")");
             else
-                return rb.getFormattedMessage("calendar.event-title.session", new Object[]{seq_num, siteId});
+                return msgs.getString("calendar.event-title.session") + " " + seq_num;
         } else if (type.equals(PSFT_EXAM_TYPE_INTRA)) {
             if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + rb.getFormattedMessage("calendar.event-title.intra", new Object[]{siteId}) + ")");
+                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.intra") + ")");
             else
-                return rb.getFormattedMessage("calendar.event-title.intra", new Object[]{siteId});
+                return msgs.getString("calendar.event-title.intra");
         } else if (type.equals(PSFT_EXAM_TYPE_FINAL)) {
             if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + rb.getFormattedMessage("calendar.event-title.final", new Object[]{siteId}) + ")");
+                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.final") + ")");
             else
-                return rb.getFormattedMessage("calendar.event-title.final", new Object[]{siteId});
+                return msgs.getString("calendar.event-title.final");
         } else if (type.equals(PSFT_EXAM_TYPE_TEST) || type.equals(PSFT_EXAM_TYPE_QUIZ)) {
             if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + rb.getFormattedMessage("calendar.event-title.test", new Object[]{siteId}) + ")");
+                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.test") + ")");
             else
-                rb.getFormattedMessage("calendar.event-title.test", new Object[]{siteId});
+                msgs.getString("calendar.event-title.test");
         } else {
             if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + rb.getFormattedMessage("calendar.event-title.other", new Object[]{type, siteId}) + ")");
+                return courseSiteTittle + " (" + type + ")";
         }
 
-        return rb.getFormattedMessage("calendar.event-title.other", new Object[]{type, siteId});
-
+        return type;
     }
 
     private String getType(String exam_type) {
@@ -604,29 +619,5 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
 
         return null;
-    }
-
-    private boolean inE2017Pilote(String courseId, String sessioId, String[] piloteE2017) {
-        for (String exception : piloteE2017) {
-            if (courseId.equals(exception) && sessioId.equals("2172"))
-                return true;
-        }
-        return false;
-    }
-
-    private boolean inA2017Pilote(String courseId, String sessioId, String[] piloteA2017) {
-        for (String exception : piloteA2017) {
-            if (courseId.equals(exception) && sessioId.equals("2173"))
-                return true;
-        }
-        return false;
-    }
-
-    private boolean inH2018Pilote(String courseId, String sessioId, String[] piloteH2018) {
-        for (String exception : piloteH2018) {
-            if (courseId.equals(exception) && sessioId.equals("2181"))
-                return true;
-        }
-        return false;
     }
 }

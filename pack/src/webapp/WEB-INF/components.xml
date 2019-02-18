@@ -198,7 +198,7 @@
 	</bean>
 
 	<bean id="hecCreateCalendarEventsJob"
-		  class="ca.hec.jobs.impl.calendar.HecCalendarEventsJobImpl">
+		  class="ca.hec.jobs.impl.calendar.HecCalendarEventsJobImpl" init-method="init">
 		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
 		<property name="cmAdmin"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
@@ -218,7 +218,7 @@
 		</property>
 	</bean>
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCreateCalendarEventsJob"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
 		  init-method="init">
 
 		<property name="beanId">
@@ -231,30 +231,6 @@
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
-		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
-		<property name="configurableJobProperties">
-			<set>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="officialSitesPiloteE2017Courses"/>
-					<property name="descriptionResourceKey" value="officialSitesPiloteE2017Courses.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="officialSitesPiloteA2017Courses"/>
-					<property name="descriptionResourceKey" value="officialSitesPiloteA2017Courses.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="officialSitesPiloteH2018Courses"/>
-					<property name="descriptionResourceKey" value="officialSitesPiloteH2018Courses.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-			</set>
-		</property>
-
 	</bean>
 
    <bean id="softDeleteEvaluationsJob"
