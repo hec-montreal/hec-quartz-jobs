@@ -22,20 +22,14 @@ import java.util.*;
  * Created by 11091096 on 2017-04-27.
  */
 public class HECCMSynchroJobImpl implements HECCMSynchroJob {
-
-
-
-
     @Setter
     protected CourseManagementAdministration cmAdmin;
     @Setter
     protected CourseManagementService cmService;
-
     @Setter
     protected SessionManager sessionManager;
 
     private static Log log = LogFactory.getLog(HECCMSynchroJobImpl.class);
-
 
     private static boolean isRunning = false;
 
@@ -54,11 +48,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     Set<String> selectedSessions, selectedCourses;
     Map<String, InstructionMode> instructionMode;
 
-
-
-
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
+        if (isRunning) {
+            log.error("Job already running!");
+            return;
+        }
+
+        isRunning = true;
+
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
         String coursesDebug = jobExecutionContext.getMergedJobDataMap().getString("cmCourses");
@@ -81,20 +79,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             log.info("Starting HEC CM Data Synchro job at " + startTime);
 
             debugMode = new DebugMode(sessionStartDebug, sessionEndDebug, coursesDebug);
+
             loadInstructionMode();
-
             loadProgEtudes();
-
             loadSessions();
-
             loadServEnseignements();
-
             loadCourses();
-
             loadInstructeurs();
-
             loadEtudiants();
-
             removeEntriesMarkedToDelete();
 
             endTime = new Date();
@@ -103,8 +95,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
         } finally {
             session.clear();
+            isRunning = false;
         }
-
     }
 
     /**
@@ -154,16 +146,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 courseOfferingId = catalogNbr.trim()+strmId;
                 courseSetId = acadOrg;
 
-
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
                         selectedCourses.add(sectionId);
                     }
-                } else if ((!PILOTE_A2017.equalsIgnoreCase(strm) && !PILOTE_H2018.equalsIgnoreCase(strm))
-                    || acadCareer.equalsIgnoreCase(CERTIFICAT))
-                {
-                    // treat courses not in pilote sessions (or if it is, only certificat)
+                } else {
                     selectedCourses.add(sectionId);
                 }
 
@@ -229,7 +217,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
     }
-
 
     private Section syncSection (String sectionId, String category, String description, String enrollmentSetId,
                                  String sectionTitle, String lang, String typeEvaluation, String courseOfferingId,
@@ -423,7 +410,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             return;
         }
         EnrollmentSet enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);;
-        Section currentSection = cmService.getSection(enrollmentSetEid);
 
         //Remove official instructor for
         enrollmentSet.setOfficialInstructors(new HashSet<String>());
@@ -487,7 +473,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             return;
         }
         Section theSection = cmService.getSection(sectionEid);
-        String theCourseOffering = theSection.getCourseOfferingEid();
         Set<Section> associatedSections = cmService.getSections(theSection.getCourseOfferingEid());
         Set<Membership> coordinators;
         for (Section section: associatedSections) {

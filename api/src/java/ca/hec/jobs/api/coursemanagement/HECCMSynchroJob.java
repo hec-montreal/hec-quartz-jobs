@@ -55,20 +55,6 @@ public interface  HECCMSynchroJob  extends Job {
      */
     public final static String COURSE_OFF_STATUS = "course";
 
-    /**
-     * Special section associated to sharable sites.
-     */
-    public final static String SHARABLE_SECTION = "00";
-
-    /**
-     * Le programme du certificat
-     */
-    public final static String CERTIFICAT = "CERT";
-
-    public final String PILOTE_A2017 = "2173";
-
-    public final String PILOTE_H2018 = "2181";
-
     public final static String CANCELED_SECTION = "X";
 
     public final static String ACTIVE_SECTION = "A";
@@ -84,5 +70,4 @@ public interface  HECCMSynchroJob  extends Job {
     public static final String ENGLISH = "en";
     public static final String FRENCH  = "fr_CA";
     public static final String SPANISH = "es";
-
 }
