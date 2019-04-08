@@ -62,13 +62,13 @@
       <dependency>
           <groupId>org.springframework</groupId>
           <artifactId>spring-core</artifactId>
-          <version>${kernel.spring.version}</version>
+          <version>${sakai.spring.version}</version>
           <scope>provided</scope>
       </dependency>
        <dependency>
           <groupId>org.springframework</groupId>
           <artifactId>spring-jdbc</artifactId>
-          <version>${kernel.spring.version}</version>
+          <version>${sakai.spring.version}</version>
           <scope>provided</scope>
       </dependency>
 
@@ -84,6 +84,7 @@
     <dependency>
       <groupId>dom4j</groupId>
       <artifactId>dom4j</artifactId>
+      <version>4.1.1</version>
       <scope>provided</scope>
     </dependency>
       <dependency>
@@ -139,7 +140,6 @@
       <dependency>
           <groupId>org.sakaiproject.edu-services.course-management</groupId>
           <artifactId>coursemanagement-api</artifactId>
-          <version>11.3</version>
       </dependency>
 
   </dependencies>
