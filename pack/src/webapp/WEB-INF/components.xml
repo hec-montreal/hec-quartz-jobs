@@ -235,10 +235,12 @@
 
    <bean id="softDeleteEvaluationsJob"
       class="ca.hec.jobs.impl.evaluation.SoftDeleteEvaluationsJobImpl">
-      <property name="evaluationService"
+      <!--
+			<property name="evaluationService"
         ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
       <property name="evaluationSetupService"
         ref="org.sakaiproject.evaluation.logic.EvalEvaluationSetupService" /> 
+				-->
     </bean>
 
 	<bean id="hecBackfillRoleRemovalJob"
@@ -482,8 +484,10 @@
 	<bean id="createEvalSysPdfJob"
 		class="ca.hec.jobs.impl.evaluation.CreateEvalSysPdfJob"
 		parent="abstractQuartzJob">
+		<!--
 		<property name="evaluationService"
 			ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
+			-->
 		<property name="contentHostingService"
 			ref="org.sakaiproject.content.api.ContentHostingService" />
 		<property name="entityManager"
@@ -568,8 +572,10 @@
 	<bean id="evaluationSiteHierarchyJob" class="ca.hec.jobs.impl.evaluation.EvaluationSiteHierarchyJob">
 		<property name="courseManagementService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<!--
 		<property name="evalHierarchyLogic"
 			ref="org.sakaiproject.evaluation.logic.externals.ExternalHierarchyLogic" />
+			-->
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.evaluationSiteHierarchyJob"
