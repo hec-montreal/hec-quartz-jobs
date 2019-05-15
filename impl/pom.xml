@@ -56,8 +56,7 @@
     <dependency>
        <groupId>org.sakaiproject.evaluation</groupId>
        <artifactId>sakai-evaluation-api</artifactId>
-       <version>11-SNAPSHOT</version>
-       <!-- TODO change to 19.0 -->
+       <version>${sakai.evaluation.version}</version>
     </dependency>
  
      <!-- spring and hibernate -->
