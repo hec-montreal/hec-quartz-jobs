@@ -104,7 +104,7 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                                         throws SQLException {
                                     String[] columnValues = extractLines.get(i);
                                     ps.setString(1, columnValues[columnNames
-                                            .indexOf("CATALOG_NBR")].trim());
+                                            .indexOf("CATALOG_NBR")].replaceAll(" ", "");
                                     ps.setString(2, columnValues[columnNames
                                             .indexOf("STRM")]);
                                     ps.setString(3, columnValues[columnNames
