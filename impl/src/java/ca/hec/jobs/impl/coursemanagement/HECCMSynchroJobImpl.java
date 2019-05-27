@@ -120,7 +120,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 courseId = token[0];
                 strm = token[1];
                 sessionCode= token[2];
-                catalogNbr = token[3];
+                catalogNbr = cleanCatalogNbr(token[3]);
                 classSection = token[4];
                 courseTitleLong = token[5];
                 langue = token[6];
@@ -141,9 +141,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 //Set language
                 shortLang = setLangue(langue);
 
-                sectionId = catalogNbr.trim()+strmId+classSection;
+                sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetId = sectionId;
-                courseOfferingId = catalogNbr.trim()+strmId;
+                courseOfferingId = catalogNbr+strmId;
                 courseSetId = acadOrg;
 
                 //DEBUG MODE
@@ -159,7 +159,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     //Add active classes
                     if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
-                        canonicalCourseId = catalogNbr.trim();
+                        canonicalCourseId = catalogNbr;
                         title = truncateStringBytes(courseTitleLong, MAX_TITLE_BYTE_LENGTH, Charset.forName("utf-8"));
                         description = courseTitleLong;
                         courseSetId = acadOrg;
@@ -362,7 +362,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 token = buffer.split(delimeter);
 
                 emplId = token[0];
-                catalogNbr = token[1];
+                catalogNbr = cleanCatalogNbr(token[1]);
                 strm = token[2];
                 sessionCode= token[3];
                 classSection= token[4];
@@ -378,7 +378,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
 
 
-                sectionId = catalogNbr.trim()+strmId+classSection;
+                sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetEid = sectionId;
 
                 //DEBUG MODE
@@ -546,14 +546,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             while ((buffer = breader.readLine()) != null) {
                 token = buffer.split(delimeter);
                 emplId = token[0];
-                catalogNbr = (token[1]).trim();
+                catalogNbr = cleanCatalogNbr(token[1]);
                 strm = token[2];
                 sessionCode= token[3];
                 classSection= token[4];
                 status= token[5];
                 strmId= token[6];
 
-               sectionId = catalogNbr.trim()+strmId+classSection;
+               sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetEid = sectionId;
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
@@ -910,9 +910,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
 
-
-
-
+	private String cleanCatalogNbr(String catalogNbr) {
+		return catalogNbr.replaceAll(" ", "");
+	}
 
 }
 
