@@ -3,13 +3,13 @@
    <parent>
     <groupId>ca.hec</groupId>
     <artifactId>hec-quartz-jobs</artifactId>
-    <version>19.0</version>
+    <version>19.1</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <groupId>ca.hec</groupId>
   <artifactId>hec-quartz-jobs-impl</artifactId>
-  <version>19.0</version>
+  <version>19.1</version>
   <name>HEC Quartz Jobs Impl</name>
   <description>Quatz Jobs for use in Sakai at HEC Montréal</description>
   <packaging>jar</packaging>
@@ -21,13 +21,13 @@
    <dependency>
       <groupId>ca.hec</groupId>
       <artifactId>hec-quartz-jobs-api</artifactId>
-      <version>19.0</version>
+      <version>19.1</version>
    </dependency>
     
    <dependency>
       <groupId>ca.hec</groupId>
       <artifactId>hec-utils</artifactId> 
-      <version>19.0</version>
+      <version>19.1</version>
    </dependency>
 
      <!--  sakai -->
@@ -136,7 +136,7 @@
       <dependency>
           <groupId>org.sakaiquebec.opensyllabus</groupId>
           <artifactId>osyl-common-api</artifactId>
-          <version>19.0</version>
+          <version>19.1</version>
       </dependency>
       <dependency>
           <groupId>org.sakaiproject.edu-services.course-management</groupId>

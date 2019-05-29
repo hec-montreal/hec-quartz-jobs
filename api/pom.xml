@@ -3,7 +3,7 @@
   <parent>
     <groupId>ca.hec</groupId>
     <artifactId>hec-quartz-jobs</artifactId>
-    <version>19.0</version>
+    <version>19.1</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
   	<properties>
@@ -13,7 +13,7 @@
 
   <groupId>ca.hec</groupId>
   <artifactId>hec-quartz-jobs-api</artifactId>
-  <version>19.0</version>
+  <version>19.1</version>
   <name>HEC Quartz Jobs API</name>
   <description>Quatz Jobs for use in Sakai at HEC Montréal</description>
 
