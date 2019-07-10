@@ -457,9 +457,7 @@
 	</bean>
 
 	<bean id="resetCodeOfConductJob"
-		class="ca.hec.jobs.impl.codeofconduct.ResetCodeOfConductJob"
-		parent="abstractQuartzJob">
-			<property name="dataSource" ref="javax.sql.DataSource" />
+		class="ca.hec.jobs.impl.codeofconduct.ResetCodeOfConductJob">
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.resetCodeOfConductJob"
