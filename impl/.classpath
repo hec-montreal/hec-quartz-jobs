@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+  <classpathentry kind="src" path="src/java"/>
+  <classpathentry kind="output" path="target/classes"/>
+  <classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+  <classpathentry kind="src" path="/hec-quartz-jobs-api"/>
+  <classpathentry kind="var" path="M2_REPO/ca/hec/hec-utils/19.2/hec-utils-19.2.jar" sourcepath="M2_REPO/ca/hec/hec-utils/19.2/hec-utils-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/apache/commons/commons-lang3/3.8.1/commons-lang3-3.8.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiproject/kernel/sakai-kernel-api/19.2/sakai-kernel-api-19.2.jar" sourcepath="M2_REPO/org/sakaiproject/kernel/sakai-kernel-api/19.2/sakai-kernel-api-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiproject/kernel/sakai-component-manager/19.2/sakai-component-manager-19.2.jar" sourcepath="M2_REPO/org/sakaiproject/kernel/sakai-component-manager/19.2/sakai-component-manager-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiproject/calendar/sakai-calendar-api/19.2/sakai-calendar-api-19.2.jar" sourcepath="M2_REPO/org/sakaiproject/calendar/sakai-calendar-api/19.2/sakai-calendar-api-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiproject/edu-services/course-management/coursemanagement-api/19.2/coursemanagement-api-19.2.jar" sourcepath="M2_REPO/org/sakaiproject/edu-services/course-management/coursemanagement-api/19.2/coursemanagement-api-19.2-sources.jar"/>
+  <classpathentry kind="src" path="/sakai-evaluation-api"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiproject/kernel/sakai-kernel-util/19.2/sakai-kernel-util-19.2.jar" sourcepath="M2_REPO/org/sakaiproject/kernel/sakai-kernel-util/19.2/sakai-kernel-util-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-net/commons-net/3.6/commons-net-3.6.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/springframework/spring-core/4.3.19.RELEASE/spring-core-4.3.19.RELEASE.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-logging/commons-logging/1.2/commons-logging-1.2.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/springframework/spring-jdbc/4.3.19.RELEASE/spring-jdbc-4.3.19.RELEASE.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/springframework/spring-beans/4.3.19.RELEASE/spring-beans-4.3.19.RELEASE.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/springframework/spring-tx/4.3.19.RELEASE/spring-tx-4.3.19.RELEASE.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/quartz-scheduler/quartz/2.2.3/quartz-2.2.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/c3p0/c3p0/0.9.1.1/c3p0-0.9.1.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-api/1.7.25/slf4j-api-1.7.25.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hsqldb/hsqldb/2.3.4/hsqldb-2.3.4.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/dom4j/dom4j/2.1.1/dom4j-2.1.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/jta/jta/h2.1.8/jta-h2.1.8.jar"/>
+  <classpathentry kind="var" path="M2_REPO/cglib/cglib-nodep/3.2.5/cglib-nodep-3.2.5.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-codec/commons-codec/1.10/commons-codec-1.10.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-configuration/commons-configuration/1.6/commons-configuration-1.6.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-lang/commons-lang/2.6/commons-lang-2.6.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-digester/commons-digester/2.1/commons-digester-2.1.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-beanutils/commons-beanutils/1.7.0/commons-beanutils-1.7.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/commons-beanutils/commons-beanutils-core/1.8.0/commons-beanutils-core-1.8.0.jar"/>
+  <classpathentry kind="var" path="M2_REPO/net/sf/ehcache/ehcache-core/2.6.11/ehcache-core-2.6.11.jar"/>
+  <classpathentry kind="var" path="M2_REPO/easymock/easymock/1.2_Java1.3/easymock-1.2_Java1.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/projectlombok/lombok/1.18.4/lombok-1.18.4.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/sakaiquebec/opensyllabus/osyl-common-api/19.2/osyl-common-api-19.2.jar" sourcepath="M2_REPO/org/sakaiquebec/opensyllabus/osyl-common-api/19.2/osyl-common-api-19.2-sources.jar"/>
+  <classpathentry kind="var" path="M2_REPO/junit/junit/4.12/junit-4.12.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/slf4j-log4j12/1.7.25/slf4j-log4j12-1.7.25.jar"/>
+  <classpathentry kind="var" path="M2_REPO/log4j/log4j/1.2.17/log4j-1.2.17.jar"/>
+  <classpathentry kind="var" path="M2_REPO/org/slf4j/jcl-over-slf4j/1.7.25/jcl-over-slf4j-1.7.25.jar"/>
+</classpath>

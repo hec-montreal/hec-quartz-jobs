@@ -1,7 +1,11 @@
 package ca.hec.jobs.impl.evaluation;
 
-import java.io.*;
-import java.util.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.util.List;
+import java.util.Map;
+import java.util.PropertyResourceBundle;
+import java.util.Set;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -16,6 +20,7 @@ import org.sakaiproject.content.api.ContentResourceEdit;
 import org.sakaiproject.coursemanagement.api.AcademicCareer;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
 import org.sakaiproject.coursemanagement.api.Section;
+import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.Reference;
 import org.sakaiproject.entity.api.ResourceProperties;
@@ -155,7 +160,17 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 			}
 
 		    // Get the department and create folder
-		    departmentFolderName = getDepartment(realmId);
+			try
+			{
+				departmentFolderName = getDepartment(realmId);
+			}
+			catch(IdNotFoundException e) 
+			{
+				log.info("Cannot find department for realmId" + realmId + ". Skipping to next eval group.");
+				
+				continue;
+			}
+			
 		    departmentFolderName = removeAccents(departmentFolderName);
 		    departmentFolderId =
 			    evalsysReportsFolder + DEPARTMENT_FOLDER_NAME + "/"
@@ -295,6 +310,7 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 
 	providerIds = authzGroupService.getProviderIds(realmId);
 	for (String providerId : providerIds) {
+		
 	    section = cmService.getSection(providerId);
 	    category = section.getCategory();
 	    department = cmService.getSectionCategoryDescription(category);
