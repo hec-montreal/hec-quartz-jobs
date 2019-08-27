@@ -41,22 +41,18 @@ import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
 import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
-import org.sakaiproject.entity.cover.EntityManager;
+import org.sakaiproject.db.api.SqlReader;
+import org.sakaiproject.db.api.SqlReaderFinishedException;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
-import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.util.ResourceLoader;
 import org.springframework.dao.DataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.sql.DataSource;
 
 import java.net.URL;
 import java.sql.ResultSet;
@@ -91,8 +87,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     @Setter
     private CalendarService calendarService;
     @Setter
-    private JdbcTemplate jdbcTemplate;
-    @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
     @Setter
     protected CourseManagementAdministration cmAdmin;
@@ -104,10 +98,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     protected SessionManager sessionManager;
     @Setter
     protected HecCourseEventSynchroJob courseEventSynchroJob;
-
-    public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
+    @Setter
+    private SqlService sqlService;
 
     public void init() {
     	URL url;
@@ -145,9 +137,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     + "DATE_HEURE_FIN, DESCR_FACILITY, STATE, DESCR, EVENT_ID from HEC_EVENT ";
             String order_by = " order by CATALOG_NBR, STRM, CLASS_SECTION ";
 
-            List<HecEvent> eventsAdd = jdbcTemplate.query(
+            List<HecEvent> eventsAdd = sqlService.dbRead(
                     select_from + "where (EVENT_ID is null and (STATE is null or STATE <> 'D'))" + order_by,
-                    new HecEventRowMapper());
+                    null,
+                    new HecEventRowReader());
 
             // keep track of the last event's site id, calendar and courseOffering, so we can use the calendar if it was already found
             Calendar calendar = null;
@@ -265,9 +258,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 previousSiteId = siteId;
             }
 
-            List<HecEvent> eventsUpdate = jdbcTemplate.query(
+            List<HecEvent> eventsUpdate = sqlService.dbRead(
                     select_from + "where (STATE = 'M' or STATE = 'D')" + order_by,
-                    new HecEventRowMapper());
+                    null,
+                    new HecEventRowReader());
 
             log.info("loop and update " + eventsUpdate.size() + " events");
             for (HecEvent event : eventsUpdate) {
@@ -385,15 +379,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                        String exam_type, Integer sequence_num) {
 
         try {
-            int affectedRows = jdbcTemplate.update("update HEC_EVENT set STATE = null, EVENT_ID = ? where CATALOG_NBR = ? and STRM = ? and " +
+            boolean success = sqlService.dbWrite(
+                    "update HEC_EVENT set STATE = null, EVENT_ID = ? where CATALOG_NBR = ? and STRM = ? and " +
                             "SESSION_CODE = ? and CLASS_SECTION = ? and CLASS_EXAM_TYPE = ? and SEQ = ?",
                     new Object[]{event_id, catalog_nbr, session_id, session_code, section, exam_type, sequence_num});
 
-            if (affectedRows != 1) {
-                return false;
-            } else {
-                return true;
-            }
+            return success;
 
         } catch (DataAccessException e) {
             e.printStackTrace();
@@ -405,16 +396,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                    String exam_type, Integer sequence_num) {
 
         try {
-            int affectedRows = jdbcTemplate.update("delete from HEC_EVENT where CATALOG_NBR = ? and STRM = ? and SESSION_CODE = ? and CLASS_SECTION = ? " +
+            boolean success = sqlService.dbWrite("delete from HEC_EVENT where CATALOG_NBR = ? and STRM = ? and SESSION_CODE = ? and CLASS_SECTION = ? " +
                             "and CLASS_EXAM_TYPE = ? and SEQ = ?",
                     new Object[]{catalog_nbr, session_id, session_code, section, exam_type, sequence_num});
 
-            if (affectedRows != 1) {
-                return false;
-            } else {
-                return true;
-            }
-
+            return success;
         } catch (DataAccessException e) {
             e.printStackTrace();
             return false;
@@ -587,27 +573,34 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         Date startTime, endTime;
     }
 
-    private class HecEventRowMapper implements RowMapper {
+    private class HecEventRowReader implements SqlReader<HecEvent> {
+
         @Override
-        public HecEvent mapRow(ResultSet rs, int rowNum)
-                throws SQLException {
-
+        public HecEvent readSqlResultRecord(ResultSet rs) throws SqlReaderFinishedException {
             HecEvent event = new HecEvent();
-            event.setCatalogNbr(rs.getString("CATALOG_NBR"));
-            event.setSessionId(rs.getString("STRM"));
-            event.setSessionCode(rs.getString("SESSION_CODE"));
-            event.setSection(rs.getString("CLASS_SECTION"));
-            event.setExamType(rs.getString("CLASS_EXAM_TYPE"));
-            event.setSequenceNumber(rs.getInt("SEQ"));
-            event.setStartTime(rs.getTimestamp("DATE_HEURE_DEBUT"));
-            event.setEndTime(rs.getTimestamp("DATE_HEURE_FIN"));
-            event.setLocation(rs.getString("DESCR_FACILITY"));
-            event.setDescription(rs.getString("DESCR"));
-            event.setEventId(rs.getString("EVENT_ID"));
-            event.setState(rs.getString("STATE"));
 
+            try {
+                event.setCatalogNbr(rs.getString("CATALOG_NBR"));
+                event.setSessionId(rs.getString("STRM"));
+                event.setSessionCode(rs.getString("SESSION_CODE"));
+                event.setSection(rs.getString("CLASS_SECTION"));
+                event.setExamType(rs.getString("CLASS_EXAM_TYPE"));
+                event.setSequenceNumber(rs.getInt("SEQ"));
+                event.setStartTime(rs.getTimestamp("DATE_HEURE_DEBUT"));
+                event.setEndTime(rs.getTimestamp("DATE_HEURE_FIN"));
+                event.setLocation(rs.getString("DESCR_FACILITY"));
+                event.setDescription(rs.getString("DESCR"));
+                event.setEventId(rs.getString("EVENT_ID"));
+                event.setState(rs.getString("STATE"));
+            }
+            catch (SQLException e) {
+                log.error("Error retrieving HecEvent record");
+                e.printStackTrace();
+                return null;
+            }
             return event;
-        }
+		}
+
     }
 
     private Group getGroup(Collection<Group> siteGroups, String eventSection) {
