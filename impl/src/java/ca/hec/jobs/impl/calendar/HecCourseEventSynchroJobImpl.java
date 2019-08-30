@@ -36,6 +36,8 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
     private static final String SEPARATOR = ";";
 
+    private static final String NOTIFICATION_EMAIL_PROP = "hec.error.notification.email";
+
     @Setter
     private EmailService emailService;
 
@@ -64,7 +66,9 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
         Integer activeHecEvent = jdbcTemplate.queryForObject("select count(*) from HEC_EVENT where STATE is not null", Integer.class);
 
 		if ((activeHecEvent != null ? activeHecEvent: 0) != 0) {
-		    emailService.send("zonecours2@hec.ca", "zonecours2@hec.ca", "La job de synchro des événements d'agenda a échoué",
+                    String address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
+
+		    emailService.send("zonecours2@hec.ca", address, "La job de synchro des événements d'agenda a échoué",
 	                "\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\n" +
 	       	                "Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
 	       	                + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.",
