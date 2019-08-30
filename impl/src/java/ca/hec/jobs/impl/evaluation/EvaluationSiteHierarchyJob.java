@@ -15,6 +15,7 @@ import org.apache.commons.logging.LogFactory;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.SiteService.SelectionType;
@@ -144,9 +145,9 @@ public class EvaluationSiteHierarchyJob implements Job{
 			if (site.getProviderGroupId() ==null)
 				continue;
 
-			String [] providerIds = site.getProviderGroupId().split("\\+");
+			for (Group g : site.getGroups()) {
+				String providerGroup = g.getProviderGroupId();
 
-			for (String providerGroup: providerIds) {
 			// skip if provider group id is null or ends in 00 (means it's a shareable site), or DF1
 			if (providerGroup == null ||
 						providerGroup.substring(providerGroup.length() - 2).equals("00") ||
@@ -172,14 +173,14 @@ public class EvaluationSiteHierarchyJob implements Job{
 
 				if (nodeMap.containsKey(nodeKey)) {
 					Set<String> siteRefs = nodeMap.get(nodeKey);
-					siteRefs.add(site.getReference());
+					siteRefs.add(g.getReference());
 					} else {
 					Set<String> siteRefs = new HashSet<String>();
-					siteRefs.add(site.getReference());
+					siteRefs.add(g.getReference());
 					nodeMap.put(nodeKey, siteRefs);
 				}
 				} catch (IdNotFoundException e) {
-					log.debug("Section or CourseOffering not found for " + site.getId());
+					log.debug("Section or CourseOffering not found for " + providerGroup);
 			}
 			}
 		}
