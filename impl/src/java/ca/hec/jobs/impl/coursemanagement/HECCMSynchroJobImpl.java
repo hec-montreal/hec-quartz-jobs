@@ -43,6 +43,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private BufferedReader breader = null;
     private String buffer = null;
     Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete;
+    Set<String> syncedCanonicalCourses, syncedCourseOfferings;
     Date startTime, endTime;
     //Data to work on
     Set<String> selectedSessions, selectedCourses;
@@ -60,6 +61,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
         String coursesDebug = jobExecutionContext.getMergedJobDataMap().getString("cmCourses");
+
+        syncedCanonicalCourses = new HashSet<String>();
+        syncedCourseOfferings = new HashSet<String>();
 
         directory =
                 ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
@@ -103,6 +107,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      * Method used to create courses
      */
     private void loadCourses (){
+        log.debug("Start loadCourses");
+
         String courseId, strm, sessionCode, catalogNbr, classSection, courseTitleLong, langue, acadOrg, strmId, acadCareer, classStat;
         String unitsMinimum, typeEvaluation, instructionMode, shortLang;
         String sectionId, enrollmentSetId, courseOfferingId, courseSetId, canonicalCourseId, title, description;
@@ -164,30 +170,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         description = courseTitleLong;
                         courseSetId = acadOrg;
 
-                        //Create or Update canonical course
-                        syncCanonicalCourse(canonicalCourseId, title, description);
+                        // Create or Update canonical course
+                        syncCanonicalCourse(courseSetId, canonicalCourseId, title, description);
 
-                        //Link canonical course to course set
-                        if (cmService.isCourseSetDefined(courseSetId)) {
-                            cmAdmin.removeCanonicalCourseFromCourseSet(courseSetId,
-                                    canonicalCourseId);
-                            cmAdmin.addCanonicalCourseToCourseSet(courseSetId,
-                                    canonicalCourseId);
-                            log.info("Lier le canonical course " + canonicalCourseId + " au course set " + courseSetId);
-                        }
-
-                        //Create or Update course offering
-                        syncCourseOffering(courseOfferingId, shortLang, typeEvaluation, unitsMinimum, acadCareer, COURSE_OFF_STATUS,
-                                title, description, strmId, canonicalCourseId);
-
-                        //Link course offering to course set
-                        if (cmService.isCourseSetDefined(courseSetId)) {
-                            cmAdmin.removeCourseOfferingFromCourseSet(courseSetId,
-                                    courseOfferingId);
-                            cmAdmin.addCourseOfferingToCourseSet(courseSetId,
-                                    courseOfferingId);
-                            log.info("Lier le course offering" + courseOfferingId + " au course set " + courseSetId);
-                        }
+                        // Create or Update course offering
+                        syncCourseOffering(courseSetId, courseOfferingId, shortLang, typeEvaluation, unitsMinimum, acadCareer,
+                                COURSE_OFF_STATUS, title, description, strmId, canonicalCourseId);
 
                         //Create or Update enrollmentSet
                         syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
@@ -216,6 +204,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             e.printStackTrace();
         }
 
+        log.debug("End loadCourses");
     }
 
     private Section syncSection (String sectionId, String category, String description, String enrollmentSetId,
@@ -290,9 +279,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return lang;
     }
 
-    private CourseOffering syncCourseOffering (String courseOfferingId, String lang, String typeEvaluation,
+    private void syncCourseOffering (String courseSetId, String courseOfferingId, String lang, String typeEvaluation,
                                                String credits, String acadCareer, String classStatus,String title,
                                                String description, String sessionId, String canonicalCourseId){
+
+        if (syncedCourseOfferings.contains(courseOfferingId)) {
+            return;
+        }
         CourseOffering courseOffering = null;
         AcademicSession session = cmService.getAcademicSession(sessionId);
         if (cmService.isCourseOfferingDefined(courseOfferingId)){
@@ -317,11 +310,23 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             .getEndDate(), lang, acadCareer,
                     credits, null);
             log.info("Course offering add " + courseOfferingId);
+
+            // Link course offering to course set
+            if (cmService.isCourseSetDefined(courseSetId)) {
+                cmAdmin.addCourseOfferingToCourseSet(courseSetId, courseOfferingId);
+                log.info("Lier le course offering" + courseOfferingId + " au course set " + courseSetId);
+            }
+
         }
-        return courseOffering;
+        syncedCourseOfferings.add(courseOfferingId);
     }
 
-    private CanonicalCourse syncCanonicalCourse (String canonicalCourseId, String title, String description) {
+    private void syncCanonicalCourse(String courseSetId, String canonicalCourseId, String title, String description) {
+
+        if (syncedCanonicalCourses.contains(canonicalCourseId)) {
+            return;
+        }
+
         CanonicalCourse course = null;
 
         if (!cmService.isCanonicalCourseDefined(canonicalCourseId)) {
@@ -329,6 +334,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     cmAdmin.createCanonicalCourse(canonicalCourseId,
                             title, description);
             log.info("Create canonical course " + canonicalCourseId);
+
+            // Link canonical course to course set
+            if (cmService.isCourseSetDefined(courseSetId)) {
+                cmAdmin.addCanonicalCourseToCourseSet(courseSetId, canonicalCourseId);
+                log.info("Lier le canonical course " + canonicalCourseId + " au course set " + courseSetId);
+            }
         } else {
             course = cmService.getCanonicalCourse(canonicalCourseId);
             course.setDescription(description);
@@ -336,14 +347,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             cmAdmin.updateCanonicalCourse(course);
             log.info("Update canonical course " + canonicalCourseId);
         }
-        return course;
+        syncedCanonicalCourses.add(canonicalCourseId);
     }
-
 
     /**
      * Method used to create instructors and coordinators
      */
     private void loadInstructeurs() {
+        log.debug("Start loadInstructeurs");
+
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
         String enrollmentSetEid, sectionId;
         try {
@@ -401,6 +413,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        log.debug("End loadInstructeurs");
     }
 
     public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
@@ -529,6 +542,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      * Method used to create students
      */
     private void loadEtudiants(){
+        log.debug("Start loadEtudiants");
         String emplId, catalogNbr, strm, sessionCode, classSection, status, strmId;
         String sectionId, enrollmentSetEid;
 
@@ -579,6 +593,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             e.printStackTrace();
         }
 
+        log.debug("End loadEtudiants");
     }
 
     public void addOrUpdateEtudiants(String sectionId, String enrollmentSetEid, String emplId){
@@ -618,6 +633,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
     public void removeEntriesMarkedToDelete(){
+        log.debug("Start removeEntriesMarkedToDelete");
+
          Set<Membership> instructors, coordinators;
          EnrollmentSet enrollmentSet;
 
@@ -657,6 +674,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
          }
 
+        log.debug("End removeEntriesMarkedToDelete");
 
     }
 
@@ -664,6 +682,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      * Method used to create academic sessions
      */
     private void loadSessions (){
+        log.debug("Start loadSessions");
+
         String acadCareerId, strm, descFrancais, descShortFrancais, descAnglais, descShortAnglais, sessionCode, strmId, title;
         Date beginDate, endDate;
         Date today = new Date();
@@ -727,6 +747,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             e.printStackTrace();
         }
 
+        log.debug("End loadSessions");
     }
 
     private AcademicSession saveOrUpdateSession(String strmId, String strm, String title, String descShortAnglais, Date beginDate, Date endDate){
@@ -757,6 +778,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
      * Method used to create academic careers.
      */
     public void loadProgEtudes() {
+        log.debug("Start loadProgEtudes");
+
         String acadCareerId, descFrancais, descAnglais;
         AcademicCareer acadCareer = null;
 
@@ -799,12 +822,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         } catch (IOException e) {
             e.printStackTrace();
         }
+
+        log.debug("End loadProgEtudes");
     }
 
     /**
      * Method used to create categories
      */
     private void loadServEnseignements (){
+        log.debug("Start loadServEnseignements");
+
         String acadOrg, description;
         AcademicSession session;
         try {
@@ -838,12 +865,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             e.printStackTrace();
         }
 
+        log.debug("End loadServEnseignements");
     }
 
     /**
      * Method used to get instruction mode
      */
     private void loadInstructionMode (){
+        log.debug("Start loadInstructionMode");
+
         String instructionMode, descr, descrShort, descrAng, descrShortAng;
         this.instructionMode = new HashMap<String, InstructionMode>();
          try {
@@ -877,6 +907,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             e.printStackTrace();
         }
 
+        log.debug("End loadInstructionMode");
     }
 
     /**
