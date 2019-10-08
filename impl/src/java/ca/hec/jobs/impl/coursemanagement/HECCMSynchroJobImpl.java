@@ -851,8 +851,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                 if (cmService.getSectionCategoryDescription (acadOrg) == null) {
                     cmAdmin.addSectionCategory(acadOrg, description);
+                }
+                if (cmService.getCourseSet(acadOrg) == null) {
                     cmAdmin.createCourseSet(acadOrg, description, description, null, null);
-               }
+                }
             }
          // ferme le tampon
             breader.close();
