@@ -1,14 +1,20 @@
 package ca.hec.impl;
 
-import ca.hec.commons.utils.FormatUtils;
-import ca.hec.api.SiteIdFormatHelper;
-import lombok.Setter;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
 import org.sakaiproject.coursemanagement.api.Section;
 
-import java.util.*;
+import ca.hec.api.SiteIdFormatHelper;
+import ca.hec.commons.utils.FormatUtils;
+import lombok.Setter;
 
 /**
  * Created by 11091096 on 2017-07-02.
@@ -19,7 +25,7 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
     protected CourseManagementService cmService;
 
     @Override
-    public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering) {
+    public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering, String distinctSitesSections) {
         Map<String, List<Section>> sitesToCreate = new HashMap<String, List<Section>>();
         Set<Section> sections = cmService.getSections(courseOffering.getEid());
         String siteName = null, siteNameAutre = null, siteNameEnligne = null, siteNameHybride = null;
@@ -29,40 +35,52 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         List<Section> assignedSectionsHybride  = new ArrayList<Section>();
         String sessionEid = courseOffering.getAcademicSession().getEid();
 
-        for (Section section: sections){
+        String[] distinctSectionsTitles = distinctSitesSections == null ? new String[0] : distinctSitesSections.split(",");
+        
+        for (Section section: sections){        	
+        	String distinctTitle = getSectionDistinctTitle(section, distinctSectionsTitles);
 
-            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
-                siteNameAutre = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
-                assignedSectionsAutre.add(section);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
-                siteNameEnligne = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
-                assignedSectionsEnligne.add(section);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
-                siteNameHybride = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
-                assignedSectionsHybride.add(section);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
-                siteName = getSiteName(courseOffering);
-                assignedSections.add(section);
-            }
-            else {
-                siteName = getSiteName(courseOffering);
-                assignedSections.add(section);
-            }
+        	if (distinctTitle != null) {
+        		siteName = getSiteDistinctName(courseOffering, distinctTitle);
+        		
+        		if (!sitesToCreate.containsKey(siteName)) {
+        			sitesToCreate.put(siteName, new ArrayList<>());
+        		}
 
+        		sitesToCreate.get(siteName).add(section);
+        	} else {
+        		 if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
+                     siteNameAutre = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
+                     assignedSectionsAutre.add(section);
+                 }
+                 else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
+                     siteNameEnligne = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
+                     assignedSectionsEnligne.add(section);
+                 }
+                 else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
+                     siteNameHybride = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
+                     assignedSectionsHybride.add(section);
+                 }
+                 else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
+                     siteName = getSiteName(courseOffering);
+                     assignedSections.add(section);
+                 }
+                 else {
+                     siteName = getSiteName(courseOffering);
+                     assignedSections.add(section);
+                 }
+        		 
+                 if (assignedSectionsAutre.size() > 0)
+                     sitesToCreate.put(siteNameAutre, assignedSectionsAutre);
+                 if (assignedSectionsHybride.size() > 0)
+                     sitesToCreate.put(siteNameHybride, assignedSectionsHybride);
+                 if (assignedSectionsEnligne.size() > 0)
+                     sitesToCreate.put(siteNameEnligne, assignedSectionsEnligne);
+                 if (assignedSections.size() > 0)
+                     sitesToCreate.put(siteName, assignedSections);
+        	}
         }
-
-        if (assignedSectionsAutre.size() > 0)
-            sitesToCreate.put(siteNameAutre, assignedSectionsAutre);
-        if (assignedSectionsHybride.size() > 0)
-            sitesToCreate.put(siteNameHybride, assignedSectionsHybride);
-        if (assignedSectionsEnligne.size() > 0)
-            sitesToCreate.put(siteNameEnligne, assignedSectionsEnligne);
-        if (assignedSections.size() > 0)
-            sitesToCreate.put(siteName, assignedSections);
-
+        
         return sitesToCreate;
 
     }
@@ -177,5 +195,18 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
 
         return sessionName;
     }
-
+    
+    private String getSectionDistinctTitle(Section section, String[] distinctSectionsTitles) {
+    	for (String title : distinctSectionsTitles) {
+    		if (section.getTitle().startsWith(title)) {
+    			return title;
+    		}
+    	}
+    	
+    	return null;
+    }
+    
+    private String getSiteDistinctName(CourseOffering courseOffering, String distinctSectionTitle) {
+    	return getSiteName(courseOffering) + "-" + "D" + distinctSectionTitle;
+    }
 }

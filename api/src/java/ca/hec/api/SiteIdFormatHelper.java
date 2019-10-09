@@ -1,10 +1,10 @@
 package ca.hec.api;
 
-import org.sakaiproject.coursemanagement.api.CourseOffering;
-import org.sakaiproject.coursemanagement.api.Section;
-
 import java.util.List;
 import java.util.Map;
+
+import org.sakaiproject.coursemanagement.api.CourseOffering;
+import org.sakaiproject.coursemanagement.api.Section;
 
 /**
  *
@@ -32,7 +32,7 @@ public interface SiteIdFormatHelper {
      * @param courseOffering
      * @return Map<siteName, List<section>>
      */
-    public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering);
+    public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering, String distinctSitesSections);
 
     /**
      * The siteName associated to each section

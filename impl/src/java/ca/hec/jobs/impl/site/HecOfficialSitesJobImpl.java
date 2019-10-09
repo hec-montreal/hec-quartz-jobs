@@ -1,14 +1,26 @@
 package ca.hec.jobs.impl.site;
 
-import ca.hec.api.SiteIdFormatHelper;
-import ca.hec.jobs.api.site.HecOfficialSitesJob;
-import lombok.Setter;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Vector;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.content.api.ContentHostingService;
-import org.sakaiproject.coursemanagement.api.*;
+import org.sakaiproject.coursemanagement.api.AcademicCareer;
+import org.sakaiproject.coursemanagement.api.AcademicSession;
+import org.sakaiproject.coursemanagement.api.CanonicalCourse;
+import org.sakaiproject.coursemanagement.api.CourseManagementAdministration;
+import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.coursemanagement.api.CourseOffering;
+import org.sakaiproject.coursemanagement.api.CourseSet;
+import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.entity.api.EntityManager;
 import org.sakaiproject.entity.api.EntityProducer;
 import org.sakaiproject.entity.api.EntityTransferrer;
@@ -24,9 +36,9 @@ import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 import org.sakaiproject.util.ArrayUtil;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.*;
+import ca.hec.api.SiteIdFormatHelper;
+import ca.hec.jobs.api.site.HecOfficialSitesJob;
+import lombok.Setter;
 
 /**
  * Created by mame-awa.diop@hec.ca on 2017-02-07.
@@ -57,6 +69,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         String courses = context.getMergedJobDataMap().getString("officialSitesCourses");
         String programs = context.getMergedJobDataMap().getString("officialSitesPrograms");
         String departments = context.getMergedJobDataMap().getString("officialSitesDepartments");
+        String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
 
         List<AcademicSession> selectedSessions = getSessions(sessionStart, sessionEnd);
 
@@ -69,7 +82,8 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             session.setUserEid("admin");
             session.setUserId("admin");
             for (CourseOffering courseOff: selectedCO){
-                sitesToCreate = siteIdFormatHelper.getSitesToCreateForCourseOffering(courseOff);
+                sitesToCreate = siteIdFormatHelper.getSitesToCreateForCourseOffering(courseOff, distinctSitesSections);
+                                
                 sitesToCreate.forEach((siteName,sections) -> createSite(siteName, sections));
              }
         } finally {
@@ -194,7 +208,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
     private Site createSite (String siteName, List<Section> sections){
         try {
-            Site createdSite = null;
+        	Site createdSite = null;
 
             Site templateSite = siteService.getSite(HEC_TEMPLATE_SITE);
 

@@ -170,6 +170,12 @@
 					<property name="descriptionResourceKey" value="officialSitesDepartments.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="distinctSitesSections"/>
+					<property name="descriptionResourceKey" value="distinctSitesSections"/>
+					<property name="defaultValue" value=""/>
+				</bean>
 			</set>
 		</property>
 	</bean>
