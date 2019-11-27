@@ -33,7 +33,6 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         List<Section> assignedSectionsAutre  = new ArrayList<Section>();
         List<Section> assignedSectionsEnligne  = new ArrayList<Section>();
         List<Section> assignedSectionsHybride  = new ArrayList<Section>();
-        String sessionEid = courseOffering.getAcademicSession().getEid();
 
         String[] distinctSectionsTitles = distinctSitesSections == null ? new String[0] : distinctSitesSections.split(",");
         
@@ -86,66 +85,46 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
     }
 
     @Override
-    public Map<String, String> getSiteIds(CourseOffering courseOffering) {
+    public Map<String, String> getSiteIds(CourseOffering courseOffering, String distinctSitesSections) {
         Map<String, String> sectionsSiteName = new HashMap<String, String>();
         Set<Section> sections = cmService.getSections(courseOffering.getEid());
-        String sessionEid = courseOffering.getAcademicSession().getEid();
-        String siteName = null;
 
-        for (Section section: sections){
-            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
-                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
-                sectionsSiteName.put(section.getEid(), siteName);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
-                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
-                sectionsSiteName.put(section.getEid(), siteName);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
-                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
-                sectionsSiteName.put(section.getEid(), siteName);
-            }
-            else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
-                siteName = getSiteName(courseOffering);
-                sectionsSiteName.put(section.getEid(), siteName);
-            }
-            else {
-                siteName = getSiteName(courseOffering);
-                sectionsSiteName.put(section.getEid(), siteName);
-            }
-
+        for (Section section : sections) {
+            sectionsSiteName.put(section.getEid(), getSiteId(section, distinctSitesSections));
         }
 
         return sectionsSiteName;
     }
 
     @Override
-    public String getSiteId(Section section) {
+    public String getSiteId(Section section, String distinctSitesSections) {
         String siteName = null;
-        String instructionMode = section.getInstructionMode();
         CourseOffering courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
-        String sessionEid = courseOffering.getAcademicSession().getEid();
 
-        if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
-            siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)){
-            siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
-            siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
-        }
-        else if (instructionMode.equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
-            siteName = getSiteName(courseOffering);
-        }
-        else {
-            siteName = getSiteName(courseOffering);
+        String[] distinctSectionsTitles = distinctSitesSections == null ? new String[0]
+                : distinctSitesSections.split(",");
+
+        String distinctTitle = getSectionDistinctTitle(section, distinctSectionsTitles);
+        if (distinctTitle != null) {
+            siteName = getSiteDistinctName(courseOffering, distinctTitle);
+        } else {
+            if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_AUTRE)) {
+                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_AUTRE;
+            } else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_EN_LIGNE)) {
+                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_EN_LIGNE;
+            } else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_HYBRIDE)) {
+                siteName = getSiteName(courseOffering) + "-" + MODE_ENSEIGNEMENT_HYBRIDE;
+            } else if (section.getInstructionMode().equalsIgnoreCase(MODE_ENSEIGNEMENT_PRESENTIEL)) {
+                siteName = getSiteName(courseOffering);
+            } else {
+                siteName = getSiteName(courseOffering);
+            }
         }
         return siteName;
     }
 
     @Override
-    public String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName) {
+    public String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName, String distinctSitesSections) {
         String sectionEid = catalog_nbr+session_id+session_code+sectionName;
         Section section = null;
 
@@ -154,7 +133,7 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         else
             return null;
 
-        return getSiteId( section);
+        return getSiteId(section, distinctSitesSections);
     }
 
     private String getSiteName(CourseOffering courseOff) {

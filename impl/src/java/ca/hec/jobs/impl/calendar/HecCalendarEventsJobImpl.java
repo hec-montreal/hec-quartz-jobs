@@ -120,6 +120,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.info("starting CreateCalendarEventsJob");
+
+        String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         int addcount = 0, updatecount = 0, deletecount = 0;
         Session session = sessionManager.getCurrentSession();
         
@@ -154,7 +156,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
                         event.getSessionId(),
-                        event.getSessionCode(), event.getSection());
+                        event.getSessionCode(), event.getSection(), distinctSitesSections);
 
                 //Section does not exist
                 if (siteId == null) {
@@ -267,7 +269,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 String siteId = siteIdFormatHelper.getSiteId(
                         event.getCatalogNbr(),
                         event.getSessionId(),
-                        event.getSessionCode(), event.getSection());
+                        event.getSessionCode(), event.getSection(), distinctSitesSections);
 
                 //Section does not exist
                 if (siteId == null) {

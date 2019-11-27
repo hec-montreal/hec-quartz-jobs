@@ -30,6 +30,7 @@ public interface SiteIdFormatHelper {
     /**
      *  For a courseOffering return a list of siteName and the sections associated to the name.
      * @param courseOffering
+     * @param distinctSitesSections
      * @return Map<siteName, List<section>>
      */
     public Map<String, List<Section>> getSitesToCreateForCourseOffering(CourseOffering courseOffering, String distinctSitesSections);
@@ -37,16 +38,18 @@ public interface SiteIdFormatHelper {
     /**
      * The siteName associated to each section
      * @param courseOffering
+     * @param distinctSitesSections
      * @return Map<section, siteName>
      */
-    Map<String, String> getSiteIds(CourseOffering courseOffering);
+    Map<String, String> getSiteIds(CourseOffering courseOffering, String distinctSitesSections);
 
     /**
      * The siteName associated to the section
      * @param section
+     * @param distinctSitesSections
      * @return siteName
      */
-    String getSiteId(Section section);
+    String getSiteId(Section section, String distinctSitesSections);
 
     /**
      * Generate siteId from data of extract files
@@ -54,7 +57,8 @@ public interface SiteIdFormatHelper {
      * @param session_id
      * @param session_code
      * @param sectionName
+     * @param distinctSitesSections
      * @return siteId
      */
-    String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName);
+    String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName, String distinctSitesSections);
 }

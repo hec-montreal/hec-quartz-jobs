@@ -171,10 +171,10 @@
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
+					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
 					<property name="descriptionResourceKey" value="distinctSitesSections"/>
-					<property name="defaultValue" value=""/>
+					<property name="defaultValue" value="AL,LB,AG"/>
 				</bean>
 			</set>
 		</property>
@@ -217,7 +217,7 @@
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
 	</bean>
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCreateCalendarEventsJob"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
 		  init-method="init">
 
 		<property name="beanId">
@@ -229,6 +229,17 @@
 		</property>
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="distinctSitesSections"/>
+					<property name="descriptionResourceKey" value="distinctSitesSections"/>
+					<property name="defaultValue" value="AL,LB,AG"/>
+				</bean>
+			</set>
 		</property>
 	</bean>
 
