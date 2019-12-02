@@ -1,8 +1,5 @@
 package ca.hec.jobs.api.calendar;
 
-
-import org.quartz.Job;
-
 /**
  * Job de synchro du fichier d'extract contenant les événements de cours avec la
  * table HEC_EVENT
@@ -10,7 +7,7 @@ import org.quartz.Job;
  * @author 11183065
  *
  */
-public interface HecCourseEventSynchroJob extends Job {
+public interface HecCourseEventSynchroJob {
 
-
+    public boolean execute();
 }
