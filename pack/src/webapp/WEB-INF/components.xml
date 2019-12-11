@@ -180,12 +180,6 @@
 		</property>
 	</bean>
 
-
-	<bean id="hecCourseEventSynchroJob"
-		  class="ca.hec.jobs.impl.calendar.HecCourseEventSynchroJobImpl">
-		<property name="dataSource" ref="javax.sql.DataSource" />
-	</bean>
-
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCourseEventSynchroJob"
 		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
 		  init-method="init">
@@ -203,6 +197,11 @@
 
 	</bean>
 
+	<bean id="hecCourseEventSynchroJob"
+		  class="ca.hec.jobs.impl.calendar.HecCourseEventSynchroJobImpl">
+		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
+	</bean>
+
 	<bean id="hecCreateCalendarEventsJob"
 		  class="ca.hec.jobs.impl.calendar.HecCalendarEventsJobImpl" init-method="init">
 		<property name="calendarService" ref="org.sakaiproject.calendar.api.CalendarService" />
@@ -215,6 +214,8 @@
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
+		<property name="courseEventSynchroJob"
+				  ref="hecCourseEventSynchroJob" />
 	</bean>
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCreateCalendarEventsJob"
 		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
@@ -233,6 +234,11 @@
 		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
 			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="startDate"/>
+					<property name="descriptionResourceKey" value="startDate.description"/>
+				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
