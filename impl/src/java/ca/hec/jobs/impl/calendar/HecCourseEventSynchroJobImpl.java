@@ -4,6 +4,8 @@ import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.email.cover.EmailService;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
@@ -50,7 +52,7 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
     }
 
     @Transactional
-    public boolean execute() {
+    public void execute(JobExecutionContext context) throws JobExecutionException {
 
         String directory = ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
                 null);
@@ -66,15 +68,16 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 		if ((activeHecEvent != null ? activeHecEvent: 0) != 0) {
                     String address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
 
-                        emailService.send("zonecours2@hec.ca", address, "La job de synchro des événements d'agenda a échoué",
-	                        "\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\n" +
+		    emailService.send("zonecours2@hec.ca", address, "La job de synchro des événements d'agenda a échoué",
+	                "\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\n" +
 	       	                "Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
 	       	                + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.",
-	                        null, null, null);
-	                log.error("Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
-                                + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
-                        
-                        return false;
+	                null, null, null);
+	            log.error("Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
+	                    + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
+			throw new JobExecutionException(
+					"Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
+							+ "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
 		}
 
         log.info("Lecture du fichier d'extract");
@@ -187,10 +190,12 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
             jdbcTemplate.execute("truncate table HEC_EVENT_EXTRACT");
 
             log.info("Fin de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_EVENT");
-        } catch (Exception e) {
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-            return false;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        return true;
     }
 }
