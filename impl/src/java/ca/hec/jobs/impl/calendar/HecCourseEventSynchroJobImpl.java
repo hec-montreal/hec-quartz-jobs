@@ -32,18 +32,12 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
     private static Log log = LogFactory.getLog(HecCourseEventSynchroJobImpl.class);
 
-    private static final String SEPARATOR = ";";
-
     private static final String NOTIFICATION_EMAIL_PROP = "hec.error.notification.email";
 
     @Setter
     private EmailService emailService;
 
     private JdbcTemplate jdbcTemplate;
-
-    public final static String EXTRACTS_PATH_CONFIG_KEY =
-            "coursemanagement.extract.files.path";
-    public final static String HORAIRES_FILE = "horaires_cours.dat";
 
     public void setDataSource(DataSource dataSource) {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
@@ -52,12 +46,7 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
     @Transactional
     public boolean execute() {
 
-        String directory = ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
-                null);
-
-        BufferedReader bufferedReader = null;
-
-        log.info("Début de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_EVENT");
+        log.info("Début de la job de synchro du fichier de PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW contenant les événements de cours avec la table HEC_EVENT");
 
         // On vérifie que la job de traitement des événements est bien passée en
         // s'assurant que la colonne state est nulle pour toutes les lignes
@@ -77,114 +66,58 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                         return false;
 		}
 
-        log.info("Lecture du fichier d'extract");
         try {
-            bufferedReader = new BufferedReader(new InputStreamReader(
-                    new FileInputStream(directory + File.separator
-                            + HORAIRES_FILE), "ISO-8859-1"));
-
-            String line = bufferedReader.readLine();
-            log.debug("noms des colonnes : " + line);
-            final List<String> columnNames = Arrays.asList(line.split(SEPARATOR));
-
-            final ArrayList<String[]> extractLines = new ArrayList<String[]>();
-            while ((line = bufferedReader.readLine()) != null) {
-                extractLines.add(line.split(SEPARATOR));
-            }
-            bufferedReader.close();
-
-            log.info("Chargement de la table HEC_EVENT_EXTRACT avec les événements du fichier");
-            jdbcTemplate
-                    .batchUpdate(
-                            "insert into HEC_EVENT_EXTRACT (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE, DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR) "
-                                    + "values (?, ?, ?, ?, ?, ?, to_date(?, 'yyyy-mm-dd hh24:mi'),  to_date(?, 'yyyy-mm-dd hh24:mi'), ?, ?, ?)",
-                            new BatchPreparedStatementSetter() {
-
-                                @Override
-                                public void setValues(PreparedStatement ps, int i)
-                                        throws SQLException {
-                                    String[] columnValues = extractLines.get(i);
-                                    ps.setString(1, columnValues[columnNames
-                                            .indexOf("CATALOG_NBR")].replaceAll(" ", ""));
-                                    ps.setString(2, columnValues[columnNames
-                                            .indexOf("STRM")]);
-                                    ps.setString(3, columnValues[columnNames
-                                            .indexOf("SESSION_CODE")]);
-                                    ps.setString(4, columnValues[columnNames
-                                            .indexOf("CLASS_SECTION")]);
-                                    ps.setString(
-                                            5,
-                                            columnValues[columnNames.indexOf("SEQ")]);
-                                    ps.setString(6, columnValues[columnNames
-                                            .indexOf("CLASS_EXAM_TYPE")]);
-                                    ps.setString(7, columnValues[columnNames
-                                            .indexOf("DATE_HEURE_DEBUT")]);
-                                    ps.setString(8, columnValues[columnNames
-                                            .indexOf("DATE_HEURE_FIN")]);
-                                    ps.setString(9, columnValues[columnNames
-                                            .indexOf("FACILITY_ID")]);
-                                    ps.setString(10, columnValues[columnNames
-                                            .indexOf("DESCR_FACILITY")]);
-                                    ps.setString(11, columnValues[columnNames
-                                            .indexOf("DESCR")]);
-                                }
-
-                                @Override
-                                public int getBatchSize() {
-                                    return extractLines.size();
-                                }
-                            });
-
             log.info("Récupération de la date de début de l'événement le plus ancien présent dans le fichier d'extract");
             Date dateDebutMin = (Date) jdbcTemplate.queryForObject(
-                    "select min(DATE_HEURE_DEBUT) from HEC_EVENT_EXTRACT", Date.class);
+                    "select min(TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI')) from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW", Date.class);
 
-            log.info("Suppression des événements dont la date de début est inférieure à "
-                    + dateDebutMin);
-            jdbcTemplate.update("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?",
-                    new Object[]{dateDebutMin});
+            if (dateDebutMin != null) {
+                log.info("Suppression des événements dont la date de début est inférieure à "
+                            + dateDebutMin);
+                jdbcTemplate.update("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?",
+                            new Object[]{dateDebutMin});
+            } else {
+                //return false;
+            }
 
             log.info("Ajout des nouveaux événements");
             jdbcTemplate
                     .update("insert into HEC_EVENT (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE, DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, STATE)"
-                            + "select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE, DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, 'A' "
-                            + "from HEC_EVENT_EXTRACT "
-                            + "where (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE) not in ("
+                            + "select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, CLASS_EXAM_SEQ, CLASS_EXAM_TYPE, TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI'), TO_DATE(N_DATE_HEURE_FIN, 'YYYY-MM-DD HH24:MI'), FACILITY_ID, N_DESCR_FACILITY, DESCR, 'A' "
+                            + "from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW "
+                            + "where (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, CLASS_EXAM_SEQ, CLASS_EXAM_TYPE) not in ("
                             + "select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE from HEC_EVENT)");
 
             log.info("Marquage et Maj des événements modifiés");
             jdbcTemplate
                     .update("update HEC_EVENT t1 set (DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, STATE) = "
-                            + "		(select DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, 'M' "
-                            + "		from HEC_EVENT_EXTRACT t2 "
+                            + "		(select TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI'), TO_DATE(N_DATE_HEURE_FIN, 'YYYY-MM-DD HH24:MI'), FACILITY_ID, DESCR_FACILITY, DESCR, 'M' "
+                            + "		from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW t2 "
                             + "		where t2.CATALOG_NBR = t1.CATALOG_NBR "
                             + "		and t2.STRM = t1.STRM "
                             + "		and t2.SESSION_CODE = t1.SESSION_CODE "
                             + "		and t2.CLASS_SECTION =  t1.CLASS_SECTION "
-                            + "		and t2.SEQ = t1.SEQ "
+                            + "		and t2.CLASS_EXAM_SEQ = t1.SEQ "
                             + "		and t2.CLASS_EXAM_TYPE = t1.CLASS_EXAM_TYPE) "
                             + "where (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE) in ( "
-                            + "		select t2.CATALOG_NBR, t2.STRM, t2.SESSION_CODE, t2.CLASS_SECTION, t2.SEQ, t2.CLASS_EXAM_TYPE "
-                            + "		from HEC_EVENT_EXTRACT t2 "
+                            + "		select t2.CATALOG_NBR, t2.STRM, t2.SESSION_CODE, t2.CLASS_SECTION, t2.CLASS_EXAM_SEQ, t2.CLASS_EXAM_TYPE "
+                            + "		from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW t2 "
                             + "		where t2.CATALOG_NBR = t1.CATALOG_NBR "
                             + "		and t2.STRM = t1.STRM "
                             + "		and t2.SESSION_CODE = t1.SESSION_CODE "
                             + "		and t2.CLASS_SECTION =  t1.CLASS_SECTION "
-                            + "		and t2.SEQ = t1.SEQ "
+                            + "		and t2.CLASS_EXAM_SEQ = t1.SEQ "
                             + "		and t2.CLASS_EXAM_TYPE = t1.CLASS_EXAM_TYPE "
-                            + "		and (t1.DATE_HEURE_DEBUT != t2.DATE_HEURE_DEBUT "
-                            + "			or t1.DATE_HEURE_FIN != t2.DATE_HEURE_FIN "
+                            + "		and (t1.DATE_HEURE_DEBUT != TO_DATE(t2.N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI') "
+                            + "			or t1.DATE_HEURE_FIN != TO_DATE(t2.N_DATE_HEURE_FIN, 'YYYY-MM-DD HH24:MI') "
                             + "			or t1.FACILITY_ID != t2.FACILITY_ID "
-                            + "			or t1.DESCR_FACILITY != t2.DESCR_FACILITY "
+                            + "			or t1.DESCR_FACILITY != t2.N_DESCR_FACILITY "
                             + "			or t1.DESCR != t2.DESCR))");
 
             log.info("Marquage des événements supprimés");
             jdbcTemplate
                     .update("update HEC_EVENT set STATE = 'D' where (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE) not in "
-                            + "(select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE from HEC_EVENT_EXTRACT)");
-
-            log.info("Vidage de la table HEC_EVENT_EXTRACT");
-            jdbcTemplate.execute("truncate table HEC_EVENT_EXTRACT");
+                            + "(select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, CLASS_EXAM_SEQ, CLASS_EXAM_TYPE from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW)");
 
             log.info("Fin de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_EVENT");
         } catch (Exception e) {
