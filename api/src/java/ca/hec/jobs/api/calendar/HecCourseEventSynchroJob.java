@@ -2,6 +2,7 @@ package ca.hec.jobs.api.calendar;
 
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 
 /**
  * Job de synchro du fichier d'extract contenant les événements de cours avec la
@@ -12,5 +13,5 @@ import org.quartz.JobExecutionContext;
  */
 public interface HecCourseEventSynchroJob extends Job {
 
-    void execute(JobExecutionContext context);
+    void execute(JobExecutionContext context) throws JobExecutionException;
 }

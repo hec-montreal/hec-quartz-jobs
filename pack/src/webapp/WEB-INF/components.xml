@@ -199,7 +199,7 @@
 
 	<bean id="hecCourseEventSynchroJob"
 		  class="ca.hec.jobs.impl.calendar.HecCourseEventSynchroJobImpl">
-		<property name="dataSource" ref="javax.sql.DataSource" />
+		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
 	</bean>
 
 	<bean id="hecCreateCalendarEventsJob"

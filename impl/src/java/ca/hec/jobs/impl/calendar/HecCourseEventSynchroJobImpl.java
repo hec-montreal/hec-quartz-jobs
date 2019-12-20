@@ -5,7 +5,9 @@ import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
+import org.quartz.JobExecutionException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.email.cover.EmailService;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -37,24 +39,20 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
     @Setter
     private EmailService emailService;
+    @Setter
+    private SqlService sqlService;
 
-    private JdbcTemplate jdbcTemplate;
-
-    public void setDataSource(DataSource dataSource) {
-        this.jdbcTemplate = new JdbcTemplate(dataSource);
-    }
-
-    // @Transactional
+    @Transactional
     @Override
-    public void execute(JobExecutionContext context) {
+    public void execute(JobExecutionContext context) throws JobExecutionException {
 
         log.info(
                 "Début de la job de synchro du fichier de PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW contenant les événements de cours avec la table HEC_EVENT");
 
         // On vérifie que la job de traitement des événements est bien passée en
         // s'assurant que la colonne state est nulle pour toutes les lignes
-        Integer activeHecEvent = jdbcTemplate.queryForObject("select count(*) from HEC_EVENT where STATE is not null",
-                Integer.class);
+        List<String> results = sqlService.dbRead("select count(*) from HEC_EVENT where STATE is not null");
+        Integer activeHecEvent = Integer.parseInt(results.get(0));
 
         if ((activeHecEvent != null ? activeHecEvent : 0) != 0) {
             String address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
@@ -73,19 +71,23 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
         try {
             log.info(
                     "Récupération de la date de début de l'événement le plus ancien présent dans le fichier d'extract");
-            Date dateDebutMin = (Date) jdbcTemplate.queryForObject(
-                    "select min(TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI')) from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW",
-                    Date.class);
+            Date dateDebutMin = null;
+            //new Date(date)
+
+            sqlService.dbRead("select min((TO_TIMESTAMP(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI -5:00') - to_date('19700101', 'YYYYMMDD')) * 24 * 60 * 60 * 1000) from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW");
+//            (Date) jdbcTemplate.queryForObject(
+//                    "",
+//                    Date.class);
 
             if (dateDebutMin != null) {
                 log.info("Suppression des événements dont la date de début est inférieure à " + dateDebutMin);
-                jdbcTemplate.update("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?", new Object[] { dateDebutMin });
+                sqlService.dbWrite("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?", new Object[] { dateDebutMin });
             } else {
                 // return false;
             }
 
             log.info("Ajout des nouveaux événements");
-            jdbcTemplate.update(
+            sqlService.dbWrite(
                     "insert into HEC_EVENT (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE, DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, STATE)"
                             + "select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, CLASS_EXAM_SEQ, CLASS_EXAM_TYPE, TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI'), TO_DATE(N_DATE_HEURE_FIN, 'YYYY-MM-DD HH24:MI'), FACILITY_ID, N_DESCR_FACILITY, DESCR, 'A' "
                             + "from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW "
@@ -93,7 +95,7 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                             + "select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE from HEC_EVENT)");
 
             log.info("Marquage et Maj des événements modifiés");
-            jdbcTemplate.update(
+            sqlService.dbWrite(
                     "update HEC_EVENT t1 set (DATE_HEURE_DEBUT, DATE_HEURE_FIN, FACILITY_ID, DESCR_FACILITY, DESCR, STATE) = "
                             + "		(select TO_DATE(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI'), TO_DATE(N_DATE_HEURE_FIN, 'YYYY-MM-DD HH24:MI'), FACILITY_ID, DESCR_FACILITY, DESCR, 'M' "
                             + "		from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW t2 "
@@ -115,15 +117,13 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                             + "			or t1.DESCR != t2.DESCR))");
 
             log.info("Marquage des événements supprimés");
-            jdbcTemplate.update(
+            sqlService.dbWrite(
                     "update HEC_EVENT set STATE = 'D' where (CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, SEQ, CLASS_EXAM_TYPE) not in "
                             + "(select CATALOG_NBR, STRM, SESSION_CODE, CLASS_SECTION, CLASS_EXAM_SEQ, CLASS_EXAM_TYPE from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW)");
 
             log.info(
                     "Fin de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_EVENT");
 
-            // explicit commit required?
-            jdbcTemplate.getDataSource().getConnection().commit();
         } catch (Exception e) {
             e.printStackTrace();
             //return false;
