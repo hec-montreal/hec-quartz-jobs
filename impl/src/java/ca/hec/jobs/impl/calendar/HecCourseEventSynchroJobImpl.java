@@ -7,18 +7,15 @@ import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
+import org.sakaiproject.db.api.SqlReader;
+import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.email.cover.EmailService;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.sql.DataSource;
-import java.io.*;
-import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.text.DateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -65,25 +62,35 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
             log.error("Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
                     + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
 
-            return;
+            throw new JobExecutionException();
         }
 
         try {
             log.info(
                     "Récupération de la date de début de l'événement le plus ancien présent dans le fichier d'extract");
-            Date dateDebutMin = null;
-            //new Date(date)
 
-            sqlService.dbRead("select min((TO_TIMESTAMP(N_DATE_HEURE_DEBUT, 'YYYY-MM-DD HH24:MI -5:00') - to_date('19700101', 'YYYYMMDD')) * 24 * 60 * 60 * 1000) from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW");
-//            (Date) jdbcTemplate.queryForObject(
-//                    "",
-//                    Date.class);
+            List<Date> rundates = sqlService.dbRead(
+                "select min(START_DT) as MINDATE from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW", null, new SqlReader<Date>() {
+
+                    @Override
+                    public Date readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
+                        try {
+                            return result.getDate("MINDATE");
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+                    }
+                });
+            Date dateDebutMin = (rundates.isEmpty()?null:rundates.get(0));
 
             if (dateDebutMin != null) {
                 log.info("Suppression des événements dont la date de début est inférieure à " + dateDebutMin);
                 sqlService.dbWrite("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?", new Object[] { dateDebutMin });
             } else {
-                // return false;
+                // TODO : if no min date, we should probably not run as there is no data in the table, 
+                // everything will be marked deleted in HEC_EVENT.
+                //return false;
             }
 
             log.info("Ajout des nouveaux événements");
@@ -126,8 +133,6 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
         } catch (Exception e) {
             e.printStackTrace();
-            //return false;
         }
-//        return true;
     }
 }

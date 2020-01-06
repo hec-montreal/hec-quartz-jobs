@@ -21,7 +21,7 @@
 package ca.hec.jobs.impl.calendar;
 
 import ca.hec.api.SiteIdFormatHelper;
-//import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
+import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
 import ca.hec.jobs.api.calendar.HecCalendarEventsJob;
 import lombok.Data;
 import lombok.Setter;
@@ -88,8 +88,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     private final String PSFT_EXAM_TYPE_TEST = "TEST";
     private final String PSFT_EXAM_TYPE_QUIZ = "QUIZ";
 
-    private final String LAST_RUN_KEY = "lastRunDate";
-
     @Setter
     private CalendarService calendarService;
     @Setter
@@ -102,8 +100,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     protected SiteService siteService;
     @Setter
     protected SessionManager sessionManager;
-//    @Setter
-//    protected HecCourseEventSynchroJob courseEventSynchroJob;
+    @Setter
+    protected HecCourseEventSynchroJob courseEventSynchroJob;
     @Setter
     private SqlService sqlService;
 
@@ -133,9 +131,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             return;
         }
 
-//        if (!courseEventSynchroJob.execute()) {
-//            return;
-//        }
+        try {
+            courseEventSynchroJob.execute(context);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return;
+        }
 
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         int addcount = 0, updatecount = 0, deletecount = 0;
