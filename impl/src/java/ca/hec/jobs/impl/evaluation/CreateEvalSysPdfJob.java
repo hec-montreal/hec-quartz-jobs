@@ -99,7 +99,6 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 	List<EvalGroup> evalGs;
 	Long[] evalIds;
 	String[] groupIds;
-	ContentResourceEdit resourceEdit = null;
 	ByteArrayOutputStream byteOutputStream;
 	String departmentFolderName = null;
 	String departmentFolderId = null;
@@ -109,8 +108,6 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 	String progFolderId = null;
 	ContentCollection progFolderCollection = null;
 	String fileTitle = null;
-
-	String lang = null;
 
 	int fileCount = 0;
 
@@ -143,9 +140,6 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 		groupIds = new String[1];
 		for (int j = 0; j < evalGs.size(); j++) {
 		    groupIds[0] = ((EvalGroup) evalGs.get(j)).evalGroupId;
-
-		    // Get the language of the section
-		    lang = getLang(groupIds[0]);
 
 		    //Create PDF
 		    byteOutputStream = new ByteArrayOutputStream();
@@ -316,26 +310,6 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 	    department = cmService.getSectionCategoryDescription(category);
 	}
 	return department;
-
-    }
-
-    /**
-     * Get the language from the providerId associated to the Realm
-     * 
-     * @param realmId
-     * @return
-     */
-    private String getLang(String realmId) {
-	String lang = null;
-	Set<String> providerIds;
-	Section section = null;
-
-	providerIds = authzGroupService.getProviderIds(realmId);
-	for (String providerId : providerIds) {
-	    section = cmService.getSection(providerId);
-	    lang = section.getLang();
-	}
-	return lang;
 
     }
 
