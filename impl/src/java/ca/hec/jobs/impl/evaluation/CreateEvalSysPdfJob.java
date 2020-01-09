@@ -99,6 +99,7 @@ public class CreateEvalSysPdfJob extends AbstractQuartzJobImpl {
 	List<EvalGroup> evalGs;
 	Long[] evalIds;
 	String[] groupIds;
+	ContentResourceEdit resourceEdit = null;
 	ByteArrayOutputStream byteOutputStream;
 	String departmentFolderName = null;
 	String departmentFolderId = null;
