@@ -559,7 +559,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 return null;
             }
 
-            log.debug("created event: " + title + " in site " + calendar.getContext());
+            log.debug("created event: " + title + " in site " + calendar.getContext() + " for sections " + event.getGroups());
 
             return event.getId();
         }
