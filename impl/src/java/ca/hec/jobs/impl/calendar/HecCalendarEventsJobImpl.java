@@ -164,8 +164,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     new HecEventRowReader());
 
             // also add events for new sites created since last run or specified date
+            lastRun = getLastRunDate();
             if (startDate == null) {
-                startDate = getLastRunDate();
+                startDate = lastRun;
             }
             log.info("Handle events for sites created since " + startDate);
             eventsAdd.addAll(getEventsForNewSites(startDate));
@@ -397,14 +398,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 previousSiteId = siteId;
             }
-        } finally {
-            session.clear();
+
             if (lastRun == null) {
                 insertLastRunDate();
             } else {
                 updateLastRunDate();
             }
-
+        } finally {
+            session.clear();
             isRunning = false;
         }
         log.info("added: " + addcount + " updated: " + updatecount + " deleted: " + deletecount);
