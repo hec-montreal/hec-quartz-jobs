@@ -67,7 +67,9 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author curtis.van-osch@hec.ca
@@ -168,7 +170,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             if (startDate == null) {
                 startDate = lastRun;
             }
-            log.info("Handle events for sites created since " + startDate);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd hh:mm:ss");
+            log.info("Handle events for sites created since " + sdf.format(startDate));
             eventsAdd.addAll(getEventsForNewSites(startDate));
 
             // keep track of the last event's site id, calendar and courseOffering, so we can use the calendar if it was already found
@@ -221,7 +224,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     } catch (IdNotFoundException e) {
                         log.debug("Site " + siteId + " not associated to course management");
                     } catch (IdUnusedException e) {
-                        log.debug("Site or Calendar for " + siteId + " does not exist");
+                        log.debug("Site or Calendar for " + siteId + " does not exist (for section " + event.getSection() + ")");
                     } catch (PermissionException e) {
                         e.printStackTrace();
                         return;
@@ -429,8 +432,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
     }
 
-    private List<HecEvent> getEventsForNewSites(Date lastrun) {
-        if (lastrun == null) {
+    private List<HecEvent> getEventsForNewSites(Date startDate) {
+        if (startDate == null) {
             // this returns them all
             return getEventsForCatalogNbr(null);
         }
@@ -438,18 +441,19 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         List<HecEvent> events = new ArrayList<HecEvent>();
 
         PagingPosition pp = new PagingPosition(1, 500);
+        Set<String> catalogNumbers = new HashSet<String>();
         List<Site> sites = null;
         Boolean stop = false;
         do {
             sites = siteService.getSites(SelectionType.ANY, "course", null, null, SortType.CREATED_ON_DESC, pp);
             pp.adjustPostition(500);
             for (Site site : sites) {
-                if (site.getCreatedDate().after(lastrun)) {
+                if (site.getCreatedDate().after(startDate)) {
                     String siteId = site.getId();
                     Integer lastPeriodIndex = siteId.indexOf('.');
                     String catalogNbr = siteId.substring(0, lastPeriodIndex);
                     if (lastPeriodIndex > 0 && !catalogNbr.isEmpty()) {
-                        events.addAll(getEventsForCatalogNbr(catalogNbr));
+                        catalogNumbers.add(catalogNbr);
                     }
                 } else {
                     stop = true;
@@ -457,6 +461,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 }
             }
         } while (!stop);
+
+        for (String catalogNumber : catalogNumbers) {
+            events.addAll(getEventsForCatalogNbr(catalogNumber));
+        }
 
         return events;
     }
