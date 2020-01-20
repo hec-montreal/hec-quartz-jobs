@@ -63,6 +63,8 @@
 		<property name="cmService"
 				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HECCMSynchroJobImpl"
@@ -100,6 +102,12 @@
 					<property name="labelResourceKey" value="cmCourses"/>
 					<property name="descriptionResourceKey" value="cmCourses.description"/>
 					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="distinctSitesSections"/>
+					<property name="descriptionResourceKey" value="distinctSitesSections"/>
+					<property name="defaultValue" value="AL,LB,AG"/>
 				</bean>
 			</set>
 		</property>
