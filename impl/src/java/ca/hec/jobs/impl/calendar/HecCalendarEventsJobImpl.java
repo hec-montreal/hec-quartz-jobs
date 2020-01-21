@@ -479,7 +479,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     @Override
                     public Date readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
                         try {
-                            return result.getDate("LASTRUNDATE");
+                            return result.getTimestamp("LASTRUNDATE");
                         } catch (SQLException e) {
                             e.printStackTrace();
                             return null;
