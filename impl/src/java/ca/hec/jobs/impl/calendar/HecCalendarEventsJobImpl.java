@@ -47,9 +47,12 @@ import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.entity.cover.EntityManager;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.PermissionException;
+import org.sakaiproject.javax.PagingPosition;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.SiteService.SelectionType;
+import org.sakaiproject.site.api.SiteService.SortType;
 import org.sakaiproject.time.cover.TimeService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
@@ -59,10 +62,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.net.URL;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author curtis.van-osch@hec.ca
@@ -73,6 +80,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     private static Log log = LogFactory.getLog(HecCalendarEventsJobImpl.class);
     private static PropertiesConfiguration propertiesEn = null;
     private static PropertiesConfiguration propertiesFr = null;
+
+    private static Boolean isRunning = false;
 	
     private final String EVENT_TYPE_CLASS_SESSION = "Class session";
     private final String EVENT_TYPE_EXAM = "Exam";
@@ -120,10 +129,24 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         log.info("starting CreateCalendarEventsJob");
+        String startDateString = context.getMergedJobDataMap().getString("startDate");
+        Date startDate = getDate(startDateString);
+
+        if (isRunning) {
+            log.error("HecCalendarEventsJob is already running, aborting.");
+            return;
+        }
+
+        try {
+            courseEventSynchroJob.execute(context);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         int addcount = 0, updatecount = 0, deletecount = 0;
         Session session = sessionManager.getCurrentSession();
+        Date lastRun = null;
         
         if (propertiesEn == null || propertiesFr == null) {
         	log.error("messages are not defined!");
@@ -139,9 +162,17 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             String order_by = " order by CATALOG_NBR, STRM, CLASS_SECTION ";
 
             List<HecEvent> eventsAdd = sqlService.dbRead(
-                    select_from + "where (EVENT_ID is null and (STATE is null or STATE <> 'D'))" + order_by,
-                    null,
+                    select_from + "where EVENT_ID is null and (STATE = 'A' or STATE = 'M')" + order_by, null,
                     new HecEventRowReader());
+
+            // also add events for new sites created since last run or specified date
+            lastRun = getLastRunDate();
+            if (startDate == null) {
+                startDate = lastRun;
+            }
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy/MM/dd hh:mm:ss");
+            log.info("Handle events for sites created since " + sdf.format(startDate));
+            eventsAdd.addAll(getEventsForNewSites(startDate));
 
             // keep track of the last event's site id, calendar and courseOffering, so we can use the calendar if it was already found
             Calendar calendar = null;
@@ -193,7 +224,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     } catch (IdNotFoundException e) {
                         log.debug("Site " + siteId + " not associated to course management");
                     } catch (IdUnusedException e) {
-                        log.debug("Site or Calendar for " + siteId + " does not exist");
+                        log.debug("Site or Calendar for " + siteId + " does not exist (for section " + event.getSection() + ")");
                     } catch (PermissionException e) {
                         e.printStackTrace();
                         return;
@@ -370,11 +401,116 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 previousSiteId = siteId;
             }
+
+            if (lastRun == null) {
+                insertLastRunDate();
+            } else {
+                updateLastRunDate();
+            }
         } finally {
             session.clear();
+            isRunning = false;
         }
         log.info("added: " + addcount + " updated: " + updatecount + " deleted: " + deletecount);
     } // execute
+
+    private void updateLastRunDate() {
+        try {
+            sqlService.dbWrite(
+                    "update HEC_JOBS_LOG set LASTRUNDATE = SYSDATE where JOB_ID = 'HecCalendarEventsJob'");
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void insertLastRunDate() {
+        try {
+            sqlService.dbWrite(
+                    "insert into HEC_JOBS_LOG (JOB_ID, LASTRUNDATE) values ('HecCalendarEventsJob', SYSDATE)");
+        } catch (DataAccessException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<HecEvent> getEventsForNewSites(Date startDate) {
+        if (startDate == null) {
+            // this returns them all
+            return getEventsForCatalogNbr(null);
+        }
+
+        List<HecEvent> events = new ArrayList<HecEvent>();
+
+        PagingPosition pp = new PagingPosition(1, 500);
+        Set<String> catalogNumbers = new HashSet<String>();
+        List<Site> sites = null;
+        Boolean stop = false;
+        do {
+            sites = siteService.getSites(SelectionType.ANY, "course", null, null, SortType.CREATED_ON_DESC, pp);
+            pp.adjustPostition(500);
+            for (Site site : sites) {
+                if (site.getCreatedDate().after(startDate)) {
+                    String siteId = site.getId();
+                    Integer lastPeriodIndex = siteId.indexOf('.');
+                    String catalogNbr = siteId.substring(0, lastPeriodIndex);
+                    if (lastPeriodIndex > 0 && !catalogNbr.isEmpty()) {
+                        catalogNumbers.add(catalogNbr);
+                    }
+                } else {
+                    stop = true;
+                    break;
+                }
+            }
+        } while (!stop);
+
+        for (String catalogNumber : catalogNumbers) {
+            events.addAll(getEventsForCatalogNbr(catalogNumber));
+        }
+
+        return events;
+    }
+
+    private Date getLastRunDate() {
+
+        String select_from = "select LASTRUNDATE from HEC_JOBS_LOG where JOB_ID = 'HecCalendarEventsJob'";
+
+        List<Date> rundates = sqlService.dbRead(
+                select_from, null, new SqlReader<Date>() {
+
+                    @Override
+                    public Date readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
+                        try {
+                            return result.getTimestamp("LASTRUNDATE");
+                        } catch (SQLException e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+                    }
+                });
+
+        if (rundates.size() == 0) {
+            return null;
+        }
+        return rundates.get(0);
+    }
+
+    private List<HecEvent> getEventsForCatalogNbr(String catalogNbr) {
+
+        String select_from = "select * from HEC_EVENT ";
+        String where = null;
+        String order_by = "order by CATALOG_NBR, STRM, CLASS_SECTION ";
+
+        if (catalogNbr == null) {
+            where = "where EVENT_ID is null and STATE is null ";
+        } else {
+            where = "where EVENT_ID is null and STATE is null and CATALOG_NBR = '" + catalogNbr +"' ";
+        }
+
+        List<HecEvent> events = sqlService.dbRead(
+                select_from + where + order_by, null,
+                new HecEventRowReader());
+
+        return events;
+    }
 
     private boolean clearHecEventState(String event_id, String catalog_nbr, String session_id, String session_code, String section,
                                        String exam_type, Integer sequence_num) {
@@ -432,7 +568,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 return null;
             }
 
-            log.debug("created event: " + title + " in site " + calendar.getContext());
+            log.debug("created event: " + title + " in site " + calendar.getContext() + " for sections " + event.getGroups());
 
             return event.getId();
         }
@@ -491,7 +627,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             }
 
             calendar.commitEvent(edit);
-            log.debug("updated (" + state + ") event: " + edit.getDisplayName() + " in site " + calendar.getContext());
+            log.debug("updated (" + state + ") event: " + edit.getDisplayName() + " in site " + calendar.getContext() + " for section " + edit.getGroups());
 
         return true;
     }
@@ -613,5 +749,17 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
 
         return null;
+    }
+    
+    private Date getDate(String date) {
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+        Date convertedDate = null;
+        try {
+            convertedDate = dateFormat.parse(date);
+        } catch (ParseException e) {
+            log.debug("Unparseable date: "+date);
+        }
+        return convertedDate;
+
     }
 }

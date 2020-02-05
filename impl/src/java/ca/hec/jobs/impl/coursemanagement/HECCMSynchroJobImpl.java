@@ -1,5 +1,6 @@
 package ca.hec.jobs.impl.coursemanagement;
 
+import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.coursemanagement.HECCMSynchroJob;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
@@ -9,6 +10,7 @@ import org.quartz.JobExecutionException;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
+import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 
@@ -28,6 +30,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     protected CourseManagementService cmService;
     @Setter
     protected SessionManager sessionManager;
+    @Setter
+    protected SiteIdFormatHelper siteIdFormatHelper;
+    @Setter
+    protected SiteService siteService;
 
     private static Log log = LogFactory.getLog(HECCMSynchroJobImpl.class);
 
@@ -61,6 +67,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
         String coursesDebug = jobExecutionContext.getMergedJobDataMap().getString("cmCourses");
+        String distinctSitesSections = jobExecutionContext.getMergedJobDataMap().getString("distinctSitesSections");
 
         syncedCanonicalCourses = new HashSet<String>();
         syncedCourseOfferings = new HashSet<String>();
@@ -89,7 +96,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             loadSessions();
             loadServEnseignements();
             loadCourses();
-            loadInstructeurs();
+            loadInstructeurs(distinctSitesSections);
             loadEtudiants();
             removeEntriesMarkedToDelete();
 
@@ -353,7 +360,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     /**
      * Method used to create instructors and coordinators
      */
-    private void loadInstructeurs() {
+    private void loadInstructeurs(String distinctSitesSections) {
         log.debug("Start loadInstructeurs");
 
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
@@ -396,10 +403,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr))
-                        addOrUpdateProf(role, enrollmentSetEid, emplId);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
                 } else {
                     if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
-                        addOrUpdateProf(role, enrollmentSetEid, emplId);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
                     }
                 }
             }
@@ -416,7 +423,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         log.debug("End loadInstructeurs");
     }
 
-    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
+    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId, String distinctSitesSections){
 
         if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(enrollmentSetEid)) {
             log.warn("The section " + enrollmentSetEid + " does not exist");
@@ -447,7 +454,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     if ( member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                         //remove user with role coordinator in other sections
-                        removeCoordinatorInMemberships(enrollmentSetEid, emplId);
+                        removeCoordinatorInMemberships(enrollmentSetEid, emplId, distinctSitesSections);
                     }
                 }
             }
@@ -480,15 +487,22 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
     }
 
-    private void removeCoordinatorInMemberships(String sectionEid, String emplId){
+    private void removeCoordinatorInMemberships(String sectionEid, String emplId, String distinctSitesSections){
         if (!cmService.isEnrollmentSetDefined(sectionEid) || !cmService.isSectionDefined(sectionEid)) {
             log.warn("The section " + sectionEid + " does not exist");
             return;
         }
         Section theSection = cmService.getSection(sectionEid);
+        String siteId = siteIdFormatHelper.getSiteId(theSection, distinctSitesSections);
+
         Set<Section> associatedSections = cmService.getSections(theSection.getCourseOfferingEid());
         Set<Membership> coordinators;
         for (Section section: associatedSections) {
+            // Check that it's a section in the same site
+            if (!siteId.equals(siteIdFormatHelper.getSiteId(section, distinctSitesSections))) {
+                continue;
+            }
+
             coordinators = cmService.getSectionMemberships(section.getEid());
             for (Membership member: coordinators) {
                 //Mettre a jour son rôle dans la section
