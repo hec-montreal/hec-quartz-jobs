@@ -451,6 +451,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 if (site.getCreatedDate().after(startDate)) {
                     String siteId = site.getId();
                     Integer lastPeriodIndex = siteId.indexOf('.');
+                    if (lastPeriodIndex == -1) {
+                    	continue;
+                    }
+                    	
                     String catalogNbr = siteId.substring(0, lastPeriodIndex);
                     if (lastPeriodIndex > 0 && !catalogNbr.isEmpty()) {
                         catalogNumbers.add(catalogNbr);
