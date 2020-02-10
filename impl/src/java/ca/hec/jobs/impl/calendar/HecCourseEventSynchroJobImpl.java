@@ -44,7 +44,7 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
     public void execute(JobExecutionContext context) throws JobExecutionException {
 
         log.info(
-                "Début de la job de synchro du fichier de PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW contenant les événements de cours avec la table HEC_EVENT");
+                "Début de la job de synchro de PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW contenant les événements de cours avec la table HEC_EVENT");
 
         // On vérifie que la job de traitement des événements est bien passée en
         // s'assurant que la colonne state est nulle pour toutes les lignes

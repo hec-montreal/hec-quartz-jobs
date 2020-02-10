@@ -181,6 +181,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             CourseOffering courseOffering = null;
             Group eventGroup = null;
             Site site = null;
+            String siteLocale = null;
+            String siteTitle = null;
 
             log.info("loop and add " + eventsAdd.size() + " events");
             for (HecEvent event : eventsAdd) {
@@ -188,7 +190,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getCatalogNbr(),
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection(), distinctSitesSections);
-
+                
                 //Section does not exist
                 if (siteId == null) {
                     clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
@@ -220,7 +222,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         }
                         Section section = cmService.getSection(eventGroup.getProviderGroupId());
                         courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
-
+                        siteLocale = site.getProperties().getProperty("hec_syllabus_locale");
+                        siteTitle = site.getProperties().getPropertyFormatted("title");
                     } catch (IdNotFoundException e) {
                         log.debug("Site " + siteId + " not associated to course management");
                     } catch (IdUnusedException e) {
@@ -243,7 +246,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                             event.getStartTime().getDate() != event.getEndTime().getDate()) {
 
                         createEvent = false;
-                        log.debug("Skipping event creation: " + getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event creation: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
                                 " for site " + siteId + " (end date is after start date)");
                     }
 
@@ -253,20 +256,21 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                             !event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) &&
                             !event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
                         createEvent = false;
-                        log.debug("Skipping event creation: " + getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event creation: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
                                 " for site " + siteId + " (course is DF and event is not an exam)");
                     }
 
                     if (createEvent) {
                         eventGroup = getGroup(site.getGroups(), event.getSection());
+
                         eventId = createCalendarEvent(
                                 calendar,
                                 event.getStartTime(),
                                 event.getEndTime(),
-                                getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()),
+                                getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()),
                                 getType(event.getExamType()),
-                                event.getLocation(),
-                                event.getDescription(), eventGroup);
+                                transformLocation(event.getLocation(), siteLocale),
+                                transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), eventGroup);
                     }
                 }
 
@@ -322,13 +326,17 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                         // retrieve course offering to see if the course is MBA
                         site = siteService.getSite(siteId);
+                        siteLocale = site.getProperties().getProperty("hec_syllabus_locale");
+                        siteTitle = site.getProperties().getPropertyFormatted("title");
                         eventGroup = getGroup(site.getGroups(), event.getSection());
                         //Section not associated to site
                         if (eventGroup == null){
                             if (event.getEventId() != null)
                                 updateCalendarEvent(calendar, event.getEventId(), event.getState(),
-                                        event.getStartTime(), event.getEndTime(), event.getLocation(),
-                                        event.getDescription(), eventGroup);
+                                        event.getStartTime(), event.getEndTime(), 
+                                        transformLocation(event.getLocation(), siteLocale),
+                                        transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), 
+                                        eventGroup);
                             deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
                                     event.getSection(), event.getExamType(), event.getSequenceNumber());
                             continue;
@@ -362,10 +370,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 event.getState(),
                                 event.getStartTime(),
                                 event.getEndTime(),
-                                event.getLocation(),
-                                event.getDescription(), eventGroup);
+                                transformLocation(event.getLocation(), siteLocale),
+                                transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), 
+                                eventGroup);
                     } else {
-                        log.debug("Skipping event update: " + getEventTitle(siteId, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event update: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
                                 " for site " + siteId + " (course is DF and event is not an exam)");
                     }
                 }
@@ -413,6 +422,22 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
         log.info("added: " + addcount + " updated: " + updatecount + " deleted: " + deletecount);
     } // execute
+
+    private String transformLocation(String location, String locale) {
+        PropertiesConfiguration msgs;
+        if ("en_US".equals(locale)) {
+            msgs = propertiesEn;
+        } else {
+            msgs = propertiesFr;
+        }
+
+        if (location.contains(",")) {
+            int commaIndex = location.indexOf(",")+2;
+            return msgs.getString("calendar.event-location.building") + " " + location.substring(0, commaIndex) + " " +
+                msgs.getString("calendar.event-location.room") + location.substring(commaIndex);
+        }
+        return location;
+    }
 
     private void updateLastRunDate() {
         try {
@@ -636,6 +661,27 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         return true;
     }
 
+    private String transformExamDesc(String description, String examType, String locale) {
+        if (!examType.equals(PSFT_EXAM_TYPE_INTRA) &&
+            !examType.equals(PSFT_EXAM_TYPE_FINAL) &&
+            !examType.equals(PSFT_EXAM_TYPE_TEST)) {
+            return description;
+        }
+
+        PropertiesConfiguration msgs;
+        if ("en_US".equals(locale)) {
+            msgs = propertiesEn;
+        } else {
+            msgs = propertiesFr;
+        }
+
+        if (!description.trim().isEmpty()) {
+            return msgs.getString("calendar.event-desc.prefix") + " " + description;
+        } else {
+            return msgs.getString("calendar.event-desc.prefix") + " " + msgs.getString("calendar.event-desc.tbd");
+        }
+    }
+
     private Calendar getCalendar(String siteId) throws IdUnusedException, PermissionException {
         if (siteService.siteExists(siteId)) {
             String calRef = calendarService.calendarReference(siteId, siteService.MAIN_CONTAINER);
@@ -646,22 +692,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     }
 
 
-    private String getEventTitle(String siteId, String type, Integer seq_num) {
-
-        Site site = null;
-        String courseSiteTittle = "";
-        String locale = "fr_CA";
-
-        try {
-            site = siteService.getSite(siteId);
-            courseSiteTittle = site.getProperties().getPropertyFormatted("title");
-            locale = site.getProperties().getProperty("hec_syllabus_locale");
-        } catch (IdUnusedException e) {
-            log.error("The site " + siteId + "does not exist");
-        }
+    private String getEventTitle(String siteId, String locale, String siteTitle, String type, Integer seq_num) {
 
         PropertiesConfiguration msgs = null;
-        if (locale.equals("en_US")) {
+        if ("en_US".equals(locale)) {
         	msgs = propertiesEn;
         }
         else {
@@ -669,28 +703,28 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
         
         if (type.equals(" ")) {
-            if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.session") + " " + seq_num + ")");
+            if (siteTitle != "")
+                return (siteTitle + " (" + msgs.getString("calendar.event-title.session") + " " + seq_num + ")");
             else
                 return msgs.getString("calendar.event-title.session") + " " + seq_num;
         } else if (type.equals(PSFT_EXAM_TYPE_INTRA)) {
-            if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.intra") + ")");
+            if (siteTitle != "")
+                return (siteTitle + " (" + msgs.getString("calendar.event-title.intra") + ")");
             else
                 return msgs.getString("calendar.event-title.intra");
         } else if (type.equals(PSFT_EXAM_TYPE_FINAL)) {
-            if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.final") + ")");
+            if (siteTitle != "")
+                return (siteTitle + " (" + msgs.getString("calendar.event-title.final") + ")");
             else
                 return msgs.getString("calendar.event-title.final");
         } else if (type.equals(PSFT_EXAM_TYPE_TEST) || type.equals(PSFT_EXAM_TYPE_QUIZ)) {
-            if (courseSiteTittle != "")
-                return (courseSiteTittle + " (" + msgs.getString("calendar.event-title.test") + ")");
+            if (siteTitle != "")
+                return (siteTitle + " (" + msgs.getString("calendar.event-title.test") + ")");
             else
                 msgs.getString("calendar.event-title.test");
         } else {
-            if (courseSiteTittle != "")
-                return courseSiteTittle + " (" + type + ")";
+            if (siteTitle != "")
+                return siteTitle + " (" + type + ")";
         }
 
         return type;
