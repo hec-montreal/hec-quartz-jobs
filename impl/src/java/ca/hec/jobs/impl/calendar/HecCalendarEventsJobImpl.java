@@ -269,7 +269,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 event.getEndTime(),
                                 getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()),
                                 getType(event.getExamType()),
-                                event.getLocation(),
+                                transformLocation(event.getLocation(), siteLocale),
                                 transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), eventGroup);
                     }
                 }
@@ -333,7 +333,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         if (eventGroup == null){
                             if (event.getEventId() != null)
                                 updateCalendarEvent(calendar, event.getEventId(), event.getState(),
-                                        event.getStartTime(), event.getEndTime(), event.getLocation(),
+                                        event.getStartTime(), event.getEndTime(), 
+                                        transformLocation(event.getLocation(), siteLocale),
                                         transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), 
                                         eventGroup);
                             deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
@@ -369,7 +370,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 event.getState(),
                                 event.getStartTime(),
                                 event.getEndTime(),
-                                event.getLocation(),
+                                transformLocation(event.getLocation(), siteLocale),
                                 transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), 
                                 eventGroup);
                     } else {
@@ -421,6 +422,22 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
         log.info("added: " + addcount + " updated: " + updatecount + " deleted: " + deletecount);
     } // execute
+
+    private String transformLocation(String location, String locale) {
+        PropertiesConfiguration msgs;
+        if ("en_US".equals(locale)) {
+            msgs = propertiesEn;
+        } else {
+            msgs = propertiesFr;
+        }
+
+        if (location.contains(",")) {
+            int commaIndex = location.indexOf(",")+2;
+            return msgs.getString("calendar.event-location.building") + " " + location.substring(0, commaIndex) + " " +
+                msgs.getString("calendar.event-location.room") + location.substring(commaIndex);
+        }
+        return location;
+    }
 
     private void updateLastRunDate() {
         try {
