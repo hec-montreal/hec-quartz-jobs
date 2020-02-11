@@ -433,8 +433,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
         if (location != null && location.contains(",")) {
             int commaIndex = location.indexOf(",")+2;
-            return msgs.getString("calendar.event-location.building") + " " + location.substring(0, commaIndex) + " " +
-                msgs.getString("calendar.event-location.room") + location.substring(commaIndex);
+            return msgs.getString("calendar.event-location.building") + " " + location.substring(0, commaIndex) +
+                msgs.getString("calendar.event-location.room") + " " + location.substring(commaIndex);
         }
         return location;
     }
