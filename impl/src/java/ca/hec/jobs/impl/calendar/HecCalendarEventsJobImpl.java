@@ -577,8 +577,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         CalendarEvent event;
 
         List<Group> groups = new ArrayList<>();
-            if (sectionGroup != null && sectionGroup.getProviderGroupId() != null)
+            if (sectionGroup != null && sectionGroup.getProviderGroupId() != null) {
                 groups.add(sectionGroup);
+            } else {
+                return null;
+            }
 
             try {
                 // add event to calendar
