@@ -298,13 +298,12 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             sectionEid = section.getEid();
            if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
                providerGroupId += section.getEid() + "+";
-               updated = true;
            }
        }
        if(providerGroupId.endsWith("+"))
            providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
 
-       if (providerGroupId.length() > 0 && updated) {
+       if (!site.getProviderGroupId().equals(providerGroupId)) {
            site.setProviderGroupId(providerGroupId);
            try {
                siteService.save(site);
