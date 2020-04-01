@@ -3,15 +3,22 @@ package ca.hec.jobs.impl.site;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
+import java.util.stream.Collectors;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.authz.api.AuthzGroup;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.coursemanagement.api.AcademicCareer;
 import org.sakaiproject.coursemanagement.api.AcademicSession;
@@ -61,6 +68,8 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     protected EntityManager entityManager;
     @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
+    @Setter
+    protected AuthzGroupService authzGroupService;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -293,17 +302,33 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
    private void setProviderId (Site site, List<Section> sections){
        String providerGroupId = "";
        String sectionEid = null;
-       boolean updated = false;
+       String siteProviderId = site.getProviderGroupId();
+       List<String> addedProviderIds = new ArrayList<String>();
+       
        for (Section section : sections) {
             sectionEid = section.getEid();
            if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
-               providerGroupId += section.getEid() + "+";
+               providerGroupId += sectionEid + "+";
+           }
+           if (siteProviderId == null || !siteProviderId.contains(sectionEid)) {
+               addedProviderIds.add(sectionEid);
            }
        }
        if(providerGroupId.endsWith("+"))
            providerGroupId = providerGroupId.substring(0, providerGroupId.lastIndexOf("+"));
 
-       if (!site.getProviderGroupId().equals(providerGroupId)) {
+        if (!providerGroupId.equals(siteProviderId)) {
+            for (String providerId : addedProviderIds) {
+                // if we're updating the providerId, 
+                // remove new provider ids from any existing realms
+                Set<String> realms = authzGroupService.getAuthzGroupIds(providerId);
+                Map<String, List<String>> providerIdsForRealms = 
+                    authzGroupService.getProviderIDsForRealms(Arrays.asList(realms.toArray(new String[0])));
+
+                providerIdsForRealms.forEach((realmId, providerIds)->updateProviderId(realmId, 
+                    providerIds.stream().filter(s->!s.equals(providerId)).collect(Collectors.joining("+"))));
+            }
+           
            site.setProviderGroupId(providerGroupId);
            try {
                siteService.save(site);
@@ -316,7 +341,18 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
    }
 
-    private Date getDate(String date) {
+    private void updateProviderId(String realmId, String providerId) {
+        try {
+            log.debug(String.format("Update provider id to %s for realm %s", providerId, realmId));
+            AuthzGroup ag = authzGroupService.getAuthzGroup(realmId);
+            ag.setProviderGroupId(providerId);
+            authzGroupService.save(ag);
+        } catch (GroupNotDefinedException | AuthzPermissionException e) {
+            log.error("Problem removing provider id from existing sites, continue");
+        } 
+   }
+
+   private Date getDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
         Date convertedDate = null;
         try {
