@@ -3,13 +3,13 @@
   <parent>
     <groupId>ca.hec</groupId>
     <artifactId>hec-quartz-jobs</artifactId>
-    <version>19.3</version>
+    <version>19.4</version>
     <relativePath>../pom.xml</relativePath>
   </parent>
 
   <groupId>ca.hec</groupId>
   <artifactId>hec-quartz-jobs-pack</artifactId>
-  <version>19.3</version>
+  <version>19.4</version>
   <name>HEC Quartz Jobs Pack</name>
   <description>Quatz Jobs for use in Sakai at HEC Montréal</description>
   <packaging>sakai-component</packaging>
@@ -22,7 +22,7 @@
     <dependency>
       <groupId>ca.hec</groupId>
       <artifactId>hec-quartz-jobs-impl</artifactId>
-      <version>19.3</version>
+      <version>19.4</version>
 	  <scope>runtime</scope>
     </dependency>
     </dependencies>
