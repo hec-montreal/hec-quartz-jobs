@@ -126,8 +126,8 @@
 				  ref="org.sakaiproject.entity.api.EntityManager" />
 		<property name="siteIdFormatHelper"
 				  ref="ca.hec.api.SiteIdFormatHelper" />
-
-
+  		<property name="authzGroupService" 
+		          ref="org.sakaiproject.authz.api.AuthzGroupService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecOffSitesjob"
