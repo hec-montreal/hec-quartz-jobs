@@ -103,7 +103,8 @@ public class CMOverrideSiteUsers extends AbstractQuartzJobImpl {
                                             membershipRole = "Instructor";
                                         }
 
-                                        if (null != azRole && null != membershipRole && !membershipRole.equals(azRole)) {
+                                        if (null != azRole && null != membershipRole && !membershipRole.equals(azRole) &&
+                                            !(azRole.equals("Coordinator-Instructor") && (membershipRole.equals("Instructor") || membershipRole.equals("Coordinator")))) {
                                             log.info("Remove user " + member.getUserId() + " with role " + azRole + " from authzGroup " + azGroup.getId());
                                             azGroup.removeMember(userId);
                                             authzGroupService.save(azGroup);
