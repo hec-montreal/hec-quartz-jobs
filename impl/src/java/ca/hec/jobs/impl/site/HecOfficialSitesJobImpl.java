@@ -241,10 +241,10 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             siteService.save(createdSite);
 
             //Update site membership
-            List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors();
-            for (SiteAdvisor secManager: siteAdvisors)
-                secManager.update(createdSite);
-
+			/*
+			 * List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors(); for
+			 * (SiteAdvisor secManager: siteAdvisors) secManager.update(createdSite);
+			 */
             return createdSite;
         } catch (IdUnusedException e) {
             log.error(HEC_TEMPLATE_SITE + " does not exist" + e.getMessage());
