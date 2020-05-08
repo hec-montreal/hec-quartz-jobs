@@ -336,8 +336,9 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 			 * (PermissionException e) { log.error(" You are not allowed to update " +
 			 * site.getId() + " : " + e.getMessage()); }
 			 */
-           return site;
+           
        }
+        return site;
 
    }
 
