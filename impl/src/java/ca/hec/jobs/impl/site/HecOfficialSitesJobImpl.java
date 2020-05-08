@@ -232,7 +232,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             }
 
             //Associate to sections
-            setProviderId(createdSite, sections);
+            createdSite = setProviderId(createdSite, sections);
 
             //Set site properties
             setSiteProperties(createdSite, siteName, sections);
@@ -299,7 +299,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 	rpe.addProperty("tenjin_template", "1");
    }
 
-   private void setProviderId (Site site, List<Section> sections){
+   private Site setProviderId (Site site, List<Section> sections){
        String providerGroupId = "";
        String sectionEid = null;
        String siteProviderId = site.getProviderGroupId();
@@ -330,13 +330,13 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             }
            
            site.setProviderGroupId(providerGroupId);
-           try {
-               siteService.save(site);
-           } catch (IdUnusedException e) {
-               log.error(site.getId() + " does not exist" + e.getMessage());
-           } catch (PermissionException e) {
-               log.error(" You are not allowed to update " + site.getId() + " : " + e.getMessage());
-           }
+			/*
+			 * try { siteService.save(site); } catch (IdUnusedException e) {
+			 * log.error(site.getId() + " does not exist" + e.getMessage()); } catch
+			 * (PermissionException e) { log.error(" You are not allowed to update " +
+			 * site.getId() + " : " + e.getMessage()); }
+			 */
+           return site;
        }
 
    }
