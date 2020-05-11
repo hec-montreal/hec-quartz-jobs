@@ -307,10 +307,10 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        
        for (Section section : sections) {
             sectionEid = section.getEid();
-           if (!sectionEid.isEmpty() && !providerGroupId.contains(sectionEid)) {
+           if (!sectionEid.isEmpty() && !providerIdContains(providerGroupId, sectionEid)) {
                providerGroupId += sectionEid + "+";
            }
-           if (siteProviderId == null || !siteProviderId.contains(sectionEid)) {
+           if (siteProviderId == null || !providerIdContains(siteProviderId, sectionEid)) {
                addedProviderIds.add(sectionEid);
            }
        }
@@ -340,6 +340,10 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
        }
         return site;
 
+   }
+
+   private boolean providerIdContains(String fullId, String id) {
+       return Arrays.asList(fullId.split("+")).contains(id);
    }
 
     private void updateProviderId(String realmId, String providerId) {
