@@ -343,7 +343,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
    }
 
    private boolean providerIdContains(String fullId, String id) {
-       return Arrays.asList(fullId.split("+")).contains(id);
+       return Arrays.asList(fullId.split("\\+")).contains(id);
    }
 
     private void updateProviderId(String realmId, String providerId) {
