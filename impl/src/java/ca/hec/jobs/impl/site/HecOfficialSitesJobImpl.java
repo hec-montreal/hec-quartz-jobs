@@ -232,7 +232,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             }
 
             //Associate to sections
-            createdSite = setProviderId(createdSite, sections);
+            setProviderId(createdSite, sections);
 
             //Set site properties
             setSiteProperties(createdSite, siteName, sections);
@@ -241,11 +241,11 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             siteService.save(createdSite);
 
             //Update site membership
-			/*
-			 * List <SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors(); for
-			 * (SiteAdvisor secManager: siteAdvisors) secManager.update(createdSite);
-			 */
-            return createdSite;
+			List<SiteAdvisor> siteAdvisors = siteService.getSiteAdvisors();
+			for (SiteAdvisor secManager : siteAdvisors)
+				secManager.update(createdSite);
+
+	         return createdSite;
         } catch (IdUnusedException e) {
             log.error(HEC_TEMPLATE_SITE + " does not exist" + e.getMessage());
         } catch (IdUsedException e) {
@@ -299,7 +299,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 	rpe.addProperty("tenjin_template", "1");
    }
 
-   private Site setProviderId (Site site, List<Section> sections){
+   private void setProviderId (Site site, List<Section> sections){
        String providerGroupId = "";
        String sectionEid = null;
        String siteProviderId = site.getProviderGroupId();
@@ -330,16 +330,15 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             }
            
            site.setProviderGroupId(providerGroupId);
-			/*
-			 * try { siteService.save(site); } catch (IdUnusedException e) {
-			 * log.error(site.getId() + " does not exist" + e.getMessage()); } catch
-			 * (PermissionException e) { log.error(" You are not allowed to update " +
-			 * site.getId() + " : " + e.getMessage()); }
-			 */
+			
+			  try { siteService.save(site); } catch (IdUnusedException e) {
+			  log.error(site.getId() + " does not exist" + e.getMessage()); } catch
+			  (PermissionException e) { log.error(" You are not allowed to update " +
+			  site.getId() + " : " + e.getMessage()); }
+			 
            
        }
-        return site;
-
+ 
    }
 
    private boolean providerIdContains(String fullId, String id) {
