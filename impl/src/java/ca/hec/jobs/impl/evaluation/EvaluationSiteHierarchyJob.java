@@ -151,7 +151,7 @@ public class EvaluationSiteHierarchyJob implements Job{
 			// skip if provider group id is null or ends in 00 (means it's a shareable site), or DF1
 			if (providerGroup == null ||
 						providerGroup.substring(providerGroup.length() - 2).equals("00") ||
-						providerGroup.substring(providerGroup.length() - 3).startsWith("DF")) {
+						providerGroup.length() - providerGroup.lastIndexOf("DF") <= 4) {
 				continue;
 			}
 
