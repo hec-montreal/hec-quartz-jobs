@@ -790,7 +790,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             String providerId = siteGroup.getProviderGroupId();
             String wSetupCreated = siteGroup.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
             if ((wSetupCreated == null || wSetupCreated.equals(Boolean.FALSE.toString())) &&
-                providerId != null && providerId == eventProviderId)
+                providerId != null && providerId.equals(eventProviderId))
                 return siteGroup;
         }
 
