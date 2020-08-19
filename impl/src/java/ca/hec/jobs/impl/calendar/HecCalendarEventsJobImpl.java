@@ -190,6 +190,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getCatalogNbr(),
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection(), distinctSitesSections);
+
+                String eventProviderId = event.getCatalogNbr() + event.getSessionId() + event.getSessionCode() + event.getSection();
                 
                 //Section does not exist
                 if (siteId == null) {
@@ -212,7 +214,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                         // retrieve course offering to see if the course is MBA
                         site = siteService.getSite(siteId);
-                        eventGroup = getGroup(site.getGroups(), event.getSection());
+                        eventGroup = getGroup(site.getGroups(), eventProviderId);
                         //Section is not associated to site
                         if (eventGroup == null){
                             clearHecEventState( event.getEventId(), event.getCatalogNbr(), event.getSessionId(),
@@ -261,7 +263,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     }
 
                     if (createEvent) {
-                        eventGroup = getGroup(site.getGroups(), event.getSection());
+                        eventGroup = getGroup(site.getGroups(), eventProviderId);
 
                         eventId = createCalendarEvent(
                                 calendar,
@@ -306,6 +308,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         event.getSessionId(),
                         event.getSessionCode(), event.getSection(), distinctSitesSections);
 
+                String eventProviderId = event.getCatalogNbr() + event.getSessionId() + event.getSessionCode() + event.getSection();
+
                 //Section does not exist
                 if (siteId == null) {
                     deleteHecEvent(event.getCatalogNbr(), event.getSessionId(), event.getSessionCode(),
@@ -328,7 +332,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         site = siteService.getSite(siteId);
                         siteLocale = site.getProperties().getProperty("hec_syllabus_locale");
                         siteTitle = site.getProperties().getPropertyFormatted("title");
-                        eventGroup = getGroup(site.getGroups(), event.getSection());
+                        eventGroup = getGroup(site.getGroups(), eventProviderId);
                         //Section not associated to site
                         if (eventGroup == null){
                             if (event.getEventId() != null)
@@ -363,7 +367,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     if (( !siteId.contains("DF")) ||
                             event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) ||
                             event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
-                        eventGroup = getGroup(site.getGroups(), event.getSection());
+                        eventGroup = getGroup(site.getGroups(), eventProviderId);
                         updateSuccess = updateCalendarEvent(
                                 calendar,
                                 event.getEventId(),
@@ -781,11 +785,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
     }
 
-    private Group getGroup(Collection<Group> siteGroups, String eventSection) {
-        String providerId = null;
+    private Group getGroup(Collection<Group> siteGroups, String eventProviderId) {
         for (Group siteGroup : siteGroups) {
-            providerId = siteGroup.getProviderGroupId();
-            if (providerId != null && providerId.endsWith(eventSection))
+            String providerId = siteGroup.getProviderGroupId();
+            String wSetupCreated = siteGroup.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
+            if ((wSetupCreated == null || wSetupCreated.equals(Boolean.FALSE.toString())) &&
+                providerId != null && providerId == eventProviderId)
                 return siteGroup;
         }
 
