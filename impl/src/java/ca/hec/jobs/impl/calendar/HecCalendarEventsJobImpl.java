@@ -23,6 +23,7 @@ package ca.hec.jobs.impl.calendar;
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
 import ca.hec.jobs.api.calendar.HecCalendarEventsJob;
+import ca.hec.jobs.api.calendar.HecCalendarJobExecutionException;
 import lombok.Data;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
@@ -138,9 +139,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
 
         try {
-            courseEventSynchroJob.execute(context);
+            courseEventSynchroJob.execute();
+        } catch (HecCalendarJobExecutionException e) {
+            if (!e.getContinue()) {
+                return;
+            }
         } catch (Exception e) {
             e.printStackTrace();
+            return;
         }
 
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");

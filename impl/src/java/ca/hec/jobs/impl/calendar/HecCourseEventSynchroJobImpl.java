@@ -1,6 +1,7 @@
 package ca.hec.jobs.impl.calendar;
 
 import ca.hec.jobs.api.calendar.HecCourseEventSynchroJob;
+import ca.hec.jobs.api.calendar.HecCalendarJobExecutionException;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -41,10 +42,12 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
     @Transactional
     @Override
-    public void execute(JobExecutionContext context) throws JobExecutionException {
+    public void execute() throws HecCalendarJobExecutionException {
 
         log.info(
                 "Début de la job de synchro de PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW contenant les événements de cours avec la table HEC_EVENT");
+
+        String error_address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
 
         // On vérifie que la job de traitement des événements est bien passée en
         // s'assurant que la colonne state est nulle pour toutes les lignes
@@ -52,17 +55,14 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
         Integer activeHecEvent = Integer.parseInt(results.get(0));
 
         if ((activeHecEvent != null ? activeHecEvent : 0) != 0) {
-            String address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
-
-            emailService.send("zonecours2@hec.ca", address, "La job de synchro des événements d'agenda a échoué",
-                    "\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\uD83D\uDE20\n"
-                            + "Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
-                            + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.",
+            emailService.send("zonecours2@hec.ca", error_address, "La job de synchro des événements d'agenda a échoué",
+                            "Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
+                            + "la job roulera quand même, sans importer les changements dans HEC_EVENT (parce que STATE n'est pas null pour toutes les lignes).",
                     null, null, null);
             log.error("Des événements n'ont pas été traités par la job de propagation vers l'outil calendrier, "
-                    + "la job ne peut rouler tant que la colonne STATE de la table HEC_EVENT n'est pas nulle pour toutes les lignes.");
+                    + "la job roulera quand même, sans importer les changements dans HEC_EVENT (parce que STATE n'est pas null pour toutes les lignes).");
 
-            throw new JobExecutionException();
+            throw new HecCalendarJobExecutionException(true);
         }
 
         try {
@@ -88,9 +88,11 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                 log.info("Suppression des événements dont la date de début est inférieure à " + dateDebutMin);
                 sqlService.dbWrite("delete from HEC_EVENT where DATE_HEURE_DEBUT < ?", new Object[] { dateDebutMin });
             } else {
-                // TODO : if no min date, we should probably not run as there is no data in the table, 
-                // everything will be marked deleted in HEC_EVENT.
-                //return false;
+                emailService.send("zonecours2@hec.ca", error_address, "La job de synchro des événements d'agenda a échoué",
+                        "Il n'y a pas de données dans la vue de PeopleSoft (incapable de déterminer une date minimale des données)",
+                null, null, null);
+                log.error("Il n'y a pas de données dans la vue de PeopleSoft (incapable de déterminer une date minimale des données)");
+                throw new HecCalendarJobExecutionException(false);
             }
 
             log.info("Ajout des nouveaux événements");

@@ -188,23 +188,6 @@
 		</property>
 	</bean>
 
-	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecCourseEventSynchroJob"
-		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		  init-method="init">
-
-		<property name="beanId">
-			<value>hecCourseEventSynchroJob</value>
-		</property>
-
-		<property name="jobName">
-			<value>HEC Course Events Loader Job</value>
-		</property>
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-
-	</bean>
-
 	<bean id="hecCourseEventSynchroJob"
 		  class="ca.hec.jobs.impl.calendar.HecCourseEventSynchroJobImpl">
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />

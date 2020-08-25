@@ -11,7 +11,7 @@ import org.quartz.JobExecutionException;
  * @author 11183065
  *
  */
-public interface HecCourseEventSynchroJob extends Job {
+public interface HecCourseEventSynchroJob {
 
-    void execute(JobExecutionContext context) throws JobExecutionException;
+    void execute() throws HecCalendarJobExecutionException;
 }
