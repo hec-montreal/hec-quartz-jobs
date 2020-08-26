@@ -136,6 +136,8 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         if (isRunning) {
             log.error("HecCalendarEventsJob is already running, aborting.");
             return;
+        } else {
+            isRunning = true;
         }
 
         try {
