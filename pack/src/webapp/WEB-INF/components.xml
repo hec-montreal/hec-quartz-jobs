@@ -107,7 +107,7 @@
 					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
 					<property name="descriptionResourceKey" value="distinctSitesSections"/>
-					<property name="defaultValue" value="AL,LB,AG"/>
+					<property name="defaultValue" value="AL,LB,AG,CB9,CF9"/>
 				</bean>
 			</set>
 		</property>
@@ -182,7 +182,7 @@
 					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
 					<property name="descriptionResourceKey" value="distinctSitesSections"/>
-					<property name="defaultValue" value="AL,LB,AG"/>
+					<property name="defaultValue" value="AL,LB,AG,CB9,CF9"/>
 				</bean>
 			</set>
 		</property>
@@ -234,7 +234,7 @@
 					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
 					<property name="descriptionResourceKey" value="distinctSitesSections"/>
-					<property name="defaultValue" value="AL,LB,AG"/>
+					<property name="defaultValue" value="AL,LB,AG,CB9,CF9"/>
 				</bean>
 			</set>
 		</property>
