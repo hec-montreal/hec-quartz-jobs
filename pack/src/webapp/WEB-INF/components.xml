@@ -643,4 +643,30 @@
 		</property>
 	</bean>
 
+	<bean id="hecCasSpecExm"
+		  class="ca.hec.jobs.impl.site.HecCasSpecExmImpl">
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecCasSpecExmImpl"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecCasSpecExm</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Exams Special Groups Synchronisation Job</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+			</set>
+		</property>
+	</bean>
+
 </beans>
