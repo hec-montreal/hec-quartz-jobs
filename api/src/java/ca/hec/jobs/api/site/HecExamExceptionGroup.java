@@ -27,7 +27,7 @@ import org.quartz.Job;
  * @author <a href="mailto:mame-awa.diop@hec.ca">Mame Awa Diop</a>
  * @version $Id: $
  */
-public interface HecCasSpecExm extends Job {
+public interface HecExamExceptionGroup extends Job {
 
 }
 

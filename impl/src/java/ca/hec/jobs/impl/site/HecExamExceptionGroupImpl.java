@@ -32,7 +32,7 @@ import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.email.cover.EmailService;
 
-import ca.hec.jobs.api.site.HecCasSpecExm;
+import ca.hec.jobs.api.site.HecExamExceptionGroup;
 import lombok.Setter;
 
 /**
@@ -40,9 +40,9 @@ import lombok.Setter;
  * @author <a href="mailto:mame-awa.diop@hec.ca">Mame Awa Diop</a>
  * @version $Id: $
  */
-public class HecCasSpecExmImpl implements HecCasSpecExm{
+public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
 
-    private static Log log = LogFactory.getLog(HecCasSpecExmImpl.class);
+    private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
  
 
     @Setter
