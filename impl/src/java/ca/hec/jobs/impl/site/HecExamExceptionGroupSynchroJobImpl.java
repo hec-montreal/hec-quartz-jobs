@@ -56,8 +56,8 @@ import lombok.Setter;
 public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGroupSynchroJob {
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
-    
-   
+
+
 
     @Setter
     private EmailService emailService;
@@ -72,8 +72,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     
     
     @Override
-    public void execute(JobExecutionContext context)
-	    throws JobExecutionException {
+    public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
@@ -82,42 +81,37 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
-    
+
             String select_from = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
-            	+ " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
+                    + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
             String order_by = " order by SUBJECT, CATALOG_NBR, CLASS_SECTION, N_PRCENT_SUPP";
-    
-            List<ExceptedStudent> studentsAdd = sqlService.dbRead(
-                    select_from + " where STATE is not null" + order_by, null,
-                    new ExceptedStudentRecord());
 
-            //Ajouter le/les professeurs à la section
-            for (ExceptedStudent student: studentsAdd) {
-        	siteId = siteIdFormatHelper.getSiteId(student.getSubject()+student.getCatalogNbr(), 
-        		student.getStrm(), SESSION_CODE, student.getClassSection(), distinctSitesSections);
-        	
-        	if (siteId ==null) {
-        	    log.info("Le cours-section n'est pas encore dans le course management "
-        		    + student.getSubject()+student.getCatalogNbr()+
-            		student.getStrm()+SESSION_CODE+ student.getClassSection());
-        	}
-        	else {
-        	    	//We have changed site or have just started 
-                	if (!siteId.equals(previousSiteId)) {
-                  	    log.info("on est dans le site " + siteId );
-                  	                	    
-                	} 
-                	else { //We are on the same site as previous iteration
-                	}
+            List<ExceptedStudent> studentsAdd = sqlService.dbRead(select_from + " where STATE is not null" + order_by,
+                    null, new ExceptedStudentRecord());
 
-        	}
-        	
-        	previousSiteId = siteId;
+            // Ajouter le/les professeurs à la section
+            for (ExceptedStudent student : studentsAdd) {
+                siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
+                        SESSION_CODE, student.getClassSection(), distinctSitesSections);
+
+                if (siteId == null) {
+                    log.info("Le cours-section n'est pas encore dans le course management " + student.getSubject()
+                            + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + student.getClassSection());
+                } else {
+                    // We have changed site or have just started
+                    if (!siteId.equals(previousSiteId)) {
+                        log.info("on est dans le site " + siteId);
+                    } else { // We are on the same site as previous iteration
+                    }
+
+                }
+
+                previousSiteId = siteId;
             }
         } finally {
             session.clear();
-         }
- 
+        }
+
     }
 
     private String generateGroupTitle(String section, String percent) {
