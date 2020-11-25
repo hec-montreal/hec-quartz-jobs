@@ -57,7 +57,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
     
-    private static Boolean isRunning = false;
+   
 
     @Setter
     private EmailService emailService;
@@ -74,17 +74,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     @Override
     public void execute(JobExecutionContext context)
 	    throws JobExecutionException {
-
-        if (isRunning) {
-            log.error("HecCalendarEventsJob is already running, aborting.");
-            return;
-        } else {
-            isRunning = true;
-        }
-
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
+        String previousSiteId = null;
+        Site site = null;
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
@@ -103,15 +97,25 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         		student.getStrm(), SESSION_CODE, student.getClassSection(), distinctSitesSections);
         	
         	if (siteId ==null) {
-        	    log.info("Le cours-section n'est pas encore dans le course management");
+        	    log.info("Le cours-section n'est pas encore dans le course management "
+        		    + student.getSubject()+student.getCatalogNbr()+
+            		student.getStrm()+SESSION_CODE+ student.getClassSection());
         	}
         	else {
-        	    log.info("on a " + siteId);
+        	    	//We have changed site or have just started 
+                	if (!siteId.equals(previousSiteId)) {
+                  	    log.info("on est dans le site " + siteId );
+                  	                	    
+                	} 
+                	else { //We are on the same site as previous iteration
+                	}
+
         	}
+        	
+        	previousSiteId = siteId;
             }
         } finally {
             session.clear();
-            isRunning = false;
          }
  
     }
