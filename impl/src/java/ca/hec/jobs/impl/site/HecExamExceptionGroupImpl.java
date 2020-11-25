@@ -88,26 +88,6 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
                         + "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION from HEC_CAS_SPEC_EXM)"
                         + "and strm= " + sessionId + " order by CATALOG_NBR, CLASS_SECTION");
 
-        log.info("Marquage et Maj des événements modifiés");
-        sqlService.dbWrite(
-                "update HEC_CAS_SPEC_EXM t1 set (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION , STATE) = "
-                        + "		(select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, 'M' "
-                        + "		from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW t2 "
-                        + "		where t2.STRM = t1.STRM " + ""
-                        + "		and t2.EMPLID = t1.EMPLID"	
-                        + "		and t2.ACAD_CAREER = t1.ACAD_CAREER "
-                        + "		and t2.SUBJECT = t1.SUBJECT "
-                        + "		and t2.CLASS_SECTION =  t1.CLASS_SECTION " 
-                        + "		and t2.CATALOG_NBR = t1.CATALOG_NBR) "
-                        + "where (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION) in ( "
-                        + "		select t2.STRM, t2.EMPLID , t2.N_PRCENT_SUPP, t2.ACAD_CAREER, t2.SUBJECT, t2.CATALOG_NBR, t2.CLASS_SECTION"
-                        + "		from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW  t2 "
-                        + "		where t2.CATALOG_NBR = t1.CATALOG_NBR " + "		and t2.STRM = t1.STRM "
-                        + "		and t2.CLASS_SECTION =  t1.CLASS_SECTION "
-                        + "		and t2.SUBJECT = t1.SUBJECT "
-                        + "		and (t1.N_PRCENT_SUPP != t2.N_PRCENT_SUPP))");
-        //Valider à part le % qu'est-ce qui peut changer
-
         log.info("Marquage des événements supprimés");
         sqlService.dbWrite(
                 "update HEC_CAS_SPEC_EXM set STATE = 'D' where (EMPLID, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP) not in "
@@ -116,10 +96,6 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
 
         log.info(
                 "Fin de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_CAS_SPEC_EXM");
-
-	
-
     }
 
 }
-
