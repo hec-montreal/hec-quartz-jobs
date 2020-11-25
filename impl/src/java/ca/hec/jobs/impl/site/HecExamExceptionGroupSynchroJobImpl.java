@@ -28,6 +28,7 @@ import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
@@ -75,8 +76,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
-        String previousSiteId = null;
+        String groupTitle = null;
         Site site = null;
+        Optional<Group> group = null;
         
         if (isRunning) {
             log.error("HecCalendarEventsJob is already running, aborting.");
@@ -91,7 +93,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
             String select_from = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
                     + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
-            String order_by = " order by SUBJECT, CATALOG_NBR, CLASS_SECTION, N_PRCENT_SUPP";
+            String order_by = " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(select_from + " where STATE is not null" + order_by,
                     null, new ExceptedStudentRecord());
@@ -106,20 +108,72 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + student.getClassSection());
                 } else {
                     // We have changed site or have just started
-                    if (!siteId.equals(previousSiteId)) {
+                    if (site == null || !siteId.equals(site.getId())) {
                         log.info("on est dans le site " + siteId);
-                    } else { // We are on the same site as previous iteration
+
+                        try {
+                            // save changes to previous site before retrieving new one
+                            if (site != null) {
+                                //maybe implement "regular" groups here before save? idk
+                                //disable save for test
+                                //siteService.save(site); 
+                                // only clear the state once saved
+                                clearState(student.getSubject(), student.getCatalogNbr(), student.getStrm(), student.getClassSection());
+                            }
+                        } catch (Exception e) {
+                            log.error("Site save failed", e);
+                        }
+
+
+                        try {
+                            site = siteService.getSite(siteId);
+                        } catch (IdUnusedException e) {
+                            log.info("Site does not exist");
+                            //TODO don't even try for the rest of this site's exceptions
+                        }
+                    } 
+
+                    groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
+                    group = getGroup(site, groupTitle);
+
+                    if (!group.isPresent()) {
+                        group = createGroup(site, groupTitle);
                     }
 
-                }
+                    if (student.getState().equals("A") || 
+                        (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
+                        
+                        group.get().addMember(student.getEmplid(), "Student", true, false);
+                        updateGroupId(student, group.get().getId());
+                    } else if (student.getState().equals("D")) {
 
-                previousSiteId = siteId;
+                        group.get().deleteMember(student.getEmplid());
+                    }
+                }
             }
         } finally {
             session.clear();
             isRunning = false;
         }
+    }
 
+    private boolean updateGroupId(ExceptedStudent student, String groupId) {
+        String sql = "update HEC_CAS_SPEC_EXM set GROUPID = ? "+
+            "where EMPLID=? and SUBJECT=? and CATALIG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
+        return sqlService.dbWrite(sql, 
+            new Object[] { groupId,
+                student.getEmplid(), 
+                student.getSubject(), 
+                student.getCatalogNbr(), 
+                student.getStrm(), 
+                student.getClassSection(),
+                student.getNPrcentSupp()});
+    }
+
+    private boolean clearState(String subject, String catalogNbr, String strm, String section) {
+        String sql = "update HEC_CAS_SPEC_EXM set STATE = '' "+
+            "where SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=?";
+        return sqlService.dbWrite(sql, new Object[] {subject, catalogNbr, strm, section});
     }
 
     private String generateGroupTitle(String section, String percent) {
@@ -128,10 +182,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         else return section + "R";
     }
 
-    private Group createGroup(Site site, String groupTitle) {
+    private Optional<Group> createGroup(Site site, String groupTitle) {
         Group group = site.addGroup();
         group.setTitle(groupTitle);
-        return group;
+        return Optional.of(group);
     }
     
     private Optional<Group> getGroup(String siteId, String groupTitle) throws IdUnusedException {
@@ -139,13 +193,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return getGroup(site, groupTitle);
     }
 
-    private Optional<Group> getGroup(Site site, String groupTitle) throws IdUnusedException {
+    private Optional<Group> getGroup(Site site, String groupTitle) {
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
-    public String getSiteId(String subject, String catalogNbr, String classSection) {
-	return "";
-    }
     @Data
     private class ExceptedStudent {
         String strm, emplid, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId;
