@@ -57,7 +57,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
 
-
+    private static Boolean isRunning = false;
 
     @Setter
     private EmailService emailService;
@@ -70,7 +70,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
     
-    
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
@@ -78,6 +77,14 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         String siteId = null;
         String previousSiteId = null;
         Site site = null;
+        
+        if (isRunning) {
+            log.error("HecCalendarEventsJob is already running, aborting.");
+            return;
+        } else {
+            isRunning = true;
+        }
+
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
@@ -110,6 +117,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             }
         } finally {
             session.clear();
+            isRunning = false;
         }
 
     }
