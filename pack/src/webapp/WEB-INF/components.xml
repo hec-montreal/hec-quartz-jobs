@@ -681,6 +681,7 @@
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecExamExceptionGroupSynchroJobImpl"
