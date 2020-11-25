@@ -44,6 +44,7 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
  
+    //Traiter la session active par défaut
 
     @Setter
     private EmailService emailService;

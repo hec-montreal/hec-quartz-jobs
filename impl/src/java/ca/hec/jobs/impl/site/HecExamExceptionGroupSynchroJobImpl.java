@@ -43,6 +43,7 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 
+import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.HecExamExceptionGroupSynchroJob;
 import lombok.Data;
 import lombok.Setter;
@@ -56,6 +57,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
     
+   
 
     @Setter
     private EmailService emailService;
@@ -65,25 +67,40 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected SiteService siteService;
     @Setter
     protected SessionManager sessionManager;
-
+    @Setter
+    protected SiteIdFormatHelper siteIdFormatHelper;
+    
+    
     @Override
     public void execute(JobExecutionContext context)
 	    throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
-
+        String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
+        String siteId = null;
         try {
             session.setUserEid("admin");
             session.setUserId("admin");
     
             String select_from = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
             	+ " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
-            String order_by = " order by CATALOG_NBR, CLASS_SECTION ";
+            String order_by = " order by SUBJECT, CATALOG_NBR, CLASS_SECTION, N_PRCENT_SUPP";
     
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(
-                    select_from + " where GROUPID is null and (STATE = 'A')" + order_by, null,
+                    select_from + " where STATE is not null" + order_by, null,
                     new ExceptedStudentRecord());
 
-            log.info("on a " + studentsAdd.size());
+            //Ajouter le/les professeurs à la section
+            for (ExceptedStudent student: studentsAdd) {
+        	siteId = siteIdFormatHelper.getSiteId(student.getSubject()+student.getCatalogNbr(), 
+        		student.getStrm(), SESSION_CODE, student.getClassSection(), distinctSitesSections);
+        	
+        	if (siteId ==null) {
+        	    log.info("Le cours-section n'est pas encore dans le course management");
+        	}
+        	else {
+        	    log.info("on a " + siteId);
+        	}
+            }
         } finally {
             session.clear();
          }
@@ -111,8 +128,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
-    public String getSiteId() {
-	
+    public String getSiteId(String subject, String catalogNbr, String classSection) {
 	return "";
     }
     @Data

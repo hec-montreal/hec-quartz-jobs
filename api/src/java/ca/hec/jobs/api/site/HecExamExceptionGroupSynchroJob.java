@@ -35,5 +35,6 @@ public interface HecExamExceptionGroupSynchroJob extends Job {
     public static String SUFFIX_50 = "50%";
     public static String SUFFIX_100 = "100%";
     public static String SUFFIX_REGULAR = "R";
+    public static String SESSION_CODE = "1";
 }
 
