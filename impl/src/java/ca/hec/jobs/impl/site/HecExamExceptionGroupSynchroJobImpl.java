@@ -24,6 +24,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -33,6 +36,9 @@ import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.email.cover.EmailService;
+import org.sakaiproject.exception.IdUnusedException;
+import org.sakaiproject.site.api.Group;
+import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
@@ -82,6 +88,27 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.clear();
          }
  
+    }
+
+    private String generateGroupTitle(String section, String percent) {
+        if (!percent.isEmpty())
+            return "AE" + section + percent.replace("%", "");
+        else return section + "R";
+    }
+
+    private Group createGroup(Site site, String groupTitle) {
+        Group group = site.addGroup();
+        group.setTitle(groupTitle);
+        return group;
+    }
+    
+    private Optional<Group> getGroup(String siteId, String groupTitle) throws IdUnusedException {
+        Site site = siteService.getSite(siteId);
+        return getGroup(site, groupTitle);
+    }
+
+    private Optional<Group> getGroup(Site site, String groupTitle) throws IdUnusedException {
+        return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
     public String getSiteId() {
