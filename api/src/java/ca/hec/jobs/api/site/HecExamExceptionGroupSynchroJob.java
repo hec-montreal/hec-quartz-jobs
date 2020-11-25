@@ -30,9 +30,10 @@ import org.quartz.Job;
 public interface HecExamExceptionGroupSynchroJob extends Job {
     
     public static String AE_PREFIX = "AE";
-    public static String SUFFIX_25 = "25";
-    public static String SUFFIX_33 = "33";
-    public static String SUFFIX_50 = "50";
+    public static String SUFFIX_25 = "25%";
+    public static String SUFFIX_33 = "33%";
+    public static String SUFFIX_50 = "50%";
+    public static String SUFFIX_100 = "100%";
     public static String SUFFIX_REGULAR = "R";
 }
 
