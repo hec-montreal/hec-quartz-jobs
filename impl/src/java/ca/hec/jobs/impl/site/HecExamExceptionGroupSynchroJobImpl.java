@@ -57,7 +57,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
     
-   
+    private static Boolean isRunning = false;
 
     @Setter
     private EmailService emailService;
@@ -74,6 +74,14 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     @Override
     public void execute(JobExecutionContext context)
 	    throws JobExecutionException {
+
+        if (isRunning) {
+            log.error("HecCalendarEventsJob is already running, aborting.");
+            return;
+        } else {
+            isRunning = true;
+        }
+
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
@@ -103,6 +111,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             }
         } finally {
             session.clear();
+            isRunning = false;
          }
  
     }
