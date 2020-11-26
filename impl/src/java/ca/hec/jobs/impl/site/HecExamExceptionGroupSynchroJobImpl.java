@@ -43,6 +43,7 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.springframework.transaction.annotation.Transactional;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.HecExamExceptionGroupSynchroJob;
@@ -72,6 +73,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected SiteIdFormatHelper siteIdFormatHelper;
     
     @Override
+    @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
@@ -95,10 +97,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
             String order_by = " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
-            List<ExceptedStudent> studentsAdd = sqlService.dbRead(select_from + " where STATE is not null" + order_by,
+            List<ExceptedStudent> studentsAdd = sqlService.dbRead(select_from + " where STATE is not null or (STATE is null and groupid is null)" + order_by,
                     null, new ExceptedStudentRecord());
 
-            // Ajouter le/les professeurs à la section
+            // TODO Ajouter le/les professeurs à la section
             for (ExceptedStudent student : studentsAdd) {
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
                         SESSION_CODE, student.getClassSection(), distinctSitesSections);
@@ -111,19 +113,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     if (site == null || !siteId.equals(site.getId())) {
                         log.info("on est dans le site " + siteId);
 
-                        try {
-                            // save changes to previous site before retrieving new one
-                            if (site != null) {
-                                //maybe implement "regular" groups here before save? idk
-                                //disable save for test
-                                //siteService.save(site); 
-                                // only clear the state once saved
-                                clearState(student.getSubject(), student.getCatalogNbr(), student.getStrm(), student.getClassSection());
-                            }
-                        } catch (Exception e) {
-                            log.error("Site save failed", e);
-                        }
-
+                        saveSite(site);
 
                         try {
                             site = siteService.getSite(siteId);
@@ -136,6 +126,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroup(site, groupTitle);
 
+                    // TODO only create if it's an add?
                     if (!group.isPresent()) {
                         group = createGroup(site, groupTitle);
                     }
@@ -143,17 +134,36 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     if (student.getState().equals("A") || 
                         (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
                         
-                        group.get().addMember(student.getEmplid(), "Student", true, false);
+                        log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
+                        group.get().insertMember(student.getEmplid(), "Student", true, false);
                         updateGroupId(student, group.get().getId());
                     } else if (student.getState().equals("D")) {
-
+                        log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                         group.get().deleteMember(student.getEmplid());
                     }
+                    clearState(student);
                 }
+                // save the last site
+                saveSite(site);
             }
         } finally {
             session.clear();
             isRunning = false;
+        }
+    }
+
+    private void saveSite(Site site) {
+        if (site == null) 
+            return;
+
+        log.debug("Save site: " + site.getId());
+        try {
+            // save changes to previous site before retrieving new one
+            //maybe implement "regular" groups here before save? idk
+            //disable save for test
+            //siteService.save(site); 
+        } catch (Exception e) {
+            log.error("Site save failed", e);
         }
     }
 
@@ -176,6 +186,19 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return sqlService.dbWrite(sql, new Object[] {subject, catalogNbr, strm, section});
     }
 
+    private boolean clearState(ExceptedStudent student) {
+        String sql = "update HEC_CAS_SPEC_EXM set STATE = '' "+
+            "where EMPLID=? and SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
+
+        return sqlService.dbWrite(sql, new Object[] {
+            student.getEmplid(),
+            student.getSubject(),
+            student.getCatalogNbr(),
+            student.getStrm(),
+            student.getClassSection(),
+            student.getNPrcentSupp()});
+    }
+
     private String generateGroupTitle(String section, String percent) {
         if (!percent.isEmpty())
             return "AE" + section + percent.replace("%", "");
@@ -183,6 +206,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private Optional<Group> createGroup(Site site, String groupTitle) {
+        log.debug("Create group " + groupTitle + " in site " + site.getId());
         Group group = site.addGroup();
         group.setTitle(groupTitle);
         return Optional.of(group);
