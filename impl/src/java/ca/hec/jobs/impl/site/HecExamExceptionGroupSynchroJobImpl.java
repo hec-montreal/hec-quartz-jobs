@@ -24,6 +24,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Date;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
@@ -73,7 +74,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected SiteIdFormatHelper siteIdFormatHelper;
     
     @Override
-    @Transactional
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
@@ -126,26 +126,32 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroup(site, groupTitle);
 
-                    // TODO only create if it's an add?
-                    if (!group.isPresent()) {
-                        group = createGroup(site, groupTitle);
-                    }
-
-                    if (student.getState().equals("A") || 
-                        (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
+                    try {
+                        if (student.getState().equals("A") || 
+                            (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
                         
-                        log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
-                        group.get().insertMember(student.getEmplid(), "Student", true, false);
-                        updateGroupId(student, group.get().getId());
-                    } else if (student.getState().equals("D")) {
-                        log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
-                        group.get().deleteMember(student.getEmplid());
+                            if (!group.isPresent()) {
+                                group = createGroup(site, groupTitle);
+                            }
+        
+                            log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
+                            group.get().insertMember(student.getEmplid(), "Student", true, false);
+                            updateGroupId(student, group.get().getId());
+                        } else if (student.getState().equals("D")) {
+                            log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
+                            group.get().deleteMember(student.getEmplid());
+                        }
+                        clearState(student);
+                    } catch (NoSuchElementException e) {
+                        // The optional has no value
+                        log.error("Tried to delete from a group that doesn't exist or failed to create group");
+                    } catch (IllegalStateException e) {
+                        log.error("Unable to modify group because it's locked");
                     }
-                    clearState(student);
                 }
-                // save the last site
-                saveSite(site);
             }
+            // save the last site
+            saveSite(site);
         } finally {
             session.clear();
             isRunning = false;
@@ -160,8 +166,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         try {
             // save changes to previous site before retrieving new one
             //maybe implement "regular" groups here before save? idk
-            //disable save for test
-            //siteService.save(site); 
+            siteService.save(site); 
         } catch (Exception e) {
             log.error("Site save failed", e);
         }
@@ -169,7 +174,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private boolean updateGroupId(ExceptedStudent student, String groupId) {
         String sql = "update HEC_CAS_SPEC_EXM set GROUPID = ? "+
-            "where EMPLID=? and SUBJECT=? and CATALIG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
+            "where EMPLID=? and SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
         return sqlService.dbWrite(sql, 
             new Object[] { groupId,
                 student.getEmplid(), 
