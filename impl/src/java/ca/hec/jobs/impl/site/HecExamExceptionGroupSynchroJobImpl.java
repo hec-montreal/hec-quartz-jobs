@@ -48,8 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.HecExamExceptionGroupSynchroJob;
-import lombok.Data;
-import lombok.Setter;
+import lombok.*;
 
 /**
  *
@@ -228,7 +227,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     
     @Data
     private class ExceptedStudent {
-        String strm, emplid, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId;
+        String strm, emplid, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId,
+        nListeEmailAdj, nListeEmailProf, nListeEmailCoord;
     }
 
     private class ExceptedStudentRecord implements SqlReader<ExceptedStudent> {
@@ -247,6 +247,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 student.setClassSection(rs.getString("CLASS_SECTION"));
                 student.setState(rs.getString("STATE"));
                 student.setGroupId(rs.getString("GROUPID"));
+                student.setNListeEmailAdj(rs.getString("N_EMAIL_ADJ_PRINC"));
+                student.setNListeEmailProf(rs.getString("N_LISTE_EMAIL_PROF"));
+                student.setNListeEmailCoord(rs.getString("N_EMAIL_COORD"));
             }
             catch (SQLException e) {
                 log.error("Error retrieving HecStudent record");

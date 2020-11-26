@@ -69,7 +69,7 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
 	Integer nbActiveRecords = Integer.parseInt(activeRecords.get(0));
 	
         if ((nbActiveRecords != null ? nbActiveRecords : 0) != 0) {
-            emailService.send("zonecours2@hec.ca", error_address, "La job de synchro des étudiants dans des cas spéciaux pour les examensa échoué",
+            emailService.send("zonecours2@hec.ca", error_address, "La job de synchro des étudiants dans des cas spéciaux pour les examens échoués",
                             "Des événements n'ont pas été traités par la job, "
                             + "la job roulera quand même, sans importer les changements dans HEC_CAS_SPEC_EXM (parce que STATE n'est pas null pour toutes les lignes).",
                     null, null, null);
@@ -80,19 +80,31 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup{
         }
 
         log.info("Ajout des nouveaux événements");
-        sqlService.dbWrite(
-                "insert into HEC_CAS_SPEC_EXM (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION , STATE)"
-                        + "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, 'A' "
-                        + "from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW "
-                        + "where (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION) not in ("
-                        + "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION from HEC_CAS_SPEC_EXM)"
-                        + "and strm= " + sessionId + " order by CATALOG_NBR, CLASS_SECTION");
-
-        log.info("Marquage des événements supprimés");
+	/*
+	 * sqlService.dbWrite(
+	 * "insert into HEC_CAS_SPEC_EXM (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD, STATE)"
+	 * +
+	 * "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD, 'A' "
+	 * + "from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW " +
+	 * "where (STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION) not in ("
+	 * +
+	 * "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION from HEC_CAS_SPEC_EXM)"
+	 * + "and strm= " + sessionId +
+	 * " order by CATALOG_NBR, CLASS_SECTION, N_PRCENT_SUPP");
+	 */        log.info("Marquage des événements supprimés");
         sqlService.dbWrite(
                 "update HEC_CAS_SPEC_EXM set STATE = 'D' where (EMPLID, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP) not in "
                         + "(select EMPLID, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW "
                         + "where strm= " + sessionId+ ")" );
+
+        log.info("Traiter les changements de courriels");
+        sqlService.dbWrite(
+                "update HEC_CAS_SPEC_EXM t1 set ( N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD)"
+                        + "(select N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD"
+                        + "from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW t2 where"
+                        + "( t2.EMPLID, t2.CATALOG_NBR, t2.STRM, t2.CLASS_SECTION, t2.SUBJECT, t2.N_PRCENT_SUPP, t2.N_EMAIL_ADJ_PRINC, t2.N_LISTE_EMAIL_PROF, t2.N_EMAIL_COORD)not in "
+                        + "  (t1.EMPLID, t1.CATALOG_NBR, t1.STRM, t1.CLASS_SECTION, t1.SUBJECT, t1.N_PRCENT_SUPP, t1.N_EMAIL_ADJ_PRINC, t1.N_LISTE_EMAIL_PROF, t1.N_EMAIL_COORD) "
+                        + "and strm= " + sessionId );
 
         log.info(
                 "Fin de la job de synchro du fichier d'extract contenant les événements de cours avec la table HEC_CAS_SPEC_EXM");
