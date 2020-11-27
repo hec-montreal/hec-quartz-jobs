@@ -176,6 +176,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         log.error("Tried to delete from a group that doesn't exist or failed to create group");
                     } catch (IllegalStateException e) {
                         log.error("Unable to modify group because it's locked");
+                        setState(student, "E");
                     } catch (UserNotDefinedException e) {
                         log.error("User does not exist: " + student.getEmplid());
                     }
