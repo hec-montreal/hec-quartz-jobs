@@ -35,6 +35,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -86,9 +87,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
-        String groupTitle = null;
         Site site = null;
         Optional<Group> group = null;
+        Optional<Group> regularGroup = null;
 
         List<ExceptedStudent> addedStudents = new ArrayList<>();
         List<ExceptedStudent> removedStudents = new ArrayList<>();
@@ -150,8 +151,14 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
 
-                    groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
+                    String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
+                    String regularGroupTitle = generateGroupTitle(student.getClassSection(), null);
                     group = getGroup(site, groupTitle);
+                    regularGroup = getGroup(site, regularGroupTitle);
+
+                    if (!regularGroup.isPresent()) {
+                        regularGroup = createRegularGroup(site, regularGroupTitle, student.getClassSection());
+                    }
 
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
@@ -159,16 +166,17 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         if (student.getState().equals("A")) {
                         
                             if (!group.isPresent()) {
-                                // TODO add instructors here?
                                 group = createGroup(site, groupTitle);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
+                            regularGroup.get().deleteMember(studentId);
                             addedStudents.add(student);
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
+                            regularGroup.get().insertMember(studentId, "Student", true, false);
                             removedStudents.add(student);
                         }
                     } catch (NoSuchElementException e) {
@@ -192,6 +200,16 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             isRunning = false;
             log.debug("finished");
         }
+    }
+
+    private Optional<Group> createRegularGroup(Site site, String groupTitle, String section) {
+        Optional<Group> g = createGroup(site, groupTitle);
+        Optional<Group> sectionGroup = getGroup(site, section);
+
+        for (Member m : sectionGroup.get().getMembers()) {
+            g.get().addMember(m.getUserId(), m.getRole().getId(), true, false);
+        }
+        return g;
     }
 
     private void deleteFromSyncTable(List<ExceptedStudent> removedStudents) {
@@ -244,7 +262,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private String generateGroupTitle(String section, String percent) {
-        if (!percent.isEmpty())
+        if (StringUtils.isNotBlank(percent))
             return "AE" + section + percent.replace("%", "");
         else return section + "R";
     }
