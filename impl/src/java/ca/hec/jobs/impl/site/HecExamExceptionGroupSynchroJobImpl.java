@@ -225,6 +225,18 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
+    //For now only one type of message because it will probably not be used
+    //Later we can refine message structure and translation
+    private void notifyError (ExceptedStudent student, String messageType, String siteId) {
+	String from = "zonecours@hec.ca";
+	String subject = "L'étudiant " + student.getEmplid() + " n'a pas été ajouté à son groupe d'exception " 
+			+ " pour le cours " + siteId;
+	String to = student.getNListeEmailAdj() + "," + student.getNListeEmailProf() + "," + student.getNListeEmailCoord();
+			
+	
+	
+    }
+    
     @Data
     private class ExceptedStudent {
         String strm, emplid, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId,
