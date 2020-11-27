@@ -64,25 +64,6 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 
 	String sessionId = context.getMergedJobDataMap().getString("sessionId");
 
-	// Valider que toutes les données de la table HEC_CAS_SPEC_EXM sont déjà
-	// traitées
-	// state == null pour tous les enregistrements
-	List<String> activeRecords = sqlService.dbRead(
-		"select count(*) from HEC_CAS_SPEC_EXM where STATE is not null");
-	Integer nbActiveRecords = Integer.parseInt(activeRecords.get(0));
-
-	if ((nbActiveRecords != null ? nbActiveRecords : 0) != 0) {
-	    emailService.send("zonecours2@hec.ca", error_address,
-		    "La job de synchro des étudiants dans des cas spéciaux pour les examens échoués",
-		    "Des événements n'ont pas été traités par la job, "
-			    + "la job roulera quand même, sans importer les changements dans HEC_CAS_SPEC_EXM (parce que STATE n'est pas null pour toutes les lignes).",
-		    null, null, null);
-	    log.error("Des événements n'ont pas été traités par la job, "
-		    + "la job roulera quand même, sans importer les changements dans HEC_CAS_SPEC_EXM (parce que STATE n'est pas null pour toutes les lignes).");
-
-	    throw new JobExecutionException(false);
-	}
-
 	log.info("Ajout des nouveaux événements");
 
 	sqlService.dbWrite(

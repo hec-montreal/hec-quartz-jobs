@@ -107,7 +107,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserId("admin");
 
             String query = "select * from HEC_CAS_SPEC_EXM "
-                    + " where (STATE is not null or (STATE is null and GROUPID is null)) and SUBJECT='LANG' "
+                    + " where STATE is not null " 
+                    + " and SUBJECT='LANG' " // TODO remove this temp for test
                     + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
@@ -125,10 +126,12 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     // We have changed site or have just started
                     if (site == null || !siteId.equals(site.getId())) {
 
-                        saveSite(site);
-                        deleteFromSyncTable(removedStudents);
+                        if (saveSite(site)) {
+                            deleteFromSyncTable(removedStudents);
+                            clearState(addedStudents);
+                        }
+
                         removedStudents.clear();
-                        clearState(addedStudents);
                         addedStudents.clear();
 
                         try {
@@ -159,7 +162,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                                 // TODO add instructors here?
                                 group = createGroup(site, groupTitle);
                             }
-        
+
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
                             addedStudents.add(student);
@@ -179,9 +182,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 }
             }
             // save the last site
-            saveSite(site);
-            deleteFromSyncTable(removedStudents);
-            clearState(addedStudents);
+            if (saveSite(site)) {
+                deleteFromSyncTable(removedStudents);
+                clearState(addedStudents);    
+            }
         } finally {
             session.clear();
             isRunning = false;
@@ -205,31 +209,18 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         }
     }
 
-    private void saveSite(Site site) {
+    private boolean saveSite(Site site) {
         if (site == null) 
-            return;
+            return false;
 
         log.debug("Save site: " + site.getId());
         try {
-            // save changes to previous site before retrieving new one
-            //maybe implement "regular" groups here before save? idk
             siteService.save(site); 
         } catch (Exception e) {
             log.error("Site save failed", e);
+            return false;
         }
-    }
-
-    private boolean updateGroupId(ExceptedStudent student, String groupId) {
-        String sql = "update HEC_CAS_SPEC_EXM set GROUPID = ? "+
-            "where EMPLID=? and SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
-        return sqlService.dbWrite(sql, 
-            new Object[] { groupId,
-                student.getEmplid(), 
-                student.getSubject(), 
-                student.getCatalogNbr(), 
-                student.getStrm(), 
-                student.getClassSection(),
-                student.getNPrcentSupp()});
+        return true;
     }
 
     private void clearState(List<ExceptedStudent> addedStudents) {
