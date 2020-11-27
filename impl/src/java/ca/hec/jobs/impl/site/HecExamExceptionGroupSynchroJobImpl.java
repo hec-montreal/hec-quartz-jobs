@@ -44,6 +44,9 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.user.api.User;
+import org.sakaiproject.user.api.UserDirectoryService;
+import org.sakaiproject.user.api.UserNotDefinedException;
 import org.springframework.transaction.annotation.Transactional;
 
 import ca.hec.api.SiteIdFormatHelper;
@@ -61,6 +64,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private static Boolean isRunning = false;
 
+    // group property to show it was created by this job
+    private static String GROUP_PROP_EXCEPTION_GROUP = "group_prop_exception_group";
+
     @Setter
     private EmailService emailService;
     @Setter
@@ -69,6 +75,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected SiteService siteService;
     @Setter
     protected SessionManager sessionManager;
+    @Setter
+    protected UserDirectoryService userDirectoryService;
     @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
     
@@ -92,11 +100,12 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserEid("admin");
             session.setUserId("admin");
 
-            String select_from = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
-                    + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM ";
-            String order_by = " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
+            String query = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
+                    + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM "
+                    + " where (STATE is not null or (STATE is null and GROUPID is null)) and SUBJECT='LANG' "
+                    + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
-            List<ExceptedStudent> studentsAdd = sqlService.dbRead(select_from + " where STATE is not null or (STATE is null and groupid is null)" + order_by,
+            List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
                     null, new ExceptedStudentRecord());
 
             // TODO Ajouter le/les professeurs à la section
@@ -110,35 +119,42 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 } else {
                     // We have changed site or have just started
                     if (site == null || !siteId.equals(site.getId())) {
-                        log.info("on est dans le site " + siteId);
 
                         saveSite(site);
 
                         try {
                             site = siteService.getSite(siteId);
                         } catch (IdUnusedException e) {
+                            site = null;
                             log.info("Site does not exist");
+                            continue;
                             //TODO don't even try for the rest of this site's exceptions
                         }
+                        log.info("on est dans le site " + siteId);
                     } 
 
                     groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroup(site, groupTitle);
 
                     try {
-                        if (student.getState().equals("A") || 
+                        String studentId = userDirectoryService.getUserId(student.getEmplid());
+
+                        if (!StringUtils.isBlank(student.getState()) && student.getState().equals("A") ||
                             (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
                         
                             if (!group.isPresent()) {
+                                // TODO add instructors here?
                                 group = createGroup(site, groupTitle);
                             }
         
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
-                            group.get().insertMember(student.getEmplid(), "Student", true, false);
+                            group.get().insertMember(studentId, "Student", true, false);
+
+                            // TODO do this for the whole site on save?
                             updateGroupId(student, group.get().getId());
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
-                            group.get().deleteMember(student.getEmplid());
+                            group.get().deleteMember(studentId);
                         }
                         clearState(student);
                     } catch (NoSuchElementException e) {
@@ -146,6 +162,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         log.error("Tried to delete from a group that doesn't exist or failed to create group");
                     } catch (IllegalStateException e) {
                         log.error("Unable to modify group because it's locked");
+                    } catch (UserNotDefinedException e) {
+                        log.error("User does not exist: " + student.getEmplid());
                     }
                 }
             }
@@ -154,6 +172,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         } finally {
             session.clear();
             isRunning = false;
+            log.debug("finished");
         }
     }
 
@@ -213,6 +232,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         log.debug("Create group " + groupTitle + " in site " + site.getId());
         Group group = site.addGroup();
         group.setTitle(groupTitle);
+        group.getProperties().addProperty(Group.GROUP_PROP_WSETUP_CREATED, Boolean.TRUE.toString());
+        group.getProperties().addProperty(GROUP_PROP_EXCEPTION_GROUP, Boolean.TRUE.toString());
         return Optional.of(group);
     }
     
@@ -272,7 +293,5 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 		}
 
     }
-
-
 }
 
