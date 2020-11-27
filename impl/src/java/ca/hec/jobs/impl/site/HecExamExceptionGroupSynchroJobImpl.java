@@ -100,8 +100,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserEid("admin");
             session.setUserId("admin");
 
-            String query = "select STRM, EMPLID , N_PRCENT_SUPP, ACAD_CAREER,"
-                    + " SUBJECT, CATALOG_NBR, CLASS_SECTION, STATE, GROUPID from HEC_CAS_SPEC_EXM "
+            String query = "select * from HEC_CAS_SPEC_EXM "
                     + " where (STATE is not null or (STATE is null and GROUPID is null)) and SUBJECT='LANG' "
                     + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
@@ -155,6 +154,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
+                            //removedStudents.add(new String[] {student.getEmplid(), student.})
                         }
                         clearState(student);
                     } catch (NoSuchElementException e) {
