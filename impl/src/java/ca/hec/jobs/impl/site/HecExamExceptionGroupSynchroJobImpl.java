@@ -142,14 +142,18 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         log.info("on est dans le site " + siteId);
                     } 
 
+                    if (StringUtils.isBlank(student.getState())) {
+                        // blank state means nothing to do
+                        continue;
+                    }
+
                     groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroup(site, groupTitle);
 
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
 
-                        if (!StringUtils.isBlank(student.getState()) && student.getState().equals("A") ||
-                            (StringUtils.isBlank(student.getGroupId()) && StringUtils.isBlank(student.getState()))) {                        
+                        if (student.getState().equals("A")) {
                         
                             if (!group.isPresent()) {
                                 // TODO add instructors here?
@@ -159,8 +163,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
                             addedStudents.add(student);
-
-                            updateGroupId(student, group.get().getId());
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
@@ -232,13 +234,13 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private void clearState(List<ExceptedStudent> addedStudents) {
         for (ExceptedStudent student : addedStudents) {
-            setState(student, "");
+            setState(student, null);
         }
     }
 
     private boolean setState(ExceptedStudent student, String state) {
         String sql = "update HEC_CAS_SPEC_EXM set STATE = ? "+
-            "where EMPLID=? and and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
+            "where EMPLID=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
 
         return sqlService.dbWrite(sql, new Object[] {
             state,
