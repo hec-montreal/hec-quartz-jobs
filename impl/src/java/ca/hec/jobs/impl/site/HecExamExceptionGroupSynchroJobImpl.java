@@ -22,6 +22,7 @@ package ca.hec.jobs.impl.site;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -88,6 +89,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         String groupTitle = null;
         Site site = null;
         Optional<Group> group = null;
+
+        List<ExceptedStudent> addedStudents = new ArrayList<>();
+        List<ExceptedStudent> removedStudents = new ArrayList<>();
         
         if (isRunning) {
             log.error("HecCalendarEventsJob is already running, aborting.");
@@ -95,6 +99,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         } else {
             isRunning = true;
         }
+
+        log.debug("starting");
 
         try {
             session.setUserEid("admin");
@@ -120,6 +126,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     if (site == null || !siteId.equals(site.getId())) {
 
                         saveSite(site);
+                        deleteFromSyncTable(removedStudents);
+                        removedStudents.clear();
+                        clearState(addedStudents);
+                        addedStudents.clear();
 
                         try {
                             site = siteService.getSite(siteId);
@@ -148,15 +158,14 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
+                            addedStudents.add(student);
 
-                            // TODO do this for the whole site on save?
                             updateGroupId(student, group.get().getId());
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
-                            //removedStudents.add(new String[] {student.getEmplid(), student.})
+                            removedStudents.add(student);
                         }
-                        clearState(student);
                     } catch (NoSuchElementException e) {
                         // The optional has no value
                         log.error("Tried to delete from a group that doesn't exist or failed to create group");
@@ -169,10 +178,28 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             }
             // save the last site
             saveSite(site);
+            deleteFromSyncTable(removedStudents);
+            clearState(addedStudents);
         } finally {
             session.clear();
             isRunning = false;
             log.debug("finished");
+        }
+    }
+
+    private void deleteFromSyncTable(List<ExceptedStudent> removedStudents) {
+        String sql = "delete from HEC_CAS_SPEC_EXM "+
+            "where EMPLID=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=? and STATE = 'D' "; 
+            //state = D just to be safe
+
+        for (ExceptedStudent student : removedStudents) {
+            sqlService.dbWrite(sql, 
+                new Object[] { 
+                    student.getEmplid(), 
+                    student.getCatalogNbr(), 
+                    student.getStrm(), 
+                    student.getClassSection(),
+                    student.getNPrcentSupp()});
         }
     }
 
@@ -203,19 +230,19 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 student.getNPrcentSupp()});
     }
 
-    private boolean clearState(String subject, String catalogNbr, String strm, String section) {
-        String sql = "update HEC_CAS_SPEC_EXM set STATE = '' "+
-            "where SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=?";
-        return sqlService.dbWrite(sql, new Object[] {subject, catalogNbr, strm, section});
+    private void clearState(List<ExceptedStudent> addedStudents) {
+        for (ExceptedStudent student : addedStudents) {
+            setState(student, "");
+        }
     }
 
-    private boolean clearState(ExceptedStudent student) {
-        String sql = "update HEC_CAS_SPEC_EXM set STATE = '' "+
-            "where EMPLID=? and SUBJECT=? and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
+    private boolean setState(ExceptedStudent student, String state) {
+        String sql = "update HEC_CAS_SPEC_EXM set STATE = ? "+
+            "where EMPLID=? and and CATALOG_NBR=? and STRM=? and CLASS_SECTION=? and N_PRCENT_SUPP=?";
 
         return sqlService.dbWrite(sql, new Object[] {
+            state,
             student.getEmplid(),
-            student.getSubject(),
             student.getCatalogNbr(),
             student.getStrm(),
             student.getClassSection(),
