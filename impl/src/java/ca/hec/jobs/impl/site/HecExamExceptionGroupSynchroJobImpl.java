@@ -27,6 +27,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 
@@ -35,7 +36,10 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.coursemanagement.api.Membership;
+import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -81,15 +85,17 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected UserDirectoryService userDirectoryService;
     @Setter
     protected SiteIdFormatHelper siteIdFormatHelper;
+    @Setter
+    protected CourseManagementService cmService;
     
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String siteId = null;
+        String groupTitle = null;
         Site site = null;
         Optional<Group> group = null;
-        Optional<Group> regularGroup = null;
 
         List<ExceptedStudent> addedStudents = new ArrayList<>();
         List<ExceptedStudent> removedStudents = new ArrayList<>();
@@ -109,7 +115,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
             String query = "select * from HEC_CAS_SPEC_EXM "
                     + " where STATE is not null " 
-                    + " and SUBJECT='LANG' " // TODO remove this temp for test
+                    + " and SUBJECT='RHRT' " // TODO remove this temp for test
                     + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
@@ -151,14 +157,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
 
-                    String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
-                    String regularGroupTitle = generateGroupTitle(student.getClassSection(), null);
+                    groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroup(site, groupTitle);
-                    regularGroup = getGroup(site, regularGroupTitle);
-
-                    if (!regularGroup.isPresent()) {
-                        regularGroup = createRegularGroup(site, regularGroupTitle, student.getClassSection());
-                    }
 
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
@@ -166,17 +166,17 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         if (student.getState().equals("A")) {
                         
                             if (!group.isPresent()) {
+                                // TODO add instructors here?
                                 group = createGroup(site, groupTitle);
+                                addInstructor(site, group.get(), student);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
-                            regularGroup.get().deleteMember(studentId);
                             addedStudents.add(student);
                         } else if (student.getState().equals("D")) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
-                            regularGroup.get().insertMember(studentId, "Student", true, false);
                             removedStudents.add(student);
                         }
                     } catch (NoSuchElementException e) {
@@ -200,16 +200,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             isRunning = false;
             log.debug("finished");
         }
-    }
-
-    private Optional<Group> createRegularGroup(Site site, String groupTitle, String section) {
-        Optional<Group> g = createGroup(site, groupTitle);
-        Optional<Group> sectionGroup = getGroup(site, section);
-
-        for (Member m : sectionGroup.get().getMembers()) {
-            g.get().addMember(m.getUserId(), m.getRole().getId(), true, false);
-        }
-        return g;
     }
 
     private void deleteFromSyncTable(List<ExceptedStudent> removedStudents) {
@@ -262,7 +252,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private String generateGroupTitle(String section, String percent) {
-        if (StringUtils.isNotBlank(percent))
+        if (!percent.isEmpty())
             return "AE" + section + percent.replace("%", "");
         else return section + "R";
     }
@@ -285,6 +275,26 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
+    
+    private void addInstructor (Site site, Group group, ExceptedStudent student) {
+	String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
+                        SESSION_CODE, student.getClassSection());
+	//Keeping cmService because it gives a shorter list and more accurate
+	Set<Membership> instructors = cmService.getSectionMemberships(sectionEid);
+	Role role = null;
+	String instructorId = null;
+	for (Membership instructor: instructors) {
+	    try {
+	      	    instructorId = userDirectoryService.getUserId(instructor.getUserId());
+	      	    role = site.getUserRole(instructorId);
+         	    group.insertMember(instructorId, role.getId(), true, false);
+	    }catch( UserNotDefinedException e) {
+		log.warn("the instructor " + instructor.getUserId() + " does not exist");
+	    }
+	}
+	
+    }
+
     //For now only one type of message because it will probably not be used
     //Later we can refine message structure and translation
     private void notifyError (ExceptedStudent student, String messageType, String siteId) {

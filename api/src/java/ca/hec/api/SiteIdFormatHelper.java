@@ -61,4 +61,14 @@ public interface SiteIdFormatHelper {
      * @return siteId
      */
     String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName, String distinctSitesSections);
+    
+    /**
+     * Generate sectionId from data of extract files
+     * @param catalog_nbr
+     * @param session_id
+     * @param session_code
+     * @param sectionName
+      * @return sectionId
+     */
+    String buildSectionId(String catalog_nbr, String session_id, String session_code, String sectionName);
 }
