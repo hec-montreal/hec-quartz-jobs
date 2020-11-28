@@ -72,7 +72,7 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 	    sessionId = StringUtils.chop(sessionId);
 	}
 
-        List<String> checkdata = sqlService.dbRead("select MAX(EMPLID) from  PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW");
+        List<String> checkdata = sqlService.dbRead("select MAX(EMPLID) from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW");
         if (checkdata.isEmpty()) {
                 emailService.send("zonecours2@hec.ca", error_address, "La job de transfert des étudiants en cas d'exceptions a échoué",
                         "Il n'y a pas de données dans la vue de PeopleSoft ZONECOURS2_PS_N_CAS_SPEC_EXMW, aucun transfert de données ne sera effectué",
