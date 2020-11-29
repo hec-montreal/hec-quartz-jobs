@@ -319,7 +319,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 			+ ") n'a pas été " + action + " équipe automatique ("
 			+ groupTitle + ") " + " pour le cours " + siteId;
 	String to = student.getNListeEmailAdj() + "," + mergedEmails;
-	String message = "L’étudiant + nomEtudiant " + student.getName() + " ("
+	String message = "L’étudiant " + student.getName() + " ("
 		+ student.getEmplid() + ") n’a pas été " + action + groupTitle
 		+ " du site " + siteId
 		+ " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n"

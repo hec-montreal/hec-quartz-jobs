@@ -22,6 +22,7 @@ package ca.hec.jobs.impl.site;
 
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
@@ -49,6 +50,8 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
     private EmailService emailService;
     @Setter
     private SqlService sqlService;
+    @Setter
+    protected CourseManagementService cmService;
 
     private static final String NOTIFICATION_EMAIL_PROP =
 	    "hec.error.notification.email";
@@ -63,6 +66,11 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 		.getString(NOTIFICATION_EMAIL_PROP, null);
 
 	String sessionId = context.getMergedJobDataMap().getString("sessionId");
+	
+	if (sessionId == null || sessionId.equals("")) {
+	    sessionId = cmService.getCurrentAcademicSessions().get(0).getEid();
+	    sessionId = StringUtils.chop(sessionId);
+	}
 
         List<String> checkdata = sqlService.dbRead("select MAX(EMPLID) from  PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW");
         if (checkdata.isEmpty()) {
