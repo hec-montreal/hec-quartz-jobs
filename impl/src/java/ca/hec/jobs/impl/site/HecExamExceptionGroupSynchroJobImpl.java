@@ -23,23 +23,20 @@ package ca.hec.jobs.impl.site;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Membership;
-import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -50,10 +47,8 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
-import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
-import org.springframework.transaction.annotation.Transactional;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.HecExamExceptionGroupSynchroJob;
@@ -92,8 +87,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
-        String subject = context.getMergedJobDataMap().getString("subject");
+        String subject = context.getMergedJobDataMap().getString("optionalSubject");
         String siteId = null;
+        String previousSiteId = null;
         String groupTitle = null;
         Site site = null;
         Optional<Group> group = null;
@@ -115,14 +111,18 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserId("admin");
 
             String query = "select * from HEC_CAS_SPEC_EXM "
-                    + " where STATE is not null " 
-                    + " and SUBJECT=? "
-                    + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
+                    + " where STATE is not null";
 
-            List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
+            if (StringUtils.isNotBlank(subject)) {
+                query += " and SUBJECT=?";
+            }
+            query += " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
+
+            List<ExceptedStudent> studentExceptions = sqlService.dbRead(query,
                     new Object[] {subject}, new ExceptedStudentRecord());
 
-             for (ExceptedStudent student : studentsAdd) {
+            for (ExceptedStudent student : studentExceptions) {
+                previousSiteId = siteId;
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
                         SESSION_CODE, student.getClassSection(), distinctSitesSections);
 
@@ -131,7 +131,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + student.getClassSection());
                 } else {
                     // We have changed site or have just started
-                    if (site == null || !siteId.equals(site.getId())) {
+                    if (!siteId.equals(previousSiteId)) {
 
                         if (saveSite(site)) {
                             deleteFromSyncTable(removedStudents);
@@ -146,14 +146,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         } catch (IdUnusedException e) {
                             site = null;
                             log.info("Site does not exist");
-                            continue;
-                            //TODO don't even try for the rest of this site's exceptions
                         }
                         log.info("on est dans le site " + siteId);
                     } 
 
-                    if (StringUtils.isBlank(student.getState())) {
-                        // blank state means nothing to do
+                    if (site == null) {
                         continue;
                     }
 
@@ -167,8 +164,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         
                             if (!group.isPresent()) {
                                 group = createGroup(site, groupTitle);
-                               //Ajouter le/les professeurs à la section
-                               addInstructor(site, group.get(), student);
+                                addInstructor(site, group.get(), student);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
@@ -268,71 +264,51 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return Optional.of(group);
     }
     
-    private Optional<Group> getGroup(String siteId, String groupTitle) throws IdUnusedException {
-        Site site = siteService.getSite(siteId);
-        return getGroup(site, groupTitle);
-    }
-
     private Optional<Group> getGroup(Site site, String groupTitle) {
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
-    
-    private void addInstructor(Site site, Group group,
-	    ExceptedStudent student) {
-	String sectionEid = siteIdFormatHelper.buildSectionId(
-		student.getSubject() + student.getCatalogNbr(),
-		student.getStrm(), SESSION_CODE, student.getClassSection());
-	// Keeping cmService because it gives a shorter list and more accurate
-	Set<Membership> instructors =
-		cmService.getSectionMemberships(sectionEid);
-	Role role = null;
-	String instructorId = null;
-	for (Membership instructor : instructors) {
-	    try {
-		instructorId =
-			userDirectoryService.getUserId(instructor.getUserId());
-		role = site.getUserRole(instructorId);
-		group.insertMember(instructorId, role.getId(), true, false);
-	    } catch (UserNotDefinedException e) {
-		log.warn("the instructor " + instructor.getUserId()
-			+ " does not exist");
-	    }
-	}
-
+    private void addInstructor(Site site, Group group, ExceptedStudent student) {
+        String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(),
+                student.getStrm(), SESSION_CODE, student.getClassSection());
+        // Keeping cmService because it gives a shorter list and more accurate
+        Set<Membership> instructors = cmService.getSectionMemberships(sectionEid);
+        Role role = null;
+        String instructorId = null;
+        for (Membership instructor : instructors) {
+            try {
+                instructorId = userDirectoryService.getUserId(instructor.getUserId());
+                role = site.getUserRole(instructorId);
+                group.insertMember(instructorId, role.getId(), true, false);
+            } catch (UserNotDefinedException e) {
+                log.warn("the instructor " + instructor.getUserId() + " does not exist");
+            }
+        }
     }
 
     // For now only one type of message because it will probably not be used
     // Later we can refine message structure and translation
-    private void notifyError(ExceptedStudent student, String siteId,
-	    String groupTitle) {
-	String from = "zonecours@hec.ca";
-	// merge if necessary coordinator and instructor email
-	String mergedEmails = (student.getNListeEmailProf().equals(
-		student.getNListeEmailCoord()) ? student.getNListeEmailCoord()
-			: student.getNListeEmailProf() + ","
-				+ student.getNListeEmailCoord());
-	
-	String action = (student.getState().equals("D") ? " retiré d'une "
-		: " ajouté à une");
-	String subject =
-		"L'étudiant " + student.getName() + " (" + student.getEmplid()
-			+ ") n'a pas été " + action + " équipe automatique ("
-			+ groupTitle + ") " + " pour le cours " + siteId;
-	String to = student.getNListeEmailAdj() + "," + mergedEmails;
-	String message = "L’étudiant " + student.getName() + " ("
-		+ student.getEmplid() + ") n’a pas été " + action + groupTitle
-		+ " du site " + siteId
-		+ " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n"
-		+ "\r\n"
-		+ "Si le groupe est associé à un travail ou quiz publié et en cours, nous vous conseillons de créer un autre groupe pour cet étudiant. Pour les évaluations à venir, assurez-vous de les publier pour ces nouveaux groupes.\r\n"
-		+ "Si le groupe est associé à une évaluation  publiée mais pas encore en cours, nous vous suggérons de dépublier l’évaluation et d’ajouter manuellement l’étudiant dans le groupe. Assurez-vous de republier l’évaluation une fois les changements terminés.\r\n"
-		+ "\r\n" + "Cordialement,\r\n" + "\r\n"
-		+ "P.S : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n"
-		+ "";
+    private void notifyError(ExceptedStudent student, String siteId, String groupTitle) {
+        String from = "zonecours@hec.ca";
+        // merge if necessary coordinator and instructor email
+        String mergedEmails = (student.getNListeEmailProf().equals(student.getNListeEmailCoord())
+                ? student.getNListeEmailCoord()
+                : student.getNListeEmailProf() + "," + student.getNListeEmailCoord());
 
-	emailService.send(from, to, subject, message, null, null, null);
+        String action = (student.getState().equals("D") ? " retiré d'une " : " ajouté à une");
+        String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
+                + " équipe automatique (" + groupTitle + ") " + " pour le cours " + siteId;
+        String to = student.getNListeEmailAdj() + "," + mergedEmails;
+        String message = "L’étudiant " + student.getName() + " (" + student.getEmplid() + ") n’a pas été " + action
+                + groupTitle + " du site " + siteId
+                + " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n" + "\r\n"
+                + "Si le groupe est associé à un travail ou quiz publié et en cours, nous vous conseillons de créer un autre groupe pour cet étudiant. Pour les évaluations à venir, assurez-vous de les publier pour ces nouveaux groupes.\r\n"
+                + "Si le groupe est associé à une évaluation  publiée mais pas encore en cours, nous vous suggérons de dépublier l’évaluation et d’ajouter manuellement l’étudiant dans le groupe. Assurez-vous de republier l’évaluation une fois les changements terminés.\r\n"
+                + "\r\n" + "Cordialement,\r\n" + "\r\n"
+                + "P.S. : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n"
+                + "";
 
+        emailService.send(from, to, subject, message, null, null, null);
     }
     
     @Data
