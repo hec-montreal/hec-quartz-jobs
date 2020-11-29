@@ -121,8 +121,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
                     null, new ExceptedStudentRecord());
 
-            // TODO Ajouter le/les professeurs à la section
-            for (ExceptedStudent student : studentsAdd) {
+             for (ExceptedStudent student : studentsAdd) {
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
                         SESSION_CODE, student.getClassSection(), distinctSitesSections);
 
@@ -166,9 +165,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         if (student.getState().equals("A")) {
                         
                             if (!group.isPresent()) {
-                                // TODO add instructors here?
                                 group = createGroup(site, groupTitle);
-                                addInstructor(site, group.get(), student);
+                               //Ajouter le/les professeurs à la section
+                               addInstructor(site, group.get(), student);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
@@ -184,6 +183,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         log.error("Tried to delete from a group that doesn't exist or failed to create group");
                     } catch (IllegalStateException e) {
                         log.error("Unable to modify group because it's locked");
+                        //Make sure to send email before updating state
+                        notifyError(student, siteId, group.get().getTitle());
                         setState(student, "E");
                     } catch (UserNotDefinedException e) {
                         log.error("User does not exist: " + student.getEmplid());
@@ -276,40 +277,66 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
     
     
-    private void addInstructor (Site site, Group group, ExceptedStudent student) {
-	String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
-                        SESSION_CODE, student.getClassSection());
-	//Keeping cmService because it gives a shorter list and more accurate
-	Set<Membership> instructors = cmService.getSectionMemberships(sectionEid);
+    private void addInstructor(Site site, Group group,
+	    ExceptedStudent student) {
+	String sectionEid = siteIdFormatHelper.buildSectionId(
+		student.getSubject() + student.getCatalogNbr(),
+		student.getStrm(), SESSION_CODE, student.getClassSection());
+	// Keeping cmService because it gives a shorter list and more accurate
+	Set<Membership> instructors =
+		cmService.getSectionMemberships(sectionEid);
 	Role role = null;
 	String instructorId = null;
-	for (Membership instructor: instructors) {
+	for (Membership instructor : instructors) {
 	    try {
-	      	    instructorId = userDirectoryService.getUserId(instructor.getUserId());
-	      	    role = site.getUserRole(instructorId);
-         	    group.insertMember(instructorId, role.getId(), true, false);
-	    }catch( UserNotDefinedException e) {
-		log.warn("the instructor " + instructor.getUserId() + " does not exist");
+		instructorId =
+			userDirectoryService.getUserId(instructor.getUserId());
+		role = site.getUserRole(instructorId);
+		group.insertMember(instructorId, role.getId(), true, false);
+	    } catch (UserNotDefinedException e) {
+		log.warn("the instructor " + instructor.getUserId()
+			+ " does not exist");
 	    }
 	}
-	
+
     }
 
-    //For now only one type of message because it will probably not be used
-    //Later we can refine message structure and translation
-    private void notifyError (ExceptedStudent student, String messageType, String siteId) {
+    // For now only one type of message because it will probably not be used
+    // Later we can refine message structure and translation
+    private void notifyError(ExceptedStudent student, String siteId,
+	    String groupTitle) {
 	String from = "zonecours@hec.ca";
-	String subject = "L'étudiant " + student.getEmplid() + " n'a pas été ajouté à son groupe d'exception " 
-			+ " pour le cours " + siteId;
-	String to = student.getNListeEmailAdj() + "," + student.getNListeEmailProf() + "," + student.getNListeEmailCoord();
-			
+	// merge if necessary coordinator and instructor email
+	String mergedEmails = (student.getNListeEmailProf().equals(
+		student.getNListeEmailCoord()) ? student.getNListeEmailCoord()
+			: student.getNListeEmailProf() + ","
+				+ student.getNListeEmailCoord());
 	
-	
+	String action = (student.getState().equals("D") ? " retiré d'une "
+		: " ajouté à une");
+	String subject =
+		"L'étudiant " + student.getName() + " (" + student.getEmplid()
+			+ ") n'a pas été " + action + " équipe automatique ("
+			+ groupTitle + ") " + " pour le cours " + siteId;
+	String to = student.getNListeEmailAdj() + "," + mergedEmails;
+	String message = "L’étudiant + nomEtudiant " + student.getName() + " ("
+		+ student.getEmplid() + ") n’a pas été " + action + groupTitle
+		+ " du site " + siteId
+		+ " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n"
+		+ "\r\n"
+		+ "Si le groupe est associé à un travail ou quiz publié et en cours, nous vous conseillons de créer un autre groupe pour cet étudiant. Pour les évaluations à venir, assurez-vous de les publier pour ces nouveaux groupes.\r\n"
+		+ "Si le groupe est associé à une évaluation  publiée mais pas encore en cours, nous vous suggérons de dépublier l’évaluation et d’ajouter manuellement l’étudiant dans le groupe. Assurez-vous de republier l’évaluation une fois les changements terminés.\r\n"
+		+ "\r\n" + "Cordialement,\r\n" + "\r\n"
+		+ "P.S : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n"
+		+ "";
+
+	emailService.send(from, to, subject, message, null, null, null);
+
     }
     
     @Data
     private class ExceptedStudent {
-        String strm, emplid, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId,
+        String strm, emplid, name, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId,
         nListeEmailAdj, nListeEmailProf, nListeEmailCoord;
     }
 
@@ -322,6 +349,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             try {
                 student.setStrm(rs.getString("STRM"));
                 student.setEmplid(rs.getString("EMPLID"));
+                student.setName(rs.getString("Name"));
                 student.setNPrcentSupp(rs.getString("N_PRCENT_SUPP"));
                 student.setAcadCareer(rs.getString("ACAD_CAREER"));
                 student.setSubject(rs.getString("SUBJECT"));
