@@ -295,18 +295,17 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 ? student.getNListeEmailCoord()
                 : student.getNListeEmailProf() + "," + student.getNListeEmailCoord());
 
-        String action = (student.getState().equals("D") ? " retiré d'une " : " ajouté à une");
+        String action = (student.getState().equals("D") ? "retiré d'une" : "ajouté à une");
         String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
-                + " équipe automatique (" + groupTitle + ") " + " pour le cours " + siteId;
+                + " équipe automatique (" + groupTitle + ") pour le cours " + siteId;
         String to = student.getNListeEmailAdj() + "," + mergedEmails;
         String message = "L’étudiant " + student.getName() + " (" + student.getEmplid() + ") n’a pas été " + action
-                + groupTitle + " du site " + siteId
+                + " équipe automatique (" + groupTitle + ") pour le cours " + siteId
                 + " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n" + "\r\n"
                 + "Si le groupe est associé à un travail ou quiz publié et en cours, nous vous conseillons de créer un autre groupe pour cet étudiant. Pour les évaluations à venir, assurez-vous de les publier pour ces nouveaux groupes.\r\n"
                 + "Si le groupe est associé à une évaluation  publiée mais pas encore en cours, nous vous suggérons de dépublier l’évaluation et d’ajouter manuellement l’étudiant dans le groupe. Assurez-vous de republier l’évaluation une fois les changements terminés.\r\n"
                 + "\r\n" + "Cordialement,\r\n" + "\r\n"
-                + "P.S. : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n"
-                + "";
+                + "P.S. : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n";
 
         emailService.send(from, to, subject, message, null, null, null);
     }
