@@ -110,7 +110,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserId("admin");
 
             String query = "select * from HEC_CAS_SPEC_EXM "
-                    + " where STATE is not null";
+                    + " where STATE is not null and STATE <> 'E'";
 
             if (StringUtils.isNotBlank(subject)) {
                 query += " and SUBJECT=?";
