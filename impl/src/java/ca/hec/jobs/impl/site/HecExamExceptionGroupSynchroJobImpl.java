@@ -92,6 +92,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
+        String subject = context.getMergedJobDataMap().getString("subject");
         String siteId = null;
         String groupTitle = null;
         Site site = null;
@@ -115,11 +116,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
             String query = "select * from HEC_CAS_SPEC_EXM "
                     + " where STATE is not null " 
-                    + " and SUBJECT='RHRT' " // TODO remove this temp for test
+                    + " and SUBJECT=? "
                     + " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
             List<ExceptedStudent> studentsAdd = sqlService.dbRead(query,
-                    null, new ExceptedStudentRecord());
+                    new Object[] {subject}, new ExceptedStudentRecord());
 
              for (ExceptedStudent student : studentsAdd) {
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
