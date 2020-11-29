@@ -123,6 +123,12 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         return siteName;
     }
 
+    
+    public String buildSectionId(String catalog_nbr, String session_id, String session_code, String sectionName) {
+        String sectionEid = catalog_nbr+session_id+session_code+sectionName;
+        return sectionEid;
+    }
+    
     @Override
     public String getSiteId(String catalog_nbr, String session_id, String session_code, String sectionName, String distinctSitesSections) {
         String sectionEid = catalog_nbr+session_id+session_code+sectionName;

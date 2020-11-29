@@ -646,6 +646,7 @@
 	<bean id="hecExamExceptionGroup"
 		  class="ca.hec.jobs.impl.site.HecExamExceptionGroupImpl">
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
+		<property name="cmService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecExamExceptionGroupImpl"
@@ -682,6 +683,8 @@
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
+		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
+		<property name="cmService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecExamExceptionGroupSynchroJobImpl"
@@ -701,6 +704,12 @@
 		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
 			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="optionalSubject"/>
+					<property name="descriptionResourceKey" value="optionalSubject.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="true"/>
 					<property name="labelResourceKey" value="distinctSitesSections"/>
