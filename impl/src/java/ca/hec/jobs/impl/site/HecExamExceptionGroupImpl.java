@@ -28,7 +28,6 @@ import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
-import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.db.api.SqlService;
 import org.sakaiproject.email.cover.EmailService;
@@ -43,8 +42,6 @@ import lombok.Setter;
 public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 
     private static Log log = LogFactory.getLog(HecExamExceptionGroupImpl.class);
-
-    // Traiter la session active par défaut
 
     @Setter
     private EmailService emailService;

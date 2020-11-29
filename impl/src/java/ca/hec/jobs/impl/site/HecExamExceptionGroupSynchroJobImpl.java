@@ -33,7 +33,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Membership;
@@ -160,7 +159,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
 
-                        if (student.getState().equals("A")) {
+                        if (student.getState().equals(STATE_ADD)) {
                         
                             if (!group.isPresent()) {
                                 group = createGroup(site, groupTitle);
@@ -170,7 +169,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
                             addedStudents.add(student);
-                        } else if (student.getState().equals("D")) {
+                        } else if (student.getState().equals(STATE_REMOVE)) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
                             removedStudents.add(student);
@@ -182,7 +181,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         log.error("Unable to modify group because it's locked");
                         //Make sure to send email before updating state
                         notifyError(student, siteId, group.get().getTitle());
-                        setState(student, "E");
+                        setState(student, STATE_ERROR);
                     } catch (UserNotDefinedException e) {
                         log.error("User does not exist: " + student.getEmplid());
                     }
@@ -251,8 +250,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private String generateGroupTitle(String section, String percent) {
         if (StringUtils.isNotEmpty(percent))
-            return "AE" + section + percent.replace("%", "");
-        else return section + "R";
+            return EXCEPTION_GROUP_PREFIX + section + percent.replace("%", "");
+        else return section + REGULAR_GROUP_SUFFIX;
     }
 
     private Optional<Group> createGroup(Site site, String groupTitle) {
@@ -295,7 +294,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 ? student.getNListeEmailCoord()
                 : student.getNListeEmailProf() + "," + student.getNListeEmailCoord());
 
-        String action = (student.getState().equals("D") ? "retiré d'une" : "ajouté à une");
+        String action = (student.getState().equals(STATE_REMOVE) ? "retiré d'une" : "ajouté à une");
         String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
                 + " équipe automatique (" + groupTitle + ") pour le cours " + siteId;
         String to = student.getNListeEmailAdj() + "," + mergedEmails;
