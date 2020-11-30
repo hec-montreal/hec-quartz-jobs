@@ -275,9 +275,15 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         String instructorId = null;
         for (Membership instructor : instructors) {
             try {
-                instructorId = userDirectoryService.getUserId(instructor.getUserId());
-                role = site.getUserRole(instructorId);
-                group.insertMember(instructorId, role.getId(), true, false);
+                instructorId = userDirectoryService.getUserId(instructor.getUserId());        	
+        	switch (instructor.getRole()) {
+        	case "I":
+        	    group.insertMember(instructorId, "Instructor", true, false);
+        	case "C":
+        	    group.insertMember(instructorId, "Coordinator", true, false);
+        	case "CI":
+        	    group.insertMember(instructorId, "Coordinator-Instructor", true, false);
+        	}
             } catch (UserNotDefinedException e) {
                 log.warn("the instructor " + instructor.getUserId() + " does not exist");
             } catch (NullPointerException e1) {
