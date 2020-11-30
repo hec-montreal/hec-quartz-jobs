@@ -79,7 +79,6 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
     }
 
 	log.info("Ajout des nouveaux événements");
-
 	sqlService.dbWrite(
 		"insert into HEC_CAS_SPEC_EXM (STRM, EMPLID , NAME, N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD, STATE)"
 			+ "select STRM, EMPLID , NAME, N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION, N_EMAIL_ADJ_PRINC, N_LISTE_EMAIL_PROF, N_EMAIL_COORD, 'A' "
@@ -88,6 +87,7 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 			+ "select STRM, EMPLID , NAME, N_PRCENT_SUPP, ACAD_CAREER, SUBJECT, CATALOG_NBR, CLASS_SECTION from HEC_CAS_SPEC_EXM)"
 			+ "and strm= " + sessionId
 			+ " order by CATALOG_NBR, CLASS_SECTION, N_PRCENT_SUPP");
+
 	log.info("Marquage des événements supprimés");
 	sqlService.dbWrite(
 		"update HEC_CAS_SPEC_EXM set STATE = 'D' where (EMPLID, NAME, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP) not in "

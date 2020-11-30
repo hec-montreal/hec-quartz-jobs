@@ -131,7 +131,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 } else {
                     // We have changed site or have just started
                     if (!siteId.equals(previousSiteId)) {
-
+                        log.info("On est dans le site " + siteId);
                         if (saveSite(site)) {
                             deleteFromSyncTable(removedStudents);
                             clearState(addedStudents);
@@ -146,7 +146,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             site = null;
                             log.info("Site does not exist");
                         }
-                        log.info("on est dans le site " + siteId);
                     } 
 
                     if (site == null) {
@@ -315,8 +314,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     
     @Data
     private class ExceptedStudent {
-        String strm, emplid, name, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state, groupId,
-        nListeEmailAdj, nListeEmailProf, nListeEmailCoord;
+        String strm, emplid, name, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state,
+            nListeEmailAdj, nListeEmailProf, nListeEmailCoord;
     }
 
     private class ExceptedStudentRecord implements SqlReader<ExceptedStudent> {
@@ -335,7 +334,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 student.setCatalogNbr(rs.getString("CATALOG_NBR"));
                 student.setClassSection(rs.getString("CLASS_SECTION"));
                 student.setState(rs.getString("STATE"));
-                student.setGroupId(rs.getString("GROUPID"));
                 student.setNListeEmailAdj(rs.getString("N_EMAIL_ADJ_PRINC"));
                 student.setNListeEmailProf(rs.getString("N_LISTE_EMAIL_PROF"));
                 student.setNListeEmailCoord(rs.getString("N_EMAIL_COORD"));
