@@ -281,6 +281,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 group.insertMember(instructorId, role.getId(), true, false);
             } catch (UserNotDefinedException e) {
                 log.warn("the instructor " + instructor.getUserId() + " does not exist");
+            } catch (NullPointerException e1) {
+		log.error("the instructor " + instructor.getUserId()
+			+ " was not added to the group " + group.getTitle()
+			+ " of site " + site.getTitle());
             }
         }
     }
