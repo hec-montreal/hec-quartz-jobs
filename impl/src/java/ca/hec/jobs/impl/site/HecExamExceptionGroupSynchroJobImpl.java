@@ -162,7 +162,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         
                             if (!group.isPresent()) {
                                 group = createGroup(site, groupTitle);
-                                addInstructor(site, group.get(), student);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
@@ -266,34 +265,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
     
-    private void addInstructor(Site site, Group group, ExceptedStudent student) {
-        String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(),
-                student.getStrm(), SESSION_CODE, student.getClassSection());
-        // Keeping cmService because it gives a shorter list and more accurate
-        Set<Membership> instructors = cmService.getSectionMemberships(sectionEid);
-        Role role = null;
-        String instructorId = null;
-        for (Membership instructor : instructors) {
-            try {
-                instructorId = userDirectoryService.getUserId(instructor.getUserId());        	
-        	switch (instructor.getRole()) {
-        	case "I":
-        	    group.insertMember(instructorId, "Instructor", true, false);
-        	case "C":
-        	    group.insertMember(instructorId, "Coordinator", true, false);
-        	case "CI":
-        	    group.insertMember(instructorId, "Coordinator-Instructor", true, false);
-        	}
-            } catch (UserNotDefinedException e) {
-                log.warn("the instructor " + instructor.getUserId() + " does not exist");
-            } catch (NullPointerException e1) {
-		log.error("the instructor " + instructor.getUserId()
-			+ " was not added to the group " + group.getTitle()
-			+ " of site " + site.getTitle());
-            }
-        }
-    }
-
     // For now only one type of message because it will probably not be used
     // Later we can refine message structure and translation
     private void notifyError(ExceptedStudent student, String siteId, String groupTitle) {
