@@ -685,6 +685,8 @@
 		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
 		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
 		<property name="cmService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+		<property name="serverConfigService"
+			ref="org.sakaiproject.component.api.ServerConfigurationService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecExamExceptionGroupSynchroJobImpl"

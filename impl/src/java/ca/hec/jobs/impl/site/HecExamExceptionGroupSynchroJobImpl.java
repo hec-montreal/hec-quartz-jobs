@@ -34,6 +34,7 @@ import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.sakaiproject.authz.api.Role;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Membership;
 import org.sakaiproject.authz.api.Member;
@@ -82,6 +83,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected SiteIdFormatHelper siteIdFormatHelper;
     @Setter
     protected CourseManagementService cmService;
+    @Setter
+    protected ServerConfigurationService serverConfigService;
     
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -297,28 +300,29 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private void addInstructor(Site site, Group group, String providerId) {
-        // Keeping cmService because it gives a shorter list and more accurate
-        Set<Membership> instructors = cmService.getSectionMemberships(providerId);
-        Role role = null;
-        String instructorId = null;
-        for (Membership instructor : instructors) {
-            try {
-                instructorId = userDirectoryService.getUserId(instructor.getUserId());
-                switch (instructor.getRole()) {
-                    case "I":
-                        group.insertMember(instructorId, "Instructor", true, false);
-                    case "C":
-                        group.insertMember(instructorId, "Coordinator", true, false);
-                    case "CI":
-                        group.insertMember(instructorId, "Coordinator-Instructor", true, false);
-                }
-            } catch (UserNotDefinedException e) {
-                log.warn("the instructor " + instructor.getUserId() + " does not exist");
-            } catch (NullPointerException e1) {
-                log.error("the instructor " + instructor.getUserId() + " was not added to the group " + group.getTitle()
-                        + " of site " + site.getTitle());
-            }
-        }
+	Optional<Group> providedGroup = getGroupByProviderId(site, providerId);
+	Set<String> addedUsers = null;
+	String[] rolesToAdd = null;
+	if (providedGroup.isPresent()) {
+	    rolesToAdd = serverConfigService.getStrings(
+		    "hec.eventprocessing.groupeventprocessor.instructor.roles");
+	    if (rolesToAdd != null && rolesToAdd.length > 0) {
+		for (int i = 0; i < rolesToAdd.length; i++) {
+		    addedUsers =
+			    providedGroup.get().getUsersHasRole(rolesToAdd[i]);
+		    for (String user : addedUsers) {
+			try {
+			    group.insertMember(user, rolesToAdd[i], true,
+				    false);
+			} catch (IllegalStateException e) {
+			    log.error(
+				    "Unable to modify group because it's locked");
+			}
+		    }
+		}
+	    }
+	}
+
     }
 
     // For now only one type of message because it will probably not be used
