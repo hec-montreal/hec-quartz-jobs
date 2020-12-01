@@ -265,7 +265,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     private Optional<Group> getGroup(Site site, String groupTitle) {
         return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
     }
-    
+
     private void addInstructor(Site site, Group group, ExceptedStudent student) {
         String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(),
                 student.getStrm(), SESSION_CODE, student.getClassSection());
@@ -275,21 +275,20 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         String instructorId = null;
         for (Membership instructor : instructors) {
             try {
-                instructorId = userDirectoryService.getUserId(instructor.getUserId());        	
-        	switch (instructor.getRole()) {
-        	case "I":
-        	    group.insertMember(instructorId, "Instructor", true, false);
-        	case "C":
-        	    group.insertMember(instructorId, "Coordinator", true, false);
-        	case "CI":
-        	    group.insertMember(instructorId, "Coordinator-Instructor", true, false);
-        	}
+                instructorId = userDirectoryService.getUserId(instructor.getUserId());
+                switch (instructor.getRole()) {
+                    case "I":
+                        group.insertMember(instructorId, "Instructor", true, false);
+                    case "C":
+                        group.insertMember(instructorId, "Coordinator", true, false);
+                    case "CI":
+                        group.insertMember(instructorId, "Coordinator-Instructor", true, false);
+                }
             } catch (UserNotDefinedException e) {
                 log.warn("the instructor " + instructor.getUserId() + " does not exist");
             } catch (NullPointerException e1) {
-		log.error("the instructor " + instructor.getUserId()
-			+ " was not added to the group " + group.getTitle()
-			+ " of site " + site.getTitle());
+                log.error("the instructor " + instructor.getUserId() + " was not added to the group " + group.getTitle()
+                        + " of site " + site.getTitle());
             }
         }
     }
