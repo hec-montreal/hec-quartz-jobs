@@ -159,8 +159,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     group = getGroup(site, groupTitle);
                     regularGroup = getGroup(site, regularGroupTitle);
 
+                    String officialProviderId = siteIdFormatHelper.buildSectionId(
+                        student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
+
                     if (!regularGroup.isPresent()) {
-                        regularGroup = createRegularGroup(site, regularGroupTitle, student.getClassSection());
+                        regularGroup = createRegularGroup(site, regularGroupTitle, officialProviderId);
                     }
 
                     try {
@@ -170,7 +173,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         
                             if (!group.isPresent()) {
                                 group = createGroup(site, groupTitle);
-                                addInstructor(site, group.get(), student);
+                                addInstructor(site, group.get(), officialProviderId);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
@@ -208,9 +211,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         }
     }
 
-    private Optional<Group> createRegularGroup(Site site, String groupTitle, String section) {
+    private Optional<Group> createRegularGroup(Site site, String groupTitle, String providerId) {
         Optional<Group> g = createGroup(site, groupTitle);
-        Optional<Group> sectionGroup = getGroup(site, section);
+        Optional<Group> sectionGroup = getGroup(site, providerId);
 
         for (Member m : sectionGroup.get().getMembers()) {
             g.get().addMember(m.getUserId(), m.getRole().getId(), true, false);
@@ -282,15 +285,13 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return Optional.of(group);
     }
     
-    private Optional<Group> getGroup(Site site, String groupTitle) {
-        return site.getGroups().stream().filter(group -> group.getTitle().equals(groupTitle)).findFirst();
+    private Optional<Group> getGroup(Site site, String providerId) {
+        return site.getGroups().stream().filter(group -> group.getProviderGroupId().equals(providerId)).findFirst();
     }
 
-    private void addInstructor(Site site, Group group, ExceptedStudent student) {
-        String sectionEid = siteIdFormatHelper.buildSectionId(student.getSubject() + student.getCatalogNbr(),
-                student.getStrm(), SESSION_CODE, student.getClassSection());
+    private void addInstructor(Site site, Group group, String providerId) {
         // Keeping cmService because it gives a shorter list and more accurate
-        Set<Membership> instructors = cmService.getSectionMemberships(sectionEid);
+        Set<Membership> instructors = cmService.getSectionMemberships(providerId);
         Role role = null;
         String instructorId = null;
         for (Membership instructor : instructors) {
