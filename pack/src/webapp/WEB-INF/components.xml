@@ -687,6 +687,8 @@
 		<property name="cmService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 		<property name="serverConfigService"
 			ref="org.sakaiproject.component.api.ServerConfigurationService" />
+		<property name="ags" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecExamExceptionGroupSynchroJobImpl"

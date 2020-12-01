@@ -33,11 +33,11 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
+import org.sakaiproject.coursemanagement.api.Enrollment;
 import org.sakaiproject.coursemanagement.api.Membership;
-import org.sakaiproject.authz.api.Member;
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -48,6 +48,7 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserNotDefinedException;
 
@@ -135,16 +136,15 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 } else {
                     // We have changed site or have just started
                     if (!siteId.equals(previousSiteId)) {
-                        log.info("On est dans le site " + siteId);
                         if (saveSite(site)) {
                             deleteFromSyncTable(removedStudents);
                             clearState(addedStudents);
                         }
-
                         removedStudents.clear();
                         addedStudents.clear();
 
                         try {
+                            log.info("On est dans le site " + siteId);
                             site = siteService.getSite(siteId);
                         } catch (IdUnusedException e) {
                             site = null;
@@ -215,10 +215,23 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private Optional<Group> createRegularGroup(Site site, String groupTitle, String providerId) {
         Optional<Group> g = createGroup(site, groupTitle);
-        Optional<Group> sectionGroup = getGroupByProviderId(site, providerId);
 
-        for (Member m : sectionGroup.get().getMembers()) {
-            g.get().addMember(m.getUserId(), m.getRole().getId(), true, false);
+        // use CM because official group is sometimes not refreshed
+        Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+
+        if (g.isPresent()) {
+            for (Enrollment e : enrollments) {
+                try {
+                    User u = userDirectoryService.getUserByEid(e.getUserId());
+                    if (!e.isDropped()) {
+                        g.get().addMember(u.getId(), "Student", true, false);
+                    }
+                }
+                catch (UserNotDefinedException unde) {
+                    log.error("User not defined: " + e.getUserId());
+                }
+            }
+            addInstructor(site, g.get(), providerId);
         }
         return g;
     }
@@ -300,29 +313,42 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private void addInstructor(Site site, Group group, String providerId) {
-	Optional<Group> providedGroup = getGroupByProviderId(site, providerId);
-	Set<String> addedUsers = null;
-	String[] rolesToAdd = null;
-	if (providedGroup.isPresent()) {
-	    rolesToAdd = serverConfigService.getStrings(
-		    "hec.eventprocessing.groupeventprocessor.instructor.roles");
-	    if (rolesToAdd != null && rolesToAdd.length > 0) {
-		for (int i = 0; i < rolesToAdd.length; i++) {
-		    addedUsers =
-			    providedGroup.get().getUsersHasRole(rolesToAdd[i]);
-		    for (String user : addedUsers) {
-			try {
-			    group.insertMember(user, rolesToAdd[i], true,
-				    false);
-			} catch (IllegalStateException e) {
-			    log.error(
-				    "Unable to modify group because it's locked");
-			}
-		    }
-		}
-	    }
-	}
+        Optional<Group> providedGroup = getGroupByProviderId(site, providerId);
+	    Set<String> addedUsers = null;
+        String[] rolesToAdd = null;
+    
+	    if (providedGroup.isPresent()) {
+            try {
+                rolesToAdd = serverConfigService
+                    .getStrings("hec.eventprocessing.groupeventprocessor.instructor.roles");
+                    
+	            if (rolesToAdd != null && rolesToAdd.length > 0) {
+		            for (int i = 0; i < rolesToAdd.length; i++) {
+                        addedUsers = providedGroup.get().getUsersHasRole(rolesToAdd[i]);
+                        for (String user : addedUsers) {
+                            group.insertMember(user, rolesToAdd[i], true, false);
+		                }
+		            }
+	            }
 
+                // for some reason official instructors can be missing from group 
+                // because it's not refreshed from CM so get them there
+                Set<Membership> instructors = cmService.getSectionMemberships(providerId);
+                for (Membership instructor : instructors) {
+                    try {
+                        String instructorId = userDirectoryService.getUserId(instructor.getUserId());
+                        if (instructor.getRole().equals("I")) {
+                            group.insertMember(instructorId, "Instructor", true, false);
+                        }
+                    } catch (UserNotDefinedException e) {
+                        log.warn("the instructor " + instructor.getUserId() + " does not exist");
+                    }
+                }
+            }
+            catch (IllegalStateException e) {
+                log.error("Unable to modify group because it's locked: " + group.getId());
+            }
+        }
     }
 
     // For now only one type of message because it will probably not be used
