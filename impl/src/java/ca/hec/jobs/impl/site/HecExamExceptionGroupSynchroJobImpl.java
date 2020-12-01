@@ -36,7 +36,6 @@ import org.quartz.JobExecutionException;
 import org.sakaiproject.authz.api.Role;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Membership;
-import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
@@ -156,8 +155,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
                     String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     String regularGroupTitle = generateGroupTitle(student.getClassSection(), null);
-                    group = getGroup(site, groupTitle);
-                    regularGroup = getGroup(site, regularGroupTitle);
+                    group = getGroupByTitle(site, groupTitle);
+                    regularGroup = getGroupByTitle(site, regularGroupTitle);
 
                     String officialProviderId = siteIdFormatHelper.buildSectionId(
                         student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
@@ -213,7 +212,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private Optional<Group> createRegularGroup(Site site, String groupTitle, String providerId) {
         Optional<Group> g = createGroup(site, groupTitle);
-        Optional<Group> sectionGroup = getGroup(site, providerId);
+        Optional<Group> sectionGroup = getGroupByProviderId(site, providerId);
 
         for (Member m : sectionGroup.get().getMembers()) {
             g.get().addMember(m.getUserId(), m.getRole().getId(), true, false);
@@ -285,8 +284,16 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         return Optional.of(group);
     }
     
-    private Optional<Group> getGroup(Site site, String providerId) {
-        return site.getGroups().stream().filter(group -> group.getProviderGroupId().equals(providerId)).findFirst();
+    private Optional<Group> getGroupByTitle(Site site, String title) {
+        return site.getGroups().stream()
+            .filter(group -> (group.getTitle().equals(title)))
+            .findFirst();
+    }
+
+    private Optional<Group> getGroupByProviderId(Site site, String providerId) {
+        return site.getGroups().stream()
+            .filter(group -> (group.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED) == null && group.getProviderGroupId().equals(providerId)))
+            .findFirst();
     }
 
     private void addInstructor(Site site, Group group, String providerId) {
