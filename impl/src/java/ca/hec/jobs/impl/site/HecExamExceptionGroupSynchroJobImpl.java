@@ -113,16 +113,18 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             session.setUserEid("admin");
             session.setUserId("admin");
 
+            List<Object> params = new ArrayList<Object>();
             String query = "select * from HEC_CAS_SPEC_EXM "
                     + " where STATE is not null and STATE <> 'E'";
 
             if (StringUtils.isNotBlank(subject)) {
                 query += " and SUBJECT=?";
+                params.add(subject);
             }
             query += " order by SUBJECT, CATALOG_NBR, STRM, CLASS_SECTION, N_PRCENT_SUPP";
 
             List<ExceptedStudent> studentExceptions = sqlService.dbRead(query,
-                    new Object[] {subject}, new ExceptedStudentRecord());
+                    params.toArray(), new ExceptedStudentRecord());
 
             for (ExceptedStudent student : studentExceptions) {
                 previousSiteId = siteId;
