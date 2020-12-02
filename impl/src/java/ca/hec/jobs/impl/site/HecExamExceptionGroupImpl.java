@@ -92,7 +92,7 @@ public class HecExamExceptionGroupImpl implements HecExamExceptionGroup {
 	sqlService.dbWrite(
 		"update HEC_CAS_SPEC_EXM set STATE = 'D' where (EMPLID, NAME, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP) not in "
 			+ "(select EMPLID, NAME, CATALOG_NBR, STRM, CLASS_SECTION, SUBJECT, N_PRCENT_SUPP from PSFTCONT.ZONECOURS2_PS_N_CAS_SPEC_EXMW where strm=" + sessionId + ") "
-			+ "and STRM=" + sessionId);
+			+ "and state != 'E' and STRM=" + sessionId);
 
 	log.info("Traiter les changements de courriels");
 	sqlService.dbWrite(
