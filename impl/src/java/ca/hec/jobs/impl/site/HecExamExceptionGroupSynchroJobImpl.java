@@ -23,6 +23,7 @@ package ca.hec.jobs.impl.site;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -356,15 +357,28 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     // Later we can refine message structure and translation
     private void notifyError(ExceptedStudent student, String siteId, String groupTitle) {
         String from = "zonecours@hec.ca";
-        // merge if necessary coordinator and instructor email
-        String mergedEmails = (student.getNListeEmailProf().equals(student.getNListeEmailCoord())
-                ? student.getNListeEmailCoord()
-                : student.getNListeEmailProf() + "," + student.getNListeEmailCoord());
+        //Make sure no email is null and no duplicates
+        Set <String> emailSet = new HashSet <String>();
+        if (!StringUtils.isEmpty(student.getNListeEmailProf())) {
+            emailSet.add(student.getNListeEmailProf());
+        }
+        if (!StringUtils.isEmpty(student.getNListeEmailCoord())) {
+            emailSet.add(student.getNListeEmailCoord());
+        }
+        if (!StringUtils.isEmpty(student.getNListeEmailAdj())) {
+            emailSet.add(student.getNListeEmailAdj());
+        }
+        
+         
 
         String action = (student.getState().equals(STATE_REMOVE) ? "retiré d'une" : "ajouté à une");
         String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
                 + " équipe automatique (" + groupTitle + ") pour le cours " + siteId;
-        String to = student.getNListeEmailAdj() + "," + mergedEmails;
+        String to = emailSet.toString()
+        	    .replace("[", "")  //remove the right bracket
+        	    .replace("]", "")  //remove the left bracket
+        	    .trim();  
+        
         String message = "L’étudiant " + student.getName() + " (" + student.getEmplid() + ") n’a pas été " + action
                 + " équipe automatique (" + groupTitle + ") pour le cours " + siteId
                 + " parce que l'équipe ne peut être modifiée car elle est actuellement utilisée.\r\n" + "\r\n"
@@ -373,7 +387,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 + "\r\n" + "Cordialement,\r\n" + "\r\n"
                 + "P.S. : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n";
 
-        emailService.send(from, to, subject, message, null, null, null);
+        if (emailSet.size() > 0) {
+            emailService.send(from, to, subject, message, null, null, null);
+        }
     }
     
     @Data
