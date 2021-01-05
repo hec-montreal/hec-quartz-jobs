@@ -146,47 +146,50 @@ public class EvaluationSiteHierarchyJob implements Job{
 				continue;
 
 			for (Group group : site.getGroups()) {
-				// site came from getAllSites so some information is missing, retrieve the group properties
+				// site came from getAllSites so some information is missing, retrieve the group
+				// properties
 				Group g = siteService.findGroup(group.getId());
 
 				String providerGroup = g.getProviderGroupId();
 				String wsetupProp = g.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
 
-			// skip if it's a manual group, the provider group id is null or ends in 00 (means it's a shareable site), or DF1
-			if ((wsetupProp != null && wsetupProp.equals(Boolean.TRUE.toString())) ||
-					providerGroup == null ||
-					providerGroup.substring(providerGroup.length() - 2).equals("00") ||
-					providerGroup.length() - providerGroup.lastIndexOf("DF") <= 5) {
-				continue;
-			}
-
-			try {
-				// section specifies department (in category field), evaluation template, and language
-				Section section = courseManagementService.getSection(providerGroup);
-				// course offering specifies program (in academic career)
-				CourseOffering courseOffering = courseManagementService.getCourseOffering(section.getCourseOfferingEid());
-
-				//session
-				String nodeKey = courseOffering.getAcademicSession().getTitle();
-				//language
-				nodeKey += "|" + section.getLang();
-				// program
-				nodeKey += "|" + courseOffering.getAcademicCareer();
-				//evaluation type
-				String evalType = section.getTypeEvaluation();
-				nodeKey += "|" + (evalType != null ? evalType : "par défaut");
-
-				if (nodeMap.containsKey(nodeKey)) {
-					Set<String> siteRefs = nodeMap.get(nodeKey);
-					siteRefs.add(g.getReference());
-					} else {
-					Set<String> siteRefs = new HashSet<String>();
-					siteRefs.add(g.getReference());
-					nodeMap.put(nodeKey, siteRefs);
+				// skip if it's a manual group, the provider group id is null or ends in 00
+				// (means it's a shareable site), or DF1
+				if ((wsetupProp != null && wsetupProp.equals(Boolean.TRUE.toString())) || providerGroup == null
+						|| providerGroup.substring(providerGroup.length() - 2).equals("00")
+						|| providerGroup.length() - providerGroup.lastIndexOf("DF") <= 5) {
+					continue;
 				}
+
+				try {
+					// section specifies department (in category field), evaluation template, and
+					// language
+					Section section = courseManagementService.getSection(providerGroup);
+					// course offering specifies program (in academic career)
+					CourseOffering courseOffering = courseManagementService
+							.getCourseOffering(section.getCourseOfferingEid());
+
+					// session
+					String nodeKey = courseOffering.getAcademicSession().getTitle();
+					// language
+					nodeKey += "|" + section.getLang();
+					// program
+					nodeKey += "|" + courseOffering.getAcademicCareer();
+					// evaluation type
+					String evalType = section.getTypeEvaluation();
+					nodeKey += "|" + (evalType != null ? evalType : "par défaut");
+
+					if (nodeMap.containsKey(nodeKey)) {
+						Set<String> siteRefs = nodeMap.get(nodeKey);
+						siteRefs.add(g.getReference());
+					} else {
+						Set<String> siteRefs = new HashSet<String>();
+						siteRefs.add(g.getReference());
+						nodeMap.put(nodeKey, siteRefs);
+					}
 				} catch (IdNotFoundException e) {
 					log.debug("Section or CourseOffering not found for " + providerGroup);
-			}
+				}
 			}
 		}
 		return nodeMap;
