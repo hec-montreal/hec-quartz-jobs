@@ -145,7 +145,10 @@ public class EvaluationSiteHierarchyJob implements Job{
 			if (site.getProviderGroupId() ==null)
 				continue;
 
-			for (Group g : site.getGroups()) {
+			for (Group group : site.getGroups()) {
+				// site came from getAllSites so some information is missing, retrieve the group properties
+				Group g = siteService.findGroup(group.getId());
+
 				String providerGroup = g.getProviderGroupId();
 				String wsetupProp = g.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
 
