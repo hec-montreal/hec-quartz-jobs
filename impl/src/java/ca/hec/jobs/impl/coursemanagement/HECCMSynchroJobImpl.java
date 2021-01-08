@@ -16,7 +16,6 @@ import org.sakaiproject.tool.api.SessionManager;
 
 import java.io.*;
 import java.nio.charset.Charset;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -430,11 +429,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             log.warn("The section " + enrollmentSetEid + " does not exist");
             return;
         }
-        EnrollmentSet enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);;
-
-        //Remove official instructor for
-        enrollmentSet.setOfficialInstructors(new HashSet<String>());
-        cmAdmin.updateEnrollmentSet(enrollmentSet);
 
         if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
             //Sans risque puisque le fichier d'extract affiche les enseignants avant les coordonnateurs
@@ -650,8 +644,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     public void removeEntriesMarkedToDelete(){
         log.debug("Start removeEntriesMarkedToDelete");
 
-         Set<Membership> instructors, coordinators;
-         EnrollmentSet enrollmentSet;
+         Set<Membership> instructors;
 
         //Remove outdated students
         String[] values = null;
@@ -674,7 +667,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         //Remove outdated coordinators
-        Member coordinator;
         for (String entry: coordinatorsToDelete){
             values = entry.split(";");
             instructors = cmService.getSectionMemberships(values[1]);
