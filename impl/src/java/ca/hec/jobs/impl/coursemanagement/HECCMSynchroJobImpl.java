@@ -446,10 +446,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             for (Membership member: instructors){
                 if (member.getUserId().equalsIgnoreCase(emplId) ){
                     added = true;
-                    if ( member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
+                    if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
+                        // if user has been added as instructor, and now we see coordinator, they should be coordinator-instructor
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                         //remove user with role coordinator in other sections
                         removeCoordinatorInMemberships(enrollmentSetEid, emplId, distinctSitesSections);
+                    }
+                    else if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)) {
+                        // if user is supposed to be coordinator-instructor, they would be instructor at this point
+                        // if they are coordinator-instructor, make them coordinator.
+                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                     }
                 }
             }
