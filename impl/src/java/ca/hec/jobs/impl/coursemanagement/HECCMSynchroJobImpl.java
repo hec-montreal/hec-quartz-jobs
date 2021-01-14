@@ -16,8 +16,8 @@ import org.sakaiproject.tool.api.SessionManager;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.text.DateFormat;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 /**
@@ -429,6 +429,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             log.warn("The section " + enrollmentSetEid + " does not exist");
             return;
         }
+        EnrollmentSet enrollmentSet = cmService.getEnrollmentSet(enrollmentSetEid);;
+
+        //Remove official instructor for
+        enrollmentSet.setOfficialInstructors(new HashSet<String>());
+        cmAdmin.updateEnrollmentSet(enrollmentSet);
 
         if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
             //Sans risque puisque le fichier d'extract affiche les enseignants avant les coordonnateurs
@@ -446,16 +451,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             for (Membership member: instructors){
                 if (member.getUserId().equalsIgnoreCase(emplId) ){
                     added = true;
-                    if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
-                        // if user has been added as instructor, and now we see coordinator, they should be coordinator-instructor
+                    if ( member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                         //remove user with role coordinator in other sections
                         removeCoordinatorInMemberships(enrollmentSetEid, emplId, distinctSitesSections);
-                    }
-                    else if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)) {
-                        // if user is supposed to be coordinator-instructor, they would be instructor at this point
-                        // if they are coordinator-instructor, make them coordinator.
-                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
                     }
                 }
             }
@@ -650,7 +649,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     public void removeEntriesMarkedToDelete(){
         log.debug("Start removeEntriesMarkedToDelete");
 
-         Set<Membership> instructors;
+         Set<Membership> instructors, coordinators;
+         EnrollmentSet enrollmentSet;
 
         //Remove outdated students
         String[] values = null;
@@ -673,6 +673,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         //Remove outdated coordinators
+        Member coordinator;
         for (String entry: coordinatorsToDelete){
             values = entry.split(";");
             instructors = cmService.getSectionMemberships(values[1]);
@@ -699,7 +700,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
         String acadCareerId, strm, descFrancais, descShortFrancais, descAnglais, descShortAnglais, sessionCode, strmId, title;
         Date beginDate, endDate;
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
         Date today = new Date();
 
         List<String> currentSessions = new ArrayList<String>();
@@ -722,8 +722,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 descAnglais = token[3];
                 descShortFrancais = token[4];
                 descShortAnglais = token[5];
-                beginDate = sdf.parse(token[6]);
-                endDate = sdf.parse(token[7]);
+                beginDate = DateFormat.getDateInstance().parse(token[6]);
+                endDate = DateFormat.getDateInstance().parse(token[7]);
                 sessionCode = token[8];
                 strmId = token[9];
                 title = descShortFrancais.replace("-","");
