@@ -462,25 +462,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             }
 
             if (!added ) {
-                //Make sure the other sections does not have the user as coordinator-instructor
-                Map<String, String> userAccesses = cmService.findSectionRoles(emplId);
-                String userAccess;
-                String thisCourseOffering, userAccessCourseOffering;
-                Section thisSection =  cmService.getSection(enrollmentSetEid);
-                Section section;
-                thisCourseOffering = thisSection.getCourseOfferingEid();
-                for (String sectionId : userAccesses.keySet()) {
-                    userAccess = userAccesses.get(sectionId);
-                    section = cmService.getSection(sectionId);
-                    userAccessCourseOffering = section.getCourseOfferingEid();
-                    if ((thisCourseOffering.equals(userAccessCourseOffering) && thisSection.getInstructionMode().equalsIgnoreCase(section.getInstructionMode()))
-                            && userAccess.equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE))
-                        added = true;
-                }
-                if (!added) {
-                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                    log.info("Update section " + enrollmentSetEid + " add coordinator " + emplId);
-                }
+                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                log.info("Update section " + enrollmentSetEid + " add coordinator " + emplId);
             }
 
             coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
