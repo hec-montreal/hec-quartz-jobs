@@ -432,7 +432,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
             //Sans risque puisque le fichier d'extract affiche les enseignants avant les coordonnateurs
             cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-            log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+            log.info("Update section " + enrollmentSetEid + " add instructor " + emplId);
 
             instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
         }
@@ -448,13 +448,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
                         // if user has been added as instructor, and now we see coordinator, they should be coordinator-instructor
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                        //add user to list to be removed from other sections as coordinator
+                        //add user to list to be removed from other sections as coordinator later
                         coordinatorsToDeleteForCI.add(enrollmentSetEid + ";" + emplId);
+                        log.info("Update section " + enrollmentSetEid + " add coordinator-instructor " + emplId);
                     }
                     else if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)) {
                         // if user is supposed to be coordinator-instructor, they would be instructor at this point
                         // if they are coordinator-instructor, make them coordinator.
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                        log.info("Update section " + enrollmentSetEid + " add coordinator " + emplId);
                     }
                 }
             }
@@ -477,13 +479,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
                 if (!added) {
                     cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                    log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+                    log.info("Update section " + enrollmentSetEid + " add coordinator " + emplId);
                 }
             }
 
             coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
-            log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
-
         }
     }
 
