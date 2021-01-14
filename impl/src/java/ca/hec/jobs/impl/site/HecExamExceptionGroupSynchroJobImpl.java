@@ -289,8 +289,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private String generateGroupTitle(String section, String percent) {
         if (StringUtils.isNotEmpty(percent))
-            return EXCEPTION_GROUP_PREFIX + section + percent.replace("%", "");
-        else return section + REGULAR_GROUP_SUFFIX;
+            return section + " " + percent.replace("%", "");
+        else return section + " " + REGULAR_GROUP_SUFFIX;
     }
 
     private Optional<Group> createGroup(Site site, String groupTitle) {
