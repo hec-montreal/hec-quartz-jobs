@@ -7,7 +7,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
 import org.sakaiproject.site.api.SiteService;
@@ -48,7 +47,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private String[] token;
     private BufferedReader breader = null;
     private String buffer = null;
-    Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete;
+    Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete, coordinatorsToDeleteForCI;
     Set<String> syncedCanonicalCourses, syncedCourseOfferings;
     Date startTime, endTime;
     //Data to work on
@@ -96,9 +95,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             loadSessions();
             loadServEnseignements();
             loadCourses();
-            loadInstructeurs(distinctSitesSections);
+            loadInstructeurs();
             loadEtudiants();
-            removeEntriesMarkedToDelete();
+            removeEntriesMarkedToDelete(distinctSitesSections);
 
             endTime = new Date();
 
@@ -360,7 +359,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     /**
      * Method used to create instructors and coordinators
      */
-    private void loadInstructeurs(String distinctSitesSections) {
+    private void loadInstructeurs() {
         log.debug("Start loadInstructeurs");
 
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
@@ -372,6 +371,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             instructorsToDelete = getInstructorsInPreviousSynchro();
             coordinatorsToDelete = getCoordinatorsInPreviousSynchro();
+            coordinatorsToDeleteForCI = new HashSet <String>();
 
             // We remove the first line containing the title
             breader.readLine();
@@ -396,17 +396,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     strmId= token[8];
                 }
 
-
                 sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetEid = sectionId;
 
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr))
-                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId);
                 } else {
                     if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
-                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId);
                     }
                 }
             }
@@ -423,7 +422,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         log.debug("End loadInstructeurs");
     }
 
-    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId, String distinctSitesSections){
+    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
 
         if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(enrollmentSetEid)) {
             log.warn("The section " + enrollmentSetEid + " does not exist");
@@ -449,8 +448,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
                         // if user has been added as instructor, and now we see coordinator, they should be coordinator-instructor
                         cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                        //remove user with role coordinator in other sections
-                        removeCoordinatorInMemberships(enrollmentSetEid, emplId, distinctSitesSections);
+                        //add user to list to be removed from other sections as coordinator
+                        coordinatorsToDeleteForCI.add(enrollmentSetEid + ";" + emplId);
                     }
                     else if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)) {
                         // if user is supposed to be coordinator-instructor, they would be instructor at this point
@@ -508,8 +507,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             for (Membership member: coordinators) {
                 //Mettre a jour son rôle dans la section
                 if (member.getUserId().equalsIgnoreCase(emplId) && member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE)
-                        && section.getInstructionMode().equalsIgnoreCase(theSection.getInstructionMode()))
+                        && section.getInstructionMode().equalsIgnoreCase(theSection.getInstructionMode())) {
+
                     cmAdmin.removeSectionMembership(emplId, section.getEid());
+                    log.info("Remove coordinator " + emplId + " from " + section.getEid() + " because they are CI in another section");
+                }
             }
         }
     }
@@ -647,7 +649,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return studentsBySection;
     }
 
-    public void removeEntriesMarkedToDelete(){
+    public void removeEntriesMarkedToDelete(String distinctSitesSections){
         log.debug("Start removeEntriesMarkedToDelete");
 
          Set<Membership> instructors;
@@ -685,6 +687,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     }
             }
 
+         }
+
+         // Delete coordinators that are coordinator-instructor in another section
+         for (String entry : coordinatorsToDeleteForCI) {
+            values = entry.split(";");
+            removeCoordinatorInMemberships(values[0], values[1], distinctSitesSections);
          }
 
         log.debug("End removeEntriesMarkedToDelete");
