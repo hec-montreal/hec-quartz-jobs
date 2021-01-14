@@ -7,7 +7,6 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
-import org.sakaiproject.authz.api.Member;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
 import org.sakaiproject.site.api.SiteService;
@@ -48,7 +47,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private String[] token;
     private BufferedReader breader = null;
     private String buffer = null;
-    Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete;
+    Set<String> studentEnrollmentsToDelete, instructorsToDelete, coordinatorsToDelete, coordinatorsToDeleteForCI;
     Set<String> syncedCanonicalCourses, syncedCourseOfferings;
     Date startTime, endTime;
     //Data to work on
@@ -96,9 +95,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             loadSessions();
             loadServEnseignements();
             loadCourses();
-            loadInstructeurs(distinctSitesSections);
+            loadInstructeurs();
             loadEtudiants();
-            removeEntriesMarkedToDelete();
+            removeEntriesMarkedToDelete(distinctSitesSections);
 
             endTime = new Date();
 
@@ -360,7 +359,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     /**
      * Method used to create instructors and coordinators
      */
-    private void loadInstructeurs(String distinctSitesSections) {
+    private void loadInstructeurs() {
         log.debug("Start loadInstructeurs");
 
         String emplId, catalogNbr, strm, sessionCode, classSection, acadOrg, role, strmId;
@@ -372,6 +371,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             instructorsToDelete = getInstructorsInPreviousSynchro();
             coordinatorsToDelete = getCoordinatorsInPreviousSynchro();
+            coordinatorsToDeleteForCI = new HashSet <String>();
 
             // We remove the first line containing the title
             breader.readLine();
@@ -396,17 +396,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     strmId= token[8];
                 }
 
-
                 sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetEid = sectionId;
 
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr))
-                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId);
                 } else {
                     if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
-                        addOrUpdateProf(role, enrollmentSetEid, emplId, distinctSitesSections);
+                        addOrUpdateProf(role, enrollmentSetEid, emplId);
                     }
                 }
             }
@@ -423,7 +422,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         log.debug("End loadInstructeurs");
     }
 
-    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId, String distinctSitesSections){
+    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
 
         if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(enrollmentSetEid)) {
             log.warn("The section " + enrollmentSetEid + " does not exist");
@@ -438,52 +437,32 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (ENSEIGNANT_ROLE.equalsIgnoreCase(role)) {
             //Sans risque puisque le fichier d'extract affiche les enseignants avant les coordonnateurs
             cmAdmin.addOrUpdateSectionMembership(emplId, INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-            log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
+            log.info("Update section " + enrollmentSetEid + " add instructor " + emplId);
 
-            instructorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
+            instructorsToDelete.remove(emplId+";"+enrollmentSetEid);
         }
-
-        if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
+        else if (COORDINATOR_ROLE.equalsIgnoreCase(role)) {
 
             //Check if user is already instructor
             Set<Membership> instructors = cmService.getSectionMemberships(enrollmentSetEid);
             boolean added = false;
             for (Membership member: instructors){
-                if (member.getUserId().equalsIgnoreCase(emplId) ){
+                if (member.getUserId().equalsIgnoreCase(emplId) && member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
+                    // if user has already been added as instructor, they should be coordinator-instructor
+                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                    //add user to list to be removed from other sections as coordinator later
+                    coordinatorsToDeleteForCI.add(enrollmentSetEid + ";" + emplId);
+                    log.info("Update section " + enrollmentSetEid + " add coordinator-instructor " + emplId);
                     added = true;
-                    if ( member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
-                        cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_INSTRUCTOR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                        //remove user with role coordinator in other sections
-                        removeCoordinatorInMemberships(enrollmentSetEid, emplId, distinctSitesSections);
-                    }
                 }
             }
 
-            if (!added ) {
-                //Make sure the other sections does not have the user as coordinator-instructor
-                Map<String, String> userAccesses = cmService.findSectionRoles(emplId);
-                String userAccess;
-                String thisCourseOffering, userAccessCourseOffering;
-                Section thisSection =  cmService.getSection(enrollmentSetEid);
-                Section section;
-                thisCourseOffering = thisSection.getCourseOfferingEid();
-                for (String sectionId : userAccesses.keySet()) {
-                    userAccess = userAccesses.get(sectionId);
-                    section = cmService.getSection(sectionId);
-                    userAccessCourseOffering = section.getCourseOfferingEid();
-                    if ((thisCourseOffering.equals(userAccessCourseOffering) && thisSection.getInstructionMode().equalsIgnoreCase(section.getInstructionMode()))
-                            && userAccess.equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE))
-                        added = true;
-                }
-                if (!added) {
-                    cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
-                    log.info("Update section " + enrollmentSetEid + "'s instructor(s) with instructor: " + emplId);
-                }
+            if (!added) {
+                cmAdmin.addOrUpdateSectionMembership(emplId, COORDONNATEUR_ROLE, enrollmentSetEid, ACTIVE_STATUS);
+                log.info("Update section " + enrollmentSetEid + " add coordinator " + emplId);
             }
 
-            coordinatorsToDelete.removeAll(Arrays.asList(emplId+";"+enrollmentSetEid));
-            log.info("Update enrollmentSet " + enrollmentSetEid + " avec les coordonnateurs " + emplId);
-
+            coordinatorsToDelete.remove(emplId+";"+enrollmentSetEid);
         }
     }
 
@@ -507,12 +486,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             for (Membership member: coordinators) {
                 //Mettre a jour son rôle dans la section
                 if (member.getUserId().equalsIgnoreCase(emplId) && member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE)
-                        && section.getInstructionMode().equalsIgnoreCase(theSection.getInstructionMode()))
+                        && section.getInstructionMode().equalsIgnoreCase(theSection.getInstructionMode())) {
+
                     cmAdmin.removeSectionMembership(emplId, section.getEid());
+                    log.info("Remove coordinator " + emplId + " from " + section.getEid() + " because they are CI in another section");
+                }
             }
         }
     }
-
 
     public Set<String> getInstructorsInPreviousSynchro (){
         Set<String> courses = new HashSet<String>();
@@ -552,6 +533,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
         return instructorsBySection;
     }
+
     /**
      * Method used to create students
      */
@@ -565,7 +547,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory+ File.separator + ETUDIANT_FILE), "ISO-8859-1"));
-
 
             // We remove the first line containing the title
             breader.readLine();
@@ -587,12 +568,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
                         addOrUpdateEtudiants(sectionId, enrollmentSetEid, emplId);
-                        studentEnrollmentsToDelete.removeAll(Arrays.asList(emplId + ";" + enrollmentSetEid));
+                        studentEnrollmentsToDelete.remove(emplId + ";" + enrollmentSetEid);
                     }
                 } else {
                     if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                         addOrUpdateEtudiants(sectionId, enrollmentSetEid, emplId);
-                        studentEnrollmentsToDelete.removeAll(Arrays.asList(emplId + ";" + enrollmentSetEid));
+                        studentEnrollmentsToDelete.remove(emplId + ";" + enrollmentSetEid);
                     }
                 }
             }
@@ -622,9 +603,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 cmAdmin.addOrUpdateEnrollment(emplId, enrollmentSetEid, ENROLLMENT_STATUS,
                         enrollmentSet.getDefaultEnrollmentCredits(), GRADING_SCHEME);
                 log.info("Create or Update enrollment " + enrollmentSetEid + " for " + emplId);
-
             }
-
         }
     }
 
@@ -646,11 +625,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return studentsBySection;
     }
 
-    public void removeEntriesMarkedToDelete(){
+    public void removeEntriesMarkedToDelete(String distinctSitesSections){
         log.debug("Start removeEntriesMarkedToDelete");
 
-         Set<Membership> instructors, coordinators;
-         EnrollmentSet enrollmentSet;
+        Set<Membership> instructors;
 
         //Remove outdated students
         String[] values = null;
@@ -664,28 +642,35 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             values = entry.split(";");
             instructors = cmService.getSectionMemberships(values[1]);
             for (Membership member: instructors){
-                if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE))
+                if (member.getRole().equalsIgnoreCase(INSTRUCTOR_ROLE)) {
                     if (member.getUserId().equalsIgnoreCase(values[0])) {
                         cmAdmin.removeSectionMembership(values[0], values[1]);
-                        log.info ("Remove instructor " + values[1] + " avec les official instructors " + values[0]);
+                        log.info ("Remove instructor " + values[0] + " from section " + values[1]);
                     }
+                }
             }
         }
 
         //Remove outdated coordinators
-        Member coordinator;
         for (String entry: coordinatorsToDelete){
             values = entry.split(";");
             instructors = cmService.getSectionMemberships(values[1]);
             for (Membership member: instructors){
                 if (member.getRole().equalsIgnoreCase(COORDONNATEUR_INSTRUCTOR_ROLE)
-                        || member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE))
+                        || member.getRole().equalsIgnoreCase(COORDONNATEUR_ROLE)) {
                     if (member.getUserId().equalsIgnoreCase(values[0])) {
                         cmAdmin.removeSectionMembership(values[0], values[1]);
-                        log.info ("Remove coordinator " + values[0] + " dans le site " + values[1]);
+                        log.info ("Remove coordinator " + values[0] + " from section " + values[1]);
                     }
+                }
             }
 
+         }
+
+         // Delete coordinators that are coordinator-instructor in another section
+         for (String entry : coordinatorsToDeleteForCI) {
+            values = entry.split(";");
+            removeCoordinatorInMemberships(values[0], values[1], distinctSitesSections);
          }
 
         log.debug("End removeEntriesMarkedToDelete");
