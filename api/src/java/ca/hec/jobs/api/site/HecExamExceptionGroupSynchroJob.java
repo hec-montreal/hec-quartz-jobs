@@ -29,7 +29,7 @@ import org.quartz.Job;
  */
 public interface HecExamExceptionGroupSynchroJob extends Job {
     
-    public static String EXCEPTION_GROUP_PREFIX = "AE";
+    public static String EXCEPTION_GROUP_PREFIX = "EA";
     public static String REGULAR_GROUP_SUFFIX = "R";
     public static String SESSION_CODE = "1";
     public static String STATE_ADD = "A";
