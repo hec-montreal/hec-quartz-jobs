@@ -23,21 +23,27 @@ package ca.hec.jobs.impl.site;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collector;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Enrollment;
 import org.sakaiproject.coursemanagement.api.Membership;
+import org.sakaiproject.coursemanagement.api.Section;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -86,7 +92,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected CourseManagementService cmService;
     @Setter
     protected ServerConfigurationService serverConfigService;
-    
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
@@ -98,6 +104,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         Optional<Group> group = null;
         Optional<Group> regularGroup = null;
 
+        Map<String, List<String>> exceptionMap = new HashMap<>();
         List<ExceptedStudent> addedStudents = new ArrayList<>();
         List<ExceptedStudent> removedStudents = new ArrayList<>();
         
@@ -116,7 +123,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
             List<Object> params = new ArrayList<Object>();
             String query = "select * from HEC_CAS_SPEC_EXM "
-                    + " where STATE is not null and STATE <> 'E'";
+                    + " where STATE <> 'E'";
 
             if (StringUtils.isNotBlank(subject)) {
                 query += " and SUBJECT=?";
@@ -128,6 +135,24 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     params.toArray(), new ExceptedStudentRecord());
 
             for (ExceptedStudent student : studentExceptions) {
+
+                // build exception map for synchronizing regular groups.
+                //String mapKey = student.getSubject() + student.getCatalogNbr() + ";" + student.getStrm() + ";" + student.getClassSection();
+                String officialProviderId = siteIdFormatHelper.buildSectionId(
+                    student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
+                if (exceptionMap.containsKey(officialProviderId)) {
+                    exceptionMap.get(officialProviderId).add(student.getEmplid());
+                }
+                else {
+                    List<String> newList = new ArrayList<String>();
+                    newList.add(student.getEmplid());
+                    exceptionMap.put(officialProviderId, newList);
+                }
+                if (student.getState() == null) {
+                    // nothing to do for null state
+                    continue;
+                }
+
                 previousSiteId = siteId;
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
                         SESSION_CODE, student.getClassSection(), distinctSitesSections);
@@ -159,16 +184,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     }
 
                     String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
-                    String regularGroupTitle = generateGroupTitle(student.getClassSection(), null);
                     group = getGroupByTitle(site, groupTitle);
-                    regularGroup = getGroupByTitle(site, regularGroupTitle);
-
-                    String officialProviderId = siteIdFormatHelper.buildSectionId(
-                        student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
-
-                    if (!regularGroup.isPresent()) {
-                        regularGroup = createRegularGroup(site, regularGroupTitle, officialProviderId);
-                    }
 
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
@@ -182,12 +198,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
                             group.get().insertMember(studentId, "Student", true, false);
-                            regularGroup.get().deleteMember(studentId);
                             addedStudents.add(student);
                         } else if (student.getState().equals(STATE_REMOVE)) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
-                            regularGroup.get().insertMember(studentId, "Student", true, false);
                             removedStudents.add(student);
                         }
                     } catch (NoSuchElementException e) {
@@ -208,6 +222,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 deleteFromSyncTable(removedStudents);
                 clearState(addedStudents);    
             }
+
+            createOrUpdateRegularGroups(exceptionMap);
         } finally {
             session.clear();
             isRunning = false;
@@ -215,27 +231,53 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         }
     }
 
-    private Optional<Group> createRegularGroup(Site site, String groupTitle, String providerId) {
-        Optional<Group> g = createGroup(site, groupTitle);
+    private void createOrUpdateRegularGroups(Map<String, List<String>> exceptionMap, String distinctSitesSections) {
 
-        // use CM because official group is sometimes not refreshed
-        Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+        for(String providerId : exceptionMap.keySet()) {
 
-        if (g.isPresent()) {
-            for (Enrollment e : enrollments) {
-                try {
-                    User u = userDirectoryService.getUserByEid(e.getUserId());
-                    if (!e.isDropped()) {
-                        g.get().addMember(u.getId(), "Student", true, false);
+            // use CM because official group is sometimes not refreshed
+            Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+            Section section = cmService.getSection(providerId);
+            String siteId = siteIdFormatHelper.getSiteId(section, distinctSitesSections);
+            Site site = siteService.getSite(siteId);
+            String regularGroupTitle = generateGroupTitle(section.getTitle(), null);
+
+            Optional<Group> g = getGroupByTitle(site, regularGroupTitle);
+
+            if (g.isPresent()) {
+                List<String> existingMembers = g.get().getMembers().stream().map(member -> member.getUserEid()).collect(toList());
+
+                for (Enrollment e : enrollments) {
+                    try {
+                        User u = userDirectoryService.getUserByEid(e.getUserId());
+                        if (!e.isDropped() && !exceptionMap.get(providerId).contains(u.getEid())) {
+                            g.addMember(u.getId(), "Student", true, false);
+                            existingMembers.remove(u.getId());
+                        }
+                    }
+                    catch (UserNotDefinedException unde) {
+                        log.error("User not defined: " + e.getUserId());
                     }
                 }
-                catch (UserNotDefinedException unde) {
-                    log.error("User not defined: " + e.getUserId());
+                existingMembers.removeAll(addInstructor(site, g, providerId));
+
+                for (String leftToDelete : existingMembers) {
+                    // these members are no longer in regular group
+                    g.get().removeMember(leftToDelete);
                 }
             }
-            addInstructor(site, g.get(), providerId);
+            
+            
+
+    }
+
+    private void synchronizeRegularGroup(Site site, Group g, String providerId) {
+        // use CM because official group is sometimes not refreshed
+        Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+        
+
         }
-        return g;
+        
     }
 
     private void deleteFromSyncTable(List<ExceptedStudent> removedStudents) {
@@ -314,10 +356,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             .findFirst();
     }
 
-    private void addInstructor(Site site, Group group, String providerId) {
+    private List<String> addInstructor(Site site, Group group, String providerId) {
         Optional<Group> providedGroup = getGroupByProviderId(site, providerId);
 	    Set<String> addedUsers = null;
         String[] rolesToAdd = null;
+        List<String> addedUsers = new ArrayList<String>();
     
 	    if (providedGroup.isPresent()) {
             try {
@@ -326,9 +369,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     
 	            if (rolesToAdd != null && rolesToAdd.length > 0) {
 		            for (int i = 0; i < rolesToAdd.length; i++) {
-                        addedUsers = providedGroup.get().getUsersHasRole(rolesToAdd[i]);
+                        Set<String> usersToAdd = providedGroup.get().getUsersHasRole(rolesToAdd[i]);
                         for (String user : addedUsers) {
                             group.insertMember(user, rolesToAdd[i], true, false);
+                            addedUsers.add(user);
 		                }
 		            }
 	            }
@@ -341,6 +385,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         String instructorId = userDirectoryService.getUserId(instructor.getUserId());
                         if (instructor.getRole().equals("I")) {
                             group.insertMember(instructorId, "Instructor", true, false);
+                            addedUsers.add(instrorId);
                         }
                     } catch (UserNotDefinedException e) {
                         log.warn("the instructor " + instructor.getUserId() + " does not exist");
@@ -351,6 +396,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 log.error("Unable to modify group because it's locked: " + group.getId());
             }
         }
+        return addedUsers;
     }
 
     // For now only one type of message because it will probably not be used
