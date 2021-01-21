@@ -23,11 +23,14 @@ package ca.hec.jobs.impl.site;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -38,6 +41,8 @@ import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.Enrollment;
 import org.sakaiproject.coursemanagement.api.Membership;
+import org.sakaiproject.coursemanagement.api.Section;
+import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
@@ -68,7 +73,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     private static Boolean isRunning = false;
 
     // group property to show it was created by this job
-    private static String GROUP_PROP_EXCEPTION_GROUP = "group_prop_exception_group";
+    private static final String GROUP_PROP_EXCEPTION_GROUP = "group_prop_exception_group";
+
+    private static final String STUDENT_ROLE = "Student";
+    private static final String INSTRUCTOR_ROLE = "Instructor";
 
     @Setter
     private EmailService emailService;
@@ -86,18 +94,24 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     protected CourseManagementService cmService;
     @Setter
     protected ServerConfigurationService serverConfigService;
-    
+
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
         Session session = sessionManager.getCurrentSession();
         String distinctSitesSections = context.getMergedJobDataMap().getString("distinctSitesSections");
         String subject = context.getMergedJobDataMap().getString("optionalSubject");
+        String sessionId = context.getMergedJobDataMap().getString("sessionId");
         String siteId = null;
         String previousSiteId = null;
         Site site = null;
         Optional<Group> group = null;
-        Optional<Group> regularGroup = null;
 
+        if (StringUtils.isBlank(sessionId)) {
+            sessionId = cmService.getCurrentAcademicSessions().get(0).getEid();
+            sessionId = StringUtils.chop(sessionId);
+        }
+        
+        Map<String, List<String>> exceptionMap = new HashMap<>();
         List<ExceptedStudent> addedStudents = new ArrayList<>();
         List<ExceptedStudent> removedStudents = new ArrayList<>();
         
@@ -116,8 +130,13 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
             List<Object> params = new ArrayList<Object>();
             String query = "select * from HEC_CAS_SPEC_EXM "
-                    + " where STATE is not null and STATE <> 'E'";
+                    + " where (STATE is null or STATE <> 'E')";
 
+            if (StringUtils.isNotBlank(sessionId)) {
+                query += " and STRM=?";
+                params.add(sessionId);
+                log.debug("Handling session: " + sessionId);
+            }
             if (StringUtils.isNotBlank(subject)) {
                 query += " and SUBJECT=?";
                 params.add(subject);
@@ -128,6 +147,24 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     params.toArray(), new ExceptedStudentRecord());
 
             for (ExceptedStudent student : studentExceptions) {
+
+                // build map of exceptions for synchronizing regular groups at the end.
+                String officialProviderId = siteIdFormatHelper.buildSectionId(
+                    student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
+
+                if (exceptionMap.containsKey(officialProviderId)) {
+                    exceptionMap.get(officialProviderId).add(student.getEmplid());
+                }
+                else {
+                    List<String> newList = new ArrayList<String>();
+                    newList.add(student.getEmplid());
+                    exceptionMap.put(officialProviderId, newList);
+                }
+                if (student.getState() == null) {
+                    // nothing to do for null state
+                    continue;
+                }
+
                 previousSiteId = siteId;
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
                         SESSION_CODE, student.getClassSection(), distinctSitesSections);
@@ -159,16 +196,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     }
 
                     String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
-                    String regularGroupTitle = generateGroupTitle(student.getClassSection(), null);
                     group = getGroupByTitle(site, groupTitle);
-                    regularGroup = getGroupByTitle(site, regularGroupTitle);
-
-                    String officialProviderId = siteIdFormatHelper.buildSectionId(
-                        student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
-
-                    if (!regularGroup.isPresent()) {
-                        regularGroup = createRegularGroup(site, regularGroupTitle, officialProviderId);
-                    }
 
                     try {
                         String studentId = userDirectoryService.getUserId(student.getEmplid());
@@ -181,13 +209,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
-                            group.get().insertMember(studentId, "Student", true, false);
-                            regularGroup.get().deleteMember(studentId);
+                            group.get().insertMember(studentId, STUDENT_ROLE, true, false);
                             addedStudents.add(student);
                         } else if (student.getState().equals(STATE_REMOVE)) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
-                            regularGroup.get().insertMember(studentId, "Student", true, false);
                             removedStudents.add(student);
                         }
                     } catch (NoSuchElementException e) {
@@ -208,6 +234,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 deleteFromSyncTable(removedStudents);
                 clearState(addedStudents);    
             }
+
+            createOrUpdateRegularGroups(exceptionMap, distinctSitesSections);
         } finally {
             session.clear();
             isRunning = false;
@@ -215,27 +243,56 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         }
     }
 
-    private Optional<Group> createRegularGroup(Site site, String groupTitle, String providerId) {
-        Optional<Group> g = createGroup(site, groupTitle);
+    private void createOrUpdateRegularGroups(Map<String, List<String>> exceptionMap, String distinctSitesSections) {
+        for(String providerId : exceptionMap.keySet()) {
+            log.debug("Sync regular group for section " + providerId);
+            try {
+                List<String> exceptionsList = exceptionMap.get(providerId);
+                // use CM because official group is sometimes not refreshed
+                Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+                Section section = cmService.getSection(providerId);
+                String siteId = siteIdFormatHelper.getSiteId(section, distinctSitesSections);
+                Site site = siteService.getSite(siteId);
+                String regularGroupTitle = generateGroupTitle(section.getTitle(), null);
 
-        // use CM because official group is sometimes not refreshed
-        Set<Enrollment> enrollments = cmService.getEnrollments(providerId);
+                Optional<Group> g = getGroupByTitle(site, regularGroupTitle);
+                if (!g.isPresent()) {
+                    g = createGroup(site, regularGroupTitle);
+                }
 
-        if (g.isPresent()) {
-            for (Enrollment e : enrollments) {
-                try {
-                    User u = userDirectoryService.getUserByEid(e.getUserId());
-                    if (!e.isDropped()) {
-                        g.get().addMember(u.getId(), "Student", true, false);
+                if (g.isPresent()) {
+                    Set<String> existingMembers = g.get().getMembers().stream().map(member -> member.getUserId()).collect(Collectors.toSet());
+
+                    for (Enrollment e : enrollments) {
+                        try {
+                            User u = userDirectoryService.getUserByEid(e.getUserId());
+                            if (!e.isDropped() && !exceptionsList.contains(u.getEid())) {
+                                if (!g.get().hasRole(u.getId(), STUDENT_ROLE)) {
+                                    g.get().addMember(u.getId(), STUDENT_ROLE, true, false);
+                                    log.debug("add member " + u.getEid() + " to " + site.getId() + " " + regularGroupTitle);
+                                }
+                                existingMembers.remove(u.getId());
+                            }
+                        }
+                        catch (UserNotDefinedException unde) {
+                            log.error("User not defined: " + e.getUserId());
+                        }
+                    }
+                    Set<String> addedInstructors = addInstructor(site, g.get(), providerId);
+                    existingMembers.removeAll(addedInstructors);
+
+                    // existing members that are still in the list should be removed (no longer official)
+                    for (String leftToDelete : existingMembers) {
+                        g.get().removeMember(leftToDelete);
+                        log.debug("remove member " + leftToDelete + " from " + site.getId() + " group " + regularGroupTitle);
                     }
                 }
-                catch (UserNotDefinedException unde) {
-                    log.error("User not defined: " + e.getUserId());
-                }
+                saveSite(site);
             }
-            addInstructor(site, g.get(), providerId);
+            catch (IdUnusedException | IdNotFoundException e) {
+                log.error("Error retrieving site for regular group for provider: " + providerId);
+            }
         }
-        return g;
     }
 
     private void deleteFromSyncTable(List<ExceptedStudent> removedStudents) {
@@ -317,10 +374,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             .findFirst();
     }
 
-    private void addInstructor(Site site, Group group, String providerId) {
+    private Set<String> addInstructor(Site site, Group group, String providerId) {
         Optional<Group> providedGroup = getGroupByProviderId(site, providerId);
-	    Set<String> addedUsers = null;
-        String[] rolesToAdd = null;
+	    String[] rolesToAdd = null;
+        Set<String> addedUsers = new HashSet<String>();
     
 	    if (providedGroup.isPresent()) {
             try {
@@ -329,9 +386,12 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     
 	            if (rolesToAdd != null && rolesToAdd.length > 0) {
 		            for (int i = 0; i < rolesToAdd.length; i++) {
-                        addedUsers = providedGroup.get().getUsersHasRole(rolesToAdd[i]);
-                        for (String user : addedUsers) {
-                            group.insertMember(user, rolesToAdd[i], true, false);
+                        Set<String> usersToAdd = providedGroup.get().getUsersHasRole(rolesToAdd[i]);
+                        for (String user : usersToAdd) {
+                            if (!group.hasRole(user, rolesToAdd[i])) {
+                                group.insertMember(user, rolesToAdd[i], true, false);
+                            }
+                            addedUsers.add(user);
 		                }
 		            }
 	            }
@@ -343,7 +403,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     try {
                         String instructorId = userDirectoryService.getUserId(instructor.getUserId());
                         if (instructor.getRole().equals("I")) {
-                            group.insertMember(instructorId, "Instructor", true, false);
+                            if (group.hasRole(instructorId, INSTRUCTOR_ROLE)) {
+                                group.insertMember(instructorId, INSTRUCTOR_ROLE, true, false);
+                            }
+                            addedUsers.add(instructorId);
                         }
                     } catch (UserNotDefinedException e) {
                         log.warn("the instructor " + instructor.getUserId() + " does not exist");
@@ -354,6 +417,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 log.error("Unable to modify group because it's locked: " + group.getId());
             }
         }
+        return addedUsers;
     }
 
     // For now only one type of message because it will probably not be used
@@ -371,8 +435,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         if (!StringUtils.isEmpty(student.getNListeEmailAdj())) {
             emailSet.add(student.getNListeEmailAdj());
         }
-        
-         
 
         String action = (student.getState().equals(STATE_REMOVE) ? "retiré d'une" : "ajouté à une");
         String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
@@ -428,7 +490,6 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             }
             return student;
 		}
-
     }
 }
 

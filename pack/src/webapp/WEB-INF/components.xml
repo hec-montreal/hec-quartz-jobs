@@ -671,7 +671,7 @@
 					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="sessionId"/>
 					<property name="descriptionResourceKey" value="sessionId.description"/>
-					<property name="defaultValue" value="2203"/>
+					<property name="defaultValue" value=""/>
 				</bean>
 			</set>
 		</property>
@@ -710,6 +710,12 @@
 					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="optionalSubject"/>
 					<property name="descriptionResourceKey" value="optionalSubject.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="sessionId"/>
+					<property name="descriptionResourceKey" value="sessionId.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
