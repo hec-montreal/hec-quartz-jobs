@@ -309,8 +309,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     }
 
     private Optional<Group> getGroupByProviderId(Site site, String providerId) {
+        if (site == null || providerId == null) {
+            return Optional.empty();
+        }
         return site.getGroups().stream()
-            .filter(group -> (group.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED) == null && group.getProviderGroupId().equals(providerId)))
+            .filter(group -> (group.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED) == null && providerId.equals(group.getProviderGroupId())))
             .findFirst();
     }
 
