@@ -65,6 +65,7 @@
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HECCMSynchroJobImpl"

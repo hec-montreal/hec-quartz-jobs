@@ -7,6 +7,9 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.authz.api.AuthzGroupService;
+import org.sakaiproject.authz.api.AuthzPermissionException;
+import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
 import org.sakaiproject.site.api.SiteService;
@@ -33,6 +36,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     protected SiteIdFormatHelper siteIdFormatHelper;
     @Setter
     protected SiteService siteService;
+    @Setter
+    protected AuthzGroupService authzGroupService;
 
     private static Log log = LogFactory.getLog(HECCMSynchroJobImpl.class);
 
@@ -53,6 +58,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     //Data to work on
     Set<String> selectedSessions, selectedCourses;
     Map<String, InstructionMode> instructionMode;
+    Set<String> sectionsToRefresh;
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -85,6 +91,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             session.setUserId("admin");
             selectedSessions = new HashSet<String>();
             selectedCourses = new HashSet<String>();
+            sectionsToRefresh = new HashSet<String>(); // refresh these authzGroups to ensure role change for C and CI
             startTime = new Date();
             log.info("Starting HEC CM Data Synchro job at " + startTime);
 
@@ -98,6 +105,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             loadInstructeurs();
             loadEtudiants();
             removeEntriesMarkedToDelete(distinctSitesSections);
+
+            log.info("Refresh authz groups to ensure correct role for coordinators and coordinator-instructors");
+            for (String enterpriseId : sectionsToRefresh) {
+                refreshGroups(enterpriseId);
+            }
 
             endTime = new Date();
 
@@ -371,7 +383,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             instructorsToDelete = getInstructorsInPreviousSynchro();
             coordinatorsToDelete = getCoordinatorsInPreviousSynchro();
-            coordinatorsToDeleteForCI = new HashSet <String>();
+            coordinatorsToDeleteForCI = new HashSet<String>();
 
             // We remove the first line containing the title
             breader.readLine();
@@ -401,8 +413,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
-                    if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr))
+                    if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
                         addOrUpdateProf(role, enrollmentSetEid, emplId);
+                    }
                 } else {
                     if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                         addOrUpdateProf(role, enrollmentSetEid, emplId);
@@ -422,7 +435,18 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         log.debug("End loadInstructeurs");
     }
 
-    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId){
+    private void refreshGroups(String enrollmentSetEid) {
+        Set<String> refreshGroups = authzGroupService.getAuthzGroupIds(enrollmentSetEid);
+        for (String id : refreshGroups) {
+            try {
+                authzGroupService.save(authzGroupService.getAuthzGroup(id));
+            } catch (GroupNotDefinedException | AuthzPermissionException e) {
+                log.error("unable to refresh authz group " + id);
+            }
+        }
+    }
+
+    public void addOrUpdateProf(String role, String enrollmentSetEid, String emplId) {
 
         if (!cmService.isEnrollmentSetDefined(enrollmentSetEid) || !cmService.isSectionDefined(enrollmentSetEid)) {
             log.warn("The section " + enrollmentSetEid + " does not exist");
@@ -459,6 +483,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             coordinatorsToDelete.remove(emplId+";"+enrollmentSetEid);
         }
+        // make sure to refresh authzGroups once at the end to ensure correct role
+        sectionsToRefresh.add(enrollmentSetEid);
     }
 
     private void removeCoordinatorInMemberships(String sectionEid, String emplId, String distinctSitesSections){
