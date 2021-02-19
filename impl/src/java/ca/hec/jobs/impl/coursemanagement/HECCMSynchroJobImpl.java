@@ -12,6 +12,7 @@ import org.sakaiproject.authz.api.AuthzPermissionException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
+import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
@@ -873,7 +874,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 if (cmService.getSectionCategoryDescription (acadOrg) == null) {
                     cmAdmin.addSectionCategory(acadOrg, description);
                 }
-                if (cmService.getCourseSet(acadOrg) == null) {
+                try {
+                    cmService.getCourseSet(acadOrg);
+                }
+                catch (IdNotFoundException infe) {
                     cmAdmin.createCourseSet(acadOrg, description, description, null, null);
                 }
             }
