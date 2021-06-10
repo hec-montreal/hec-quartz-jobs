@@ -729,4 +729,41 @@
 		</property>
 	</bean>
 
+	<bean id="hecEdStudentSynchroJob"
+		  class="ca.hec.jobs.impl.site.HecEdStudentSynchroJobImpl">
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
+		<property name="authzGroupService" 
+			ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="serverConfigService"
+			ref="org.sakaiproject.component.api.ServerConfigurationService" />
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecEdStudentSynchroJobSynchroJobImpl"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>hecEdStudentSynchroJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC ED students type Synchronisation Job</value>
+		</property>
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="sites"/>
+					<property name="descriptionResourceKey" value="sites.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+			</set>
+		</property>
+	</bean>
 </beans>
