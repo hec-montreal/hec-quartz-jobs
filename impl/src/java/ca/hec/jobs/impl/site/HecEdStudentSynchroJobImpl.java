@@ -121,8 +121,10 @@ public class HecEdStudentSynchroJobImpl implements HecEdStudentSynchroJob {
 				    // Delete workspace if it exists
 				    userSiteId = siteService
 					    .getUserSiteId(member.getUserId());
-				    userSite = siteService.getSite(userSiteId);
-				    siteService.removeSite(userSite);
+				    if (siteService.siteExists(userSiteId)) {
+					userSite = siteService.getSite(userSiteId);
+					siteService.removeSite(userSite);
+				    }
 				}
 			    }
 			} catch (IdUnusedException | PermissionException e5) {
