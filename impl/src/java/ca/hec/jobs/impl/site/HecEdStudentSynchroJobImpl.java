@@ -25,7 +25,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
-import org.hsqldb.rights.User;
 import org.quartz.JobExecutionContext;
 import lombok.Setter;
 
@@ -41,6 +40,7 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.user.api.User;
 import org.sakaiproject.user.api.UserAlreadyDefinedException;
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.user.api.UserEdit;
@@ -92,6 +92,7 @@ public class HecEdStudentSynchroJobImpl implements HecEdStudentSynchroJob {
 	UserEdit userEdit = null;
 	String userSiteId = null;
 	Site userSite = null;
+	User user = null;
 
 	if (StringUtils.isNotBlank(siteIds)) {
 	    sitesList = siteIds.split(",");
@@ -106,10 +107,12 @@ public class HecEdStudentSynchroJobImpl implements HecEdStudentSynchroJob {
 			.getAuthzGroup(SITE_REFERENCE_PREFIX + siteId);
 
 		for (Member member : authzGroup.getMembers()) {
-		    // Do not change provided members
-		    if (!member.isProvided()) {
-			matcher = pattern.matcher(member.getUserEid());
-			try {
+		    try {
+			user = userDirectoryService.getUser(member.getUserId());
+			// Do not change provided members
+			if (!member.isProvided() && (!GUESTED_USER_TYPE
+					.equalsIgnoreCase(user.getType())) ) {
+			    matcher = pattern.matcher(member.getUserEid());
 			    if (matcher.matches()) {
 				userEdit = userDirectoryService
 					.editUser(member.getUserId());
@@ -122,32 +125,32 @@ public class HecEdStudentSynchroJobImpl implements HecEdStudentSynchroJob {
 				    userSiteId = siteService
 					    .getUserSiteId(member.getUserId());
 				    if (siteService.siteExists(userSiteId)) {
-					userSite = siteService.getSite(userSiteId);
+					userSite =
+						siteService.getSite(userSiteId);
 					siteService.removeSite(userSite);
 				    }
 				}
 			    }
-			} catch (IdUnusedException | PermissionException e5) {
-			    log.error("L'espace personnel de "
-				    + member.getUserId()
-				    + " ne peut pas être modifié "
-				    + "parce qu'il n'existe pas ou vous n'avez pas le droit de le faire.");
-			} catch (UserNotDefinedException e1) {
-			    log.error("L'utilisateur " + member.getUserId()
-				    + " n'existe pas");
-			} catch (UserPermissionException e2) {
-			    log.error(
-				    "Vous n'avez pas l'autorisation de modifier le compte de "
-					    + member.getUserId());
-			} catch (UserAlreadyDefinedException e3) {
-			    log.error(
-				    "VOus ne pouvez pas ajouter de nouveau l'utilisateur "
-					    + member.getUserId());
-			} catch (UserLockedException e4) {
-			    log.error("Le compte utilisateur "
-				    + member.getUserId() + " est bloqué");
-			}
 
+			}
+		    } catch (IdUnusedException | PermissionException e5) {
+			log.error("L'espace personnel de " + member.getUserId()
+				+ " ne peut pas être modifié "
+				+ "parce qu'il n'existe pas ou vous n'avez pas le droit de le faire.");
+		    } catch (UserNotDefinedException e1) {
+			log.error("L'utilisateur " + member.getUserId()
+				+ " n'existe pas");
+		    } catch (UserPermissionException e2) {
+			log.error(
+				"Vous n'avez pas l'autorisation de modifier le compte de "
+					+ member.getUserId());
+		    } catch (UserAlreadyDefinedException e3) {
+			log.error(
+				"VOus ne pouvez pas ajouter de nouveau l'utilisateur "
+					+ member.getUserId());
+		    } catch (UserLockedException e4) {
+			log.error("Le compte utilisateur " + member.getUserId()
+				+ " est bloqué");
 		    }
 		}
 	    } catch (GroupNotDefinedException e) {
