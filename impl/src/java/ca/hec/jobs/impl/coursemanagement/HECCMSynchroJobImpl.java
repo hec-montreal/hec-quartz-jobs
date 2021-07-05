@@ -13,12 +13,14 @@ import org.sakaiproject.authz.api.GroupNotDefinedException;
 import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.*;
 import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
+import org.sakaiproject.email.api.EmailService;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -27,6 +29,8 @@ import java.util.*;
  * Created by 11091096 on 2017-04-27.
  */
 public class HECCMSynchroJobImpl implements HECCMSynchroJob {
+    @Setter
+    private EmailService emailService;
     @Setter
     protected CourseManagementAdministration cmAdmin;
     @Setter
@@ -42,6 +46,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     private static Log log = LogFactory.getLog(HECCMSynchroJobImpl.class);
 
+    private static final String NOTIFICATION_EMAIL_PROP = "hec.error.notification.email";
+    private static final Integer MIN_NUMBER_OF_LINES = 5;
     private static boolean isRunning = false;
 
     //Variable for debug mode
@@ -60,6 +66,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     Set<String> selectedSessions, selectedCourses;
     Map<String, InstructionMode> instructionMode;
     Set<String> sectionsToRefresh;
+    String error_address = null;
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -69,6 +76,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         isRunning = true;
+
+        error_address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
 
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
@@ -98,6 +107,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             debugMode = new DebugMode(sessionStartDebug, sessionEndDebug, coursesDebug);
 
+            if (!validateFiles()) {
+                log.error("files failed validation");
+                return;
+            }
             loadInstructionMode();
             loadProgEtudes();
             loadSessions();
@@ -120,6 +133,58 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             session.clear();
             isRunning = false;
         }
+    }
+
+    private boolean validateFiles() {
+        String[] files = new String[]{
+            INSTRUCTION_MODE, PROG_ETUD_FILE, SESSION_FILE, SERV_ENS_FILE,
+            COURS_FILE, PROF_FILE, ETUDIANT_FILE };
+
+        Calendar currentTime = Calendar.getInstance();
+        String error = null;
+        boolean ageWarning = false;
+        for (String filename : files) {
+            File f = new File(directory + File.separator + filename);
+
+            // stop job and send email if file doesn't exist, is too small or older than 24h
+            if (!f.isFile()) {
+                error = f.getName() + " n'existe pas ou est un répertoire\n";
+            }
+            else if (!linecountGreaterThan(f.getPath(), MIN_NUMBER_OF_LINES)) {
+                error = f.getName() + " contient trop peu de lignes (moins que " + MIN_NUMBER_OF_LINES + ")\n";
+            }
+            else if ((currentTime.getTimeInMillis() - f.lastModified()) > 1000*60*60*24 ) {
+                // only warn for old files, still run the job
+                ageWarning = true;
+            }
+
+            if (error != null) {
+                log.error(error);
+                if (error_address != null) {
+                    emailService.send("zonecours2@hec.ca", error_address, "La job de synchro a échoué", "Un des fichiers d'extract n'as pas passé la validation\n"+error, null, null, null);
+                }
+                return false;
+            }
+        }
+        if (ageWarning) {
+            emailService.send("zonecours2@hec.ca", error_address, "Fichiers d'extracts trop anciens", "Un ou plus des fichiers d'extracts ont été créé il y a plus de 24h\n", null, null, null);
+        }
+        return true;
+    }
+
+    private boolean linecountGreaterThan(String fileName, Integer lines) {
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            while (lines > 0) {
+                if (reader.readLine() == null) {
+                    return false;
+                }
+                lines--;
+            }
+        } catch (IOException e) {
+            log.error("Error opening file" + fileName + " to count lines");
+            e.printStackTrace();
+        }
+        return true;
     }
 
     /**

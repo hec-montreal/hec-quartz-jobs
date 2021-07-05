@@ -66,6 +66,7 @@
 		<property name="siteIdFormatHelper" ref="ca.hec.api.SiteIdFormatHelper" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="authzGroupService" ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HECCMSynchroJobImpl"
