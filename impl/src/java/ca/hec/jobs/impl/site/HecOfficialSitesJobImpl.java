@@ -306,6 +306,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
                providerGroupId += sectionEid + "+";
            }
            if (siteProviderId == null || !providerIdContains(siteProviderId, sectionEid)) {
+               // keep track of added provider ids so we can remove them from other sites later
                addedProviderIds.add(sectionEid);
            }
        }
