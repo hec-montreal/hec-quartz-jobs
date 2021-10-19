@@ -67,24 +67,6 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
 
         try {
             log.info(
-                    "Récupération de la date de début de l'événement le plus ancien présent dans le fichier d'extract");
-
-            List<Date> rundates = sqlService.dbRead(
-                "select min(START_DT) as MINDATE from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW ", null, new SqlReader<Date>() {
-
-                    @Override
-                    public Date readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
-                        try {
-                            return result.getDate("MINDATE");
-                        } catch (SQLException e) {
-                            e.printStackTrace();
-                            return null;
-                        }
-                    }
-                });
-            Date dateDebutMin = (rundates.isEmpty()?null:rundates.get(0));
-            
-            log.info(
                     "Récupération des sessions disponible dans la vue du calendrier");
 
             List<String> runSessions = sqlService.dbRead(
@@ -101,10 +83,9 @@ public class HecCourseEventSynchroJobImpl implements HecCourseEventSynchroJob {
                     }
                 });
 
-            if (dateDebutMin != null) {
-                log.info("Suppression des événements dont la date de début est inférieure à " + dateDebutMin + " et les sessions " + runSessions.toString());
-                sqlService.dbWrite("delete from HEC_EVENT where strm in (select distinct strm from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW)"
-                	+ "DATE_HEURE_DEBUT < ?", new Object[] { dateDebutMin });
+            if (runSessions.size() > 0) {
+                log.info("Suppression des événements (HEC_EVENT) des sessions autres que ceux qui sont dans la vue peoplesoft: " + runSessions.toString());
+                sqlService.dbWrite("delete from HEC_EVENT where strm not in (select distinct strm from PSFTCONT.ZONECOURS2_PS_N_HORAI_COUR_MW)");
             } else {
                 emailService.send("zonecours2@hec.ca", error_address, "La job de synchro des événements d'agenda a échoué",
                         "Il n'y a pas de données dans la vue de PeopleSoft (incapable de déterminer une date minimale des données)",
