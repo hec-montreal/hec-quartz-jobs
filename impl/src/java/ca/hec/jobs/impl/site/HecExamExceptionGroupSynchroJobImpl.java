@@ -23,6 +23,7 @@ package ca.hec.jobs.impl.site;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -30,6 +31,8 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Map.Entry;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
@@ -46,7 +49,7 @@ import org.sakaiproject.coursemanagement.api.exception.IdNotFoundException;
 import org.sakaiproject.db.api.SqlReader;
 import org.sakaiproject.db.api.SqlReaderFinishedException;
 import org.sakaiproject.db.api.SqlService;
-import org.sakaiproject.email.cover.EmailService;
+import org.sakaiproject.email.api.EmailService;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.site.api.Group;
 import org.sakaiproject.site.api.Site;
@@ -146,6 +149,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             List<ExceptedStudent> studentExceptions = sqlService.dbRead(query,
                     params.toArray(), new ExceptedStudentRecord());
 
+            HashMap<String, String> emailList = new HashMap<>();
             for (ExceptedStudent student : studentExceptions) {
 
                 // build map of exceptions for synchronizing regular groups at the end.
@@ -206,6 +210,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             if (!group.isPresent()) {
                                 group = createGroup(site, groupTitle);
                                 addInstructor(site, group.get(), officialProviderId);
+                                addToEmailList(emailList, student, site.getId()+" "+groupTitle);
                             }
 
                             log.debug("Add student " + student.getEmplid() + " to group " + groupTitle + " in site " + site.getId());
@@ -236,11 +241,38 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             }
 
             createOrUpdateRegularGroups(exceptionMap, distinctSitesSections);
+            sendNewGroupEmails(emailList);
         } finally {
             session.clear();
             isRunning = false;
             log.debug("finished");
         }
+    }
+
+    private void addToEmailList(HashMap<String, String> emailList, ExceptedStudent student, String groupInfo) {
+        for (String address : student.getAllEmails()) {
+            if (emailList.containsKey(address)) {
+                String newStr = emailList.get(address).concat("\n"+groupInfo);
+                emailList.put(address, newStr);
+            }
+            else {
+                emailList.put(address, groupInfo);
+            }
+        }
+    }
+
+    private void sendNewGroupEmails(HashMap<String, String> emailList) {
+        log.debug("Envoie de courriels des nouveaux groupes");
+        String from = "zonecours@hec.ca";
+        String subject = "Des nouvelles équipes d'exceptions ont été créé";
+        int count = 0;
+        for (Entry<String, String> entry : emailList.entrySet()) {
+            String to = entry.getKey();
+            String message = "Les équipes d'exception suivant ont été créé pour les étudiants en situation d'handicap: \r\n" + entry.getValue();
+            emailService.send(from, to, subject, message, null, null, null);
+            count++;
+        }
+        log.debug(count+" courriels envoyés");
     }
 
     private void createOrUpdateRegularGroups(Map<String, List<String>> exceptionMap, String distinctSitesSections) {
@@ -424,25 +456,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     // Later we can refine message structure and translation
     private void notifyError(ExceptedStudent student, String siteId, String groupTitle) {
         String from = "zonecours@hec.ca";
-        //Make sure no email is null and no duplicates
-        Set <String> emailSet = new HashSet <String>();
-        if (!StringUtils.isEmpty(student.getNListeEmailProf())) {
-            emailSet.add(student.getNListeEmailProf());
-        }
-        if (!StringUtils.isEmpty(student.getNListeEmailCoord())) {
-            emailSet.add(student.getNListeEmailCoord());
-        }
-        if (!StringUtils.isEmpty(student.getNListeEmailAdj())) {
-            emailSet.add(student.getNListeEmailAdj());
-        }
-
         String action = (student.getState().equals(STATE_REMOVE) ? "retiré d'une" : "ajouté à une");
         String subject = "L'étudiant " + student.getName() + " (" + student.getEmplid() + ") n'a pas été " + action
                 + " équipe automatique (" + groupTitle + ") pour le cours " + siteId;
-        String to = emailSet.toString()
-        	    .replace("[", "")  //remove the right bracket
-        	    .replace("]", "")  //remove the left bracket
-        	    .trim();  
+        String to = student.getAllEmails().stream().collect(Collectors.joining(","));;
         
         String message = "L’étudiant " + student.getName() + " (" + student.getEmplid() + ") n’a pas été " + action
                 + " équipe automatique (" + groupTitle + ") pour le cours " + siteId
@@ -452,7 +469,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 + "\r\n" + "Cordialement,\r\n" + "\r\n"
                 + "P.S. : Ce courriel est envoyé par un processus automatisé de création de groupes pour les étudiants en situation d’handicap. \r\n";
 
-        if (emailSet.size() > 0) {
+        if (StringUtils.isNotBlank(to)) {
             emailService.send(from, to, subject, message, null, null, null);
         }
     }
@@ -460,7 +477,24 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     @Data
     private class ExceptedStudent {
         String strm, emplid, name, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state,
-            nListeEmailAdj, nListeEmailProf, nListeEmailCoord;
+            nEmailAdjPrinc, nListeEmailAdj, nListeEmailProf, nEmailCoord;
+
+        public Set<String> getAllEmails() {
+            Set<String> emailSet = new HashSet<>();
+            if (nEmailAdjPrinc != null) {
+                emailSet.add(nEmailAdjPrinc);
+            }
+            if (nListeEmailAdj != null) {
+                emailSet.addAll(Arrays.stream(nListeEmailAdj.split(";")).collect(Collectors.toSet()));
+            }
+            if (nListeEmailProf != null) {
+                emailSet.addAll(Arrays.stream(nListeEmailProf.split(";")).collect(Collectors.toSet()));
+            }
+            if (nEmailCoord != null) {
+                emailSet.add(nEmailCoord);
+            }
+            return emailSet;
+        }
     }
 
     private class ExceptedStudentRecord implements SqlReader<ExceptedStudent> {
@@ -479,9 +513,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 student.setCatalogNbr(rs.getString("CATALOG_NBR"));
                 student.setClassSection(rs.getString("CLASS_SECTION"));
                 student.setState(rs.getString("STATE"));
-                student.setNListeEmailAdj(rs.getString("N_EMAIL_ADJ_PRINC"));
+                student.setNEmailAdjPrinc(rs.getString("N_EMAIL_ADJ_PRINC"));
+                student.setNListeEmailAdj(rs.getString("N_LISTE_EMAIL_ADJ"));
                 student.setNListeEmailProf(rs.getString("N_LISTE_EMAIL_PROF"));
-                student.setNListeEmailCoord(rs.getString("N_EMAIL_COORD"));
+                student.setNEmailCoord(rs.getString("N_EMAIL_COORD"));
             }
             catch (SQLException e) {
                 log.error("Error retrieving HecStudent record");
