@@ -268,7 +268,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         int count = 0;
         for (Entry<String, String> entry : emailList.entrySet()) {
             String to = entry.getKey();
-            String message = "Les équipes d'exception suivant ont été créé pour les étudiants en situation d'handicap: \r\n" + entry.getValue();
+            String message = "Les équipes d'exceptions suivant ont été créé pour les étudiants en situation d'handicap: \r\n" + entry.getValue();
             emailService.send(from, to, subject, message, null, null, null);
             count++;
         }
