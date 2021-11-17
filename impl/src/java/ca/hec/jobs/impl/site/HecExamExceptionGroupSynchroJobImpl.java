@@ -264,11 +264,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
     private void sendNewGroupEmails(HashMap<String, String> emailList) {
         log.debug("Envoie de courriels des nouveaux groupes");
         String from = "zonecours@hec.ca";
-        String subject = "Des nouvelles équipes d'exceptions ont été créé";
+        String subject = "Des nouvelles équipes d'accommodement ont été créées";
         int count = 0;
         for (Entry<String, String> entry : emailList.entrySet()) {
             String to = entry.getKey();
-            String message = "Les équipes d'exceptions suivant ont été créé pour les étudiants en situation d'handicap: \r\n" + entry.getValue();
+            String message = "Ces équipes d'accommodement ont été créées pour les étudiants selon leur besoin de temps supplémentaire: \r\n" + entry.getValue();
             emailService.send(from, to, subject, message, null, null, null);
             count++;
         }
