@@ -767,4 +767,44 @@
 			</set>
 		</property>
 	</bean>
+ 	<bean id="removePastSubmissionsJob"
+		  class="ca.hec.jobs.impl.site.RemovePastSubmissionsImpl">
+		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
+		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
+		<property name="serverConfigService" ref="org.sakaiproject.component.api.ServerConfigurationService" />
+		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.RemovePastSubmissionsImpl"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>removePastSubmissionsJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC remove past quiz and assignment submissions Job</value>
+		</property>
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
+		<property name="configurableJobProperties">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="subFromStartDate"/>
+					<property name="descriptionResourceKey" value="subFromStartDate.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="subFromEndDate"/>
+					<property name="descriptionResourceKey" value="subFromEndDate.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+			</set>
+		</property>
+	</bean> 
 </beans>
