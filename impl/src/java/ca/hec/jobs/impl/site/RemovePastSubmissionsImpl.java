@@ -56,7 +56,6 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		Date subFromEndDate = getDate(subFromEndDateString);
 
 		SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
-		Date convertedDate = null;
 		try {
 			subFromStartDate = dateFormat.parse(subFromStartDateString);
 			subFromEndDate = dateFormat.parse(subFromEndDateString);
@@ -192,7 +191,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		String selectedItemGrading = "select PUBLISHEDITEMID from SAM_ITEMGRADING_T where ASSESSMENTGRADINGID in ("
 				+ selectedAssGrading + ")";
 
-		String selectedItemAttachment = "select RESOURCE_ID from SAM_ATTACHMENT_T where ITEMID in ("
+		String selectedItemAttachment = "select RESOURCEID from SAM_ATTACHMENT_T where ITEMID in ("
 				+ selectedItemGrading + ")";
 		
 		List<String> quiz = sqlService.dbRead(selectedQuiz, null, new SqlReader<String>() {
