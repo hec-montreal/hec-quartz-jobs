@@ -81,13 +81,14 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				return;
 			}
 			selectedSites = getSelectedSites(subFromStartDateString, subFromEndDateString);
-			log.info(" Les sites de cours officiels créés entre " + subFromStartDateString + " et " +  subFromEndDateString + " seront traités.");
-			log.info(" On a au total : " + selectedSites.size() + " sites c-a-d  " + String.join(", ", selectedSites) );
+			log.debug(" Les sites de cours officiels créés entre " + subFromStartDateString + " et " +  subFromEndDateString + " seront traités.");
+			log.debug(" On a au total : " + selectedSites.size() + " sites c-a-d  " + String.join(", ", selectedSites) );
 			siteIds =  String.join(", ", selectedSites);			
 		}
 		deleteAssignmentSubmissions(siteIds);
 		deleteQuizSubmissions(siteIds);
 		
+		log.debug("Fin du traitement");
 		isRunning = false;
 
 	}
@@ -120,7 +121,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		String affectedContent = "select substr(ATTACHMENT, 9)  from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in "
 		+ "(select SUBMISSION_ID from ASN_SUBMISSION where ASSIGNMENT_ID in (" + selectedAssignments + "))";
 
-		String affectedContentFeedback = "select substr(ATTACHMENT, 9)  from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in "
+		String affectedContentFeedback = "select substr(FEEDBACK_ATTACHMENT, 9)  from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in "
 				+ "(select SUBMISSION_ID from ASN_SUBMISSION where ASSIGNMENT_ID in (" + selectedAssignments + "))";
 
 		String affectedSubmissions = "select SUBMISSION_ID from ASN_SUBMISSION " + " where ASSIGNMENT_ID in ( "
@@ -139,7 +140,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 			}
 		});
 
-		log.info(" Remises de travaux affectés: " + assignments.size());
+		log.debug(" Remises de travaux affectés: " + assignments.size());
 
 		// Delete data from contentreview
 		boolean deleteContentReview = sqlService.dbWrite("delete from CONTENTREVIEW_ITEM where taskid in "
@@ -147,7 +148,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				+ "where SITEID in (" + siteIds + "))");
 
 		if (deleteContentReview) {
-			log.info("Les rapports de détection de similitudes ont été effacé.");
+			log.debug("Les rapports de détection de similitudes ont été effacé.");
 		}
 
 		// Delete resources submissions
@@ -158,7 +159,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContent + ")");
 
 		if (deletedContentResourceBodyBinary && deletedContentResource) {
-			log.info("Les ressources de content_resource ont été effacé.");
+			log.debug("Les ressources de content_resource ont été effacé.");
 		}
 
 		// Delete resources submissions feedback
@@ -169,7 +170,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContentFeedback + ")");
 
 		if (deletedContentResourceBodyBinaryFeedback && deletedContentResourceFeedback) {
-			log.info("Les ressources de rétroaction de content_resources ont été effacé.");
+			log.debug("Les ressources de rétroaction de content_resources ont été effacé.");
 		}
 
 		// Delete submissions properties
@@ -177,7 +178,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				.dbWrite("delete from ASN_SUBMISSION_PROPERTIES where SUBMISSION_ID in (" + affectedSubmissions + ")");
 
 		if (deleteSubmissionProperties) {
-			log.info("Les propriétés des soumissions ont été effacé.");
+			log.debug("Les propriétés des soumissions ont été effacé.");
 		}
 
 		// Delete submissions feedback attachments
@@ -185,7 +186,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				"delete from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in (" + affectedSubmissions + ")");
 
 		if (deleteSubFeedbackAtt) {
-			log.info("Les fichiers attachés de rétroaction ont été effacé.");
+			log.debug("Les fichiers attachés de rétroaction ont été effacé.");
 		}
 
 		// Delete submissions attachments
@@ -193,7 +194,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				.dbWrite("delete from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in (" + affectedSubmissions + ")");
 
 		if (deleteSubAtt) {
-			log.info("Les fichiers attachés ont été effacé.");
+			log.debug("Les fichiers attachés ont été effacé.");
 		}
 
 		// Delete submissions submitters
@@ -202,7 +203,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 						+ "where CONTEXT in (" + siteIds + ")))");
 
 		if (deleteSubSubmitters) {
-			log.info("Les soumissionneurs ont été effacé.");
+			log.debug("Les soumissionneurs ont été effacé.");
 		}
 
 		// Delete submissions
@@ -211,7 +212,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 						+ "where CONTEXT in (" + siteIds + "))");
 
 		if (deleteSubmissions) {
-			log.info("Les soumissions ont été effacé.");
+			log.debug("Les soumissions ont été effacé.");
 		}
 
 	}
@@ -234,14 +235,14 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 			@Override
 			public String readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
 				try {
-					return result.getString("ASSESSMENTID");
+					return result.getString("QUALIFIERID");
 				} catch (SQLException e) {
 					e.printStackTrace();
 					return null;
 				}
 			}
 		});
-		log.info("Quiz affectés: " + quiz.size());
+		log.debug("Quiz affectés: " + quiz.size());
 
 		// Delete submitted files
 		boolean deleteContent = sqlService.dbWrite(
@@ -254,21 +255,21 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 				.dbWrite("delete from SAM_ATTACHMENT_T where ITEMID in (" + selectedItemGrading + ")");
 
 		if (deleteContent && deleteContentBB && deleteSubAttachment) {
-			log.info("Les ressources ont été effacé.");
+			log.debug("Les ressources ont été effacé.");
 		}
 
 		// Delete submission items
 		boolean deleteItems = sqlService
 				.dbWrite("delete from SAM_ITEMGRADING_T where ASSESSMENTGRADINGID in (" + selectedAssGrading + ")");
 		if (deleteItems) {
-			log.info("Les items de réponses ont été effacé.");
+			log.debug("Les items de réponses ont été effacé.");
 		}
 
 		// Delete submissions
 		boolean deleteSubmissions = sqlService.dbWrite("select ASSESSMENTGRADINGID from SAM_ASSESSMENTGRADING_T"
 				+ " where PUBLISHEDASSESSMENTID in (" + selectedQuiz + ")");
 		if (deleteSubmissions) {
-			log.info("Les réponses des étudiants aux quiz ont été effacé.");
+			log.debug("Les réponses des étudiants aux quiz ont été effacé.");
 		}
 	}
 
