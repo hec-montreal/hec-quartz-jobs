@@ -772,7 +772,7 @@
 		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="serverConfigService" ref="org.sakaiproject.component.api.ServerConfigurationService" />
-		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
+		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.RemovePastSubmissionsImpl"
@@ -793,17 +793,23 @@
 		<property name="configurableJobProperties">
 			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="true"/>
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="siteIdsSpec"/>
+					<property name="descriptionResourceKey" value="siteIdsSpec.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="subFromStartDate"/>
 					<property name="descriptionResourceKey" value="subFromStartDate.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="true"/>
+					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="subFromEndDate"/>
 					<property name="descriptionResourceKey" value="subFromEndDate.description"/>
 					<property name="defaultValue" value=""/>
-				</bean>
+				</bean>				
 			</set>
 		</property>
 	</bean> 
