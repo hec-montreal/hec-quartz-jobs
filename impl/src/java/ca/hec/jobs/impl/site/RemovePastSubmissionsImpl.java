@@ -30,6 +30,18 @@ import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.RemovePastSubmissions;
 import lombok.Setter;
 
+/**
+ * Job quartz pour effacer les réponses des quiz et des remises de travaux pour des sites spécifiques.
+ * 	-la job prend :
+ * 		- une liste de sites: toutes les réponses aux quiz et aux travaux seront effacés dans cette liste de site
+ * 		- deux dates: d'abord on va sélectionner tous les sites qui ont été créés dans cet intervalle ensuite la
+ * 		  supression va se faire.
+ *  La job traitera soit une liste de site, soit 2 dates. Si on remplie les 3 champs, seule la liste de sites 
+ *  sera traitée.
+ * 
+ * @author 11091096
+ *
+ */
 public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 
 	@Setter
@@ -265,7 +277,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		}
 
 		// Delete submissions
-		boolean deleteSubmissions = sqlService.dbWrite("select ASSESSMENTGRADINGID from SAM_ASSESSMENTGRADING_T"
+		boolean deleteSubmissions = sqlService.dbWrite("delete from SAM_ASSESSMENTGRADING_T"
 				+ " where PUBLISHEDASSESSMENTID in (" + selectedQuiz + ")");
 		if (deleteSubmissions) {
 			log.debug("Les réponses des étudiants aux quiz ont été effacé.");
