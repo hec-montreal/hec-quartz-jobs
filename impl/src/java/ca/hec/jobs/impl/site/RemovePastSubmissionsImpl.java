@@ -143,9 +143,8 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		log.debug(" Remises de travaux affectés: " + assignments.size());
 
 		// Delete data from contentreview
-		boolean deleteContentReview = sqlService.dbWrite("delete from CONTENTREVIEW_ITEM where taskid in "
-				+ "(select '/assignment/a/' || context || '/' || ASSIGNMENT_ID from ASN_ASSIGNMENT "
-				+ "where SITEID in (" + siteIds + "))");
+		boolean deleteContentReview = sqlService.dbWrite("delete from CONTENTREVIEW_ITEM where SITEID in "
+				+ "(" + siteIds + ")");
 
 		if (deleteContentReview) {
 			log.debug("Les rapports de détection de similitudes ont été effacé.");
