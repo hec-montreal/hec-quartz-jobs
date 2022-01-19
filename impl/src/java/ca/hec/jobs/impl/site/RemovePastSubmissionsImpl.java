@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang.StringUtils;
@@ -97,8 +98,10 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 			log.debug(" On a au total : " + selectedSites.size() + " sites c-a-d  " + String.join(", ", selectedSites) );
 			siteIds =  String.join(", ", selectedSites);			
 		}
-		deleteAssignmentSubmissions(siteIds);
-		deleteQuizSubmissions(siteIds);
+		if(selectedSites.size()>0) {
+			deleteAssignmentSubmissions(siteIds);
+			deleteQuizSubmissions(siteIds);
+		}
 		
 		log.debug("Fin du traitement");
 		isRunning = false;
@@ -130,29 +133,16 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 	private void deleteAssignmentSubmissions(String siteIds) {
 		String selectedAssignments = "select ASSIGNMENT_ID from ASN_ASSIGNMENT " + "where CONTEXT in (" + siteIds + ")";
 
-		String affectedContent = "select substr(ATTACHMENT, 9)  from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in "
+		String affectedContent = "select substr(ATTACHMENT, 9)  RESOURCEID from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in "
 		+ "(select SUBMISSION_ID from ASN_SUBMISSION where ASSIGNMENT_ID in (" + selectedAssignments + "))";
 
-		String affectedContentFeedback = "select substr(FEEDBACK_ATTACHMENT, 9)  from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in "
+		String affectedContentFeedback = "select substr(FEEDBACK_ATTACHMENT, 9) RESOURCEID  from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in "
 				+ "(select SUBMISSION_ID from ASN_SUBMISSION where ASSIGNMENT_ID in (" + selectedAssignments + "))";
 
 		String affectedSubmissions = "select SUBMISSION_ID from ASN_SUBMISSION " + " where ASSIGNMENT_ID in ( "
 				+ selectedAssignments + ")";
 
-		List<String> assignments = sqlService.dbRead(selectedAssignments, null, new SqlReader<String>() {
-
-			@Override
-			public String readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
-				try {
-					return result.getString("ASSIGNMENT_ID");
-				} catch (SQLException e) {
-					e.printStackTrace();
-					return null;
-				}
-			}
-		});
-
-		log.debug(" Remises de travaux affectés: " + assignments.size());
+		log.debug(" Remises de travaux affectés: " + getNbRows(selectedAssignments, "ASSIGNMENT_ID"));
 
 		// Delete data from contentreview
 		boolean deleteContentReview = sqlService.dbWrite("delete from CONTENTREVIEW_ITEM where SITEID in "
@@ -163,30 +153,33 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		}
 
 		// Delete resources submissions
+		String affectedContentRestrictions = getQueryRestriction(affectedContent, "RESOURCEID");
 		boolean deletedContentResourceBodyBinary = sqlService
-				.dbWrite("delete from CONTENT_RESOURCE_BODY_BINARY where resource_id in ( " + affectedContent + ")");
+				.dbWrite("delete from CONTENT_RESOURCE_BODY_BINARY where resource_id in ( " + affectedContentRestrictions + ")");
 
 		boolean deletedContentResource = sqlService
-				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContent + ")");
+				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContentRestrictions + ")");
 
 		if (deletedContentResourceBodyBinary && deletedContentResource) {
 			log.debug("Les ressources de content_resource ont été effacé.");
 		}
 
 		// Delete resources submissions feedback
+		String affectedContentFeedbackRestrictions = getQueryRestriction(affectedContentFeedback, "RESOURCEID");
 		boolean deletedContentResourceBodyBinaryFeedback = sqlService.dbWrite(
-				"delete from CONTENT_RESOURCE_BODY_BINARY where resource_id in ( " + affectedContentFeedback + ")");
+				"delete from CONTENT_RESOURCE_BODY_BINARY where resource_id in ( " + affectedContentFeedbackRestrictions + ")");
 
 		boolean deletedContentResourceFeedback = sqlService
-				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContentFeedback + ")");
+				.dbWrite("delete from CONTENT_RESOURCE where resource_id in ( " + affectedContentFeedbackRestrictions + ")");
 
 		if (deletedContentResourceBodyBinaryFeedback && deletedContentResourceFeedback) {
 			log.debug("Les ressources de rétroaction de content_resources ont été effacé.");
 		}
 
 		// Delete submissions properties
+		String affectedSubmissionsRestrictions = getQueryRestriction(affectedSubmissions, "SUBMISSION_ID");
 		boolean deleteSubmissionProperties = sqlService
-				.dbWrite("delete from ASN_SUBMISSION_PROPERTIES where SUBMISSION_ID in (" + affectedSubmissions + ")");
+				.dbWrite("delete from ASN_SUBMISSION_PROPERTIES where SUBMISSION_ID in (" + affectedSubmissionsRestrictions + ")");
 
 		if (deleteSubmissionProperties) {
 			log.debug("Les propriétés des soumissions ont été effacé.");
@@ -194,7 +187,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 
 		// Delete submissions feedback attachments
 		boolean deleteSubFeedbackAtt = sqlService.dbWrite(
-				"delete from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in (" + affectedSubmissions + ")");
+				"delete from ASN_SUBMISSION_FEEDBACK_ATTACH where SUBMISSION_ID in (" + affectedSubmissionsRestrictions + ")");
 
 		if (deleteSubFeedbackAtt) {
 			log.debug("Les fichiers attachés de rétroaction ont été effacé.");
@@ -202,7 +195,7 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 
 		// Delete submissions attachments
 		boolean deleteSubAtt = sqlService
-				.dbWrite("delete from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in (" + affectedSubmissions + ")");
+				.dbWrite("delete from ASN_SUBMISSION_ATTACHMENTS where SUBMISSION_ID in (" + affectedSubmissionsRestrictions + ")");
 
 		if (deleteSubAtt) {
 			log.debug("Les fichiers attachés ont été effacé.");
@@ -241,37 +234,28 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		String selectedItemAttachment = "select RESOURCEID from SAM_ATTACHMENT_T where ITEMID in ("
 				+ selectedItemGrading + ")";
 
-		List<String> quiz = sqlService.dbRead(selectedQuiz, null, new SqlReader<String>() {
-
-			@Override
-			public String readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
-				try {
-					return result.getString("QUALIFIERID");
-				} catch (SQLException e) {
-					e.printStackTrace();
-					return null;
-				}
-			}
-		});
-		log.debug("Quiz affectés: " + quiz.size());
+		log.debug("Quiz affectés: " + getNbRows(selectedQuiz, "QUALIFIERID"));
 
 		// Delete submitted files
+		String selectedItemAttachmentRestrictions = getQueryRestriction(selectedItemAttachment, "RESOURCEID");
 		boolean deleteContent = sqlService.dbWrite(
-				"delete from CONTENT_RESOURCE_BODY_BINARY where RESOURCE_ID in" + "(" + selectedItemAttachment + ")");
+				"delete from CONTENT_RESOURCE_BODY_BINARY where RESOURCE_ID in" + "(" + selectedItemAttachmentRestrictions + ")");
 
 		boolean deleteContentBB = sqlService
-				.dbWrite("delete from CONTENT_RESOURCE where RESOURCE_ID in" + "(" + selectedItemAttachment + ")");
+				.dbWrite("delete from CONTENT_RESOURCE where RESOURCE_ID in" + "(" + selectedItemAttachmentRestrictions + ")");
 
+		String selectedItemGradingRestrictions = getQueryRestriction(selectedItemGrading, "PUBLISHEDITEMID");
 		boolean deleteSubAttachment = sqlService
-				.dbWrite("delete from SAM_ATTACHMENT_T where ITEMID in (" + selectedItemGrading + ")");
+				.dbWrite("delete from SAM_ATTACHMENT_T where ITEMID in (" + selectedItemGradingRestrictions + ")");
 
 		if (deleteContent && deleteContentBB && deleteSubAttachment) {
 			log.debug("Les ressources ont été effacé.");
 		}
 
 		// Delete submission items
+		String selectedAssGradingRestrictions = getQueryRestriction(selectedAssGrading, "ASSESSMENTGRADINGID");
 		boolean deleteItems = sqlService
-				.dbWrite("delete from SAM_ITEMGRADING_T where ASSESSMENTGRADINGID in (" + selectedAssGrading + ")");
+				.dbWrite("delete from SAM_ITEMGRADING_T where ASSESSMENTGRADINGID in (" + selectedAssGradingRestrictions + ")");
 		if (deleteItems) {
 			log.debug("Les items de réponses ont été effacé.");
 		}
@@ -294,6 +278,46 @@ public class RemovePastSubmissionsImpl implements RemovePastSubmissions {
 		}
 		return convertedDate;
 
+	}
+	
+	private int getNbRows (String query, String restrictionField) {
+		List<String> rows = sqlService.dbRead(query, null, new SqlReader<String>() {
+
+			@Override
+			public String readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
+				try {
+					return  result.getString(restrictionField)  ;
+				} catch (SQLException e) {
+					e.printStackTrace();
+					return null;
+				}
+			}
+		});
+		if (rows != null) {
+			return rows.size();
+		}else {
+			return 0;
+		}
+	}
+
+	private String getQueryRestriction( String query, String restrictionField) {
+		String restriction = null;
+		List<String> fields = sqlService.dbRead(query, null, new SqlReader<String>() {
+
+			@Override
+			public String readSqlResultRecord(ResultSet result) throws SqlReaderFinishedException {
+				try {
+					return "'" + result.getString(restrictionField) + "'";
+				} catch (SQLException e) {
+					e.printStackTrace();
+					return null;
+				}
+			}
+		});
+		if (!(fields == null || fields.isEmpty())) {
+			restriction = String.join(",", fields);
+		}
+		return restriction;
 	}
 
 }
