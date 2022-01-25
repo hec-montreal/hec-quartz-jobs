@@ -37,6 +37,7 @@ import org.sakaiproject.calendar.api.Calendar;
 import org.sakaiproject.calendar.api.CalendarEvent;
 import org.sakaiproject.calendar.api.CalendarEventEdit;
 import org.sakaiproject.calendar.api.CalendarService;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.CourseManagementAdministration;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
@@ -71,6 +72,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 /**
  * @author curtis.van-osch@hec.ca
@@ -109,6 +112,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     protected HecCourseEventSynchroJob courseEventSynchroJob;
     @Setter
     private SqlService sqlService;
+    @Setter
+    private ServerConfigurationService serverConfigService;
+
+    private Set<String> hybridSectionPrefixes;
 
     public void init() {
     	URL url;
@@ -125,6 +132,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     	catch (ConfigurationException e) {
     		log.error("Cannot load properties message files");
     	}
+        
+        String[] prefixList =
+            serverConfigService.getString("hec.calendar.events.hybrid.prefix", "")
+            .replaceAll(" ", "").split(",");
+        hybridSectionPrefixes = Arrays.stream(prefixList).collect(Collectors.toSet());
     }
     
     @Transactional
@@ -162,6 +174,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
         
         try {
+            log.debug("Treating sections starting with the following as hybrid: " + 
+                hybridSectionPrefixes.stream().collect(Collectors.joining(",")));
+
             session.setUserEid("admin");
             session.setUserId("admin");
 
@@ -191,6 +206,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             Site site = null;
             String siteLocale = null;
             String siteTitle = null;
+            Boolean isHybrid = null;
 
             log.info("loop and add " + eventsAdd.size() + " events");
             for (HecEvent event : eventsAdd) {
@@ -234,6 +250,9 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
                         siteLocale = site.getProperties().getProperty("hec_syllabus_locale");
                         siteTitle = site.getProperties().getPropertyFormatted("title");
+                        //section is hybrid if it matches any of the list of prefixes
+                        isHybrid = hybridSectionPrefixes.stream().anyMatch(t -> section.getTitle().startsWith(t));
+
                     } catch (IdNotFoundException e) {
                         log.debug("Site " + siteId + " not associated to course management");
                     } catch (IdUnusedException e) {
@@ -250,13 +269,14 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 if (courseOffering != null && calendarFound) {
 
                     boolean createEvent = true;
+                    String title = getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber(), isHybrid);
 
                     if (event.getStartTime().getYear() != event.getEndTime().getYear() ||
                             event.getStartTime().getMonth() != event.getEndTime().getMonth() ||
                             event.getStartTime().getDate() != event.getEndTime().getDate()) {
 
                         createEvent = false;
-                        log.debug("Skipping event creation: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event creation: " + title +
                                 " for site " + siteId + " (end date is after start date)");
                     }
 
@@ -266,7 +286,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                             !event.getExamType().equals(PSFT_EXAM_TYPE_INTRA) &&
                             !event.getExamType().equals(PSFT_EXAM_TYPE_FINAL)) {
                         createEvent = false;
-                        log.debug("Skipping event creation: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event creation: " + title +
                                 " for site " + siteId + " (course is DF and event is not an exam)");
                     }
 
@@ -277,7 +297,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 calendar,
                                 event.getStartTime(),
                                 event.getEndTime(),
-                                getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()),
+                                title,
                                 getType(event.getExamType()),
                                 transformLocation(event.getLocation(), siteLocale),
                                 transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), eventGroup);
@@ -386,7 +406,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                                 transformExamDesc(event.getDescription(), event.getExamType(), siteLocale), 
                                 eventGroup);
                     } else {
-                        log.debug("Skipping event update: " + getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber()) +
+                        log.debug("Skipping event update: " + event.getEventId() +
                                 " for site " + siteId + " (course is DF and event is not an exam)");
                     }
                 }
@@ -707,7 +727,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     }
 
 
-    private String getEventTitle(String siteId, String locale, String siteTitle, String type, Integer seq_num) {
+    private String getEventTitle(String siteId, String locale, String siteTitle, String type, Integer seq_num, Boolean isHybrid) {
 
         PropertiesConfiguration msgs = null;
         if ("en_US".equals(locale)) {
@@ -716,12 +736,22 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         else {
         	msgs = propertiesFr;
         }
+
+        // ZCII-4652: changer les numéros de séances pour certains cours hybride
+        Integer sessionNumber;
+        if (isHybrid) {
+            sessionNumber = seq_num + (seq_num-1);
+        }
+        else {
+            sessionNumber = seq_num;
+        }
+
         
         if (type.equals(" ")) {
             if (siteTitle != "")
-                return (siteTitle + " (" + msgs.getString("calendar.event-title.session") + " " + seq_num + ")");
+                return (siteTitle + " (" + msgs.getString("calendar.event-title.session") + " " + sessionNumber + ")");
             else
-                return msgs.getString("calendar.event-title.session") + " " + seq_num;
+                return msgs.getString("calendar.event-title.session") + " " + sessionNumber;
         } else if (type.equals(PSFT_EXAM_TYPE_INTRA)) {
             if (siteTitle != "")
                 return (siteTitle + " (" + msgs.getString("calendar.event-title.intra") + ")");
