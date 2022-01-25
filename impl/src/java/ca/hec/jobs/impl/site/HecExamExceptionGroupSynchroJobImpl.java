@@ -269,6 +269,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         for (Entry<String, String> entry : emailList.entrySet()) {
             String to = entry.getKey();
             String message = "Ces équipes d'accommodement ont été créées pour les étudiants selon leur besoin de temps supplémentaire: \r\n" + entry.getValue();
+            message += "\r\nCes équipes d'accommodement sont utiles pour toute personne qui configure des tests ou des examens dans un cours. Elles sont donc prises en considération seulement au moment de configurer concrètement des examens dans ZoneCours.";
             emailService.send(from, to, subject, message, null, null, null);
             count++;
         }
