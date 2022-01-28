@@ -250,9 +250,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
                         siteLocale = site.getProperties().getProperty("hec_syllabus_locale");
                         siteTitle = site.getProperties().getPropertyFormatted("title");
-                        //section is hybrid if it matches any of the list of prefixes
-                        isHybrid = hybridSectionPrefixes.stream().anyMatch(t -> section.getTitle().startsWith(t));
-
                     } catch (IdNotFoundException e) {
                         log.debug("Site " + siteId + " not associated to course management");
                     } catch (IdUnusedException e) {
@@ -267,6 +264,12 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                 // only attempt event creation if the calendar was found
                 if (courseOffering != null && calendarFound) {
+                    // identify group to create event in
+                    eventGroup = getGroup(site.getGroups(), eventProviderId);
+
+                    String groupTitle = eventGroup.getTitle();
+                    //section is hybrid if it matches any of the list of prefixes
+                    isHybrid = hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t));
 
                     boolean createEvent = true;
                     String title = getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber(), isHybrid);
@@ -291,8 +294,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     }
 
                     if (createEvent) {
-                        eventGroup = getGroup(site.getGroups(), eventProviderId);
-
                         eventId = createCalendarEvent(
                                 calendar,
                                 event.getStartTime(),
