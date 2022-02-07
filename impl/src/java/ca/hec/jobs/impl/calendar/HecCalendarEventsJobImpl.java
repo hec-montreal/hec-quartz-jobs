@@ -56,6 +56,7 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.site.api.SiteService.SelectionType;
 import org.sakaiproject.site.api.SiteService.SortType;
 import org.sakaiproject.time.cover.TimeService;
+import org.sakaiproject.tool.api.Breakdownable;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
 import org.springframework.dao.DataAccessException;
@@ -116,6 +117,11 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     private ServerConfigurationService serverConfigService;
 
     private Set<String> hybridSectionPrefixes;
+    public enum HybridTypes {
+        NO,
+        ODD,
+        EVEN
+    }
 
     public void init() {
     	URL url;
@@ -206,7 +212,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
             Site site = null;
             String siteLocale = null;
             String siteTitle = null;
-            Boolean isHybrid = null;
 
             log.info("loop and add " + eventsAdd.size() + " events");
             for (HecEvent event : eventsAdd) {
@@ -268,11 +273,20 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                     eventGroup = getGroup(site.getGroups(), eventProviderId);
 
                     String groupTitle = eventGroup.getTitle();
-                    //section is hybrid if it matches any of the list of prefixes
-                    isHybrid = hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t));
+                    // should the events be adjusted to only show odd (HY3_, ends wih a number)
+                    // or even (HY3_ ends with a letter)
+                    HybridTypes hybridType = HybridTypes.NO;
+                    if (hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t))) {
+                        if (groupTitle.matches("(.*)[A-Z]$")) {
+                            hybridType = HybridTypes.EVEN;
+                        }
+                        else {
+                            hybridType = HybridTypes.ODD;
+                        }
+                    }
 
                     boolean createEvent = true;
-                    String title = getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber(), isHybrid);
+                    String title = getEventTitle(siteId, siteLocale, siteTitle, event.getExamType(), event.getSequenceNumber(), hybridType);
 
                     if (event.getStartTime().getYear() != event.getEndTime().getYear() ||
                             event.getStartTime().getMonth() != event.getEndTime().getMonth() ||
@@ -728,7 +742,7 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     }
 
 
-    private String getEventTitle(String siteId, String locale, String siteTitle, String type, Integer seq_num, Boolean isHybrid) {
+    private String getEventTitle(String siteId, String locale, String siteTitle, String type, Integer seq_num, HybridTypes hybridType) {
 
         PropertiesConfiguration msgs = null;
         if ("en_US".equals(locale)) {
@@ -740,14 +754,17 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
         // ZCII-4652: changer les numéros de séances pour certains cours hybride
         Integer sessionNumber;
-        if (isHybrid) {
-            sessionNumber = seq_num + (seq_num-1);
-        }
-        else {
-            sessionNumber = seq_num;
+        switch (hybridType) {
+            case ODD :
+                sessionNumber = seq_num + (seq_num-1);
+                break;
+            case EVEN :
+                sessionNumber = seq_num + seq_num;
+                break;
+            default :
+                sessionNumber = seq_num;
         }
 
-        
         if (type.equals(" ")) {
             if (siteTitle != "")
                 return (siteTitle + " (" + msgs.getString("calendar.event-title.session") + " " + sessionNumber + ")");
