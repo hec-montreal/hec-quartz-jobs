@@ -152,17 +152,20 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             HashMap<String, String> emailList = new HashMap<>();
             for (ExceptedStudent student : studentExceptions) {
 
-                // build map of exceptions for synchronizing regular groups at the end.
                 String officialProviderId = siteIdFormatHelper.buildSectionId(
                     student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
 
-                if (exceptionMap.containsKey(officialProviderId)) {
-                    exceptionMap.get(officialProviderId).add(student.getEmplid());
-                }
-                else {
-                    List<String> newList = new ArrayList<String>();
-                    newList.add(student.getEmplid());
-                    exceptionMap.put(officialProviderId, newList);
+                // build map of exceptions for synchronizing regular groups at the end.
+                // State = D is no longer an exception
+                if (student.getState().equals(STATE_ADD) || student.getState() == null) {
+                    if (exceptionMap.containsKey(officialProviderId)) {
+                        exceptionMap.get(officialProviderId).add(student.getEmplid());
+                    }
+                    else {
+                        List<String> newList = new ArrayList<String>();
+                        newList.add(student.getEmplid());
+                        exceptionMap.put(officialProviderId, newList);
+                    }
                 }
                 if (student.getState() == null) {
                     // nothing to do for null state
