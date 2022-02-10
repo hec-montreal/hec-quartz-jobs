@@ -157,7 +157,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
                 // build map of exceptions for synchronizing regular groups at the end.
                 // State = D is no longer an exception
-                if (student.getState().equals(STATE_ADD) || student.getState() == null) {
+                if (student.getState() == null || student.getState().equals(STATE_ADD)) {
                     if (exceptionMap.containsKey(officialProviderId)) {
                         exceptionMap.get(officialProviderId).add(student.getEmplid());
                     }
