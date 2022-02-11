@@ -271,17 +271,19 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                 if (courseOffering != null && calendarFound) {
                     // identify group to create event in
                     eventGroup = getGroup(site.getGroups(), eventProviderId);
-
-                    String groupTitle = eventGroup.getTitle();
-                    // should the events be adjusted to only show odd (HY3_, ends wih a number)
-                    // or even (HY3_ ends with a letter)
                     HybridTypes hybridType = HybridTypes.NO;
-                    if (hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t))) {
-                        if (groupTitle.matches("(.*)[A-Z]$")) {
-                            hybridType = HybridTypes.EVEN;
-                        }
-                        else {
-                            hybridType = HybridTypes.ODD;
+
+                    if (eventGroup != null) {
+                        String groupTitle = eventGroup.getTitle();
+                        // should the events be adjusted to only show odd (HY3_, ends wih a number)
+                        // or even (HY3_ ends with a letter)
+                        if (hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t))) {
+                            if (groupTitle.matches("(.*)[A-Z]$")) {
+                                hybridType = HybridTypes.EVEN;
+                            }
+                            else {
+                                hybridType = HybridTypes.ODD;
+                            }
                         }
                     }
 
