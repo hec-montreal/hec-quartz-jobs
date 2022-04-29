@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.sakaiproject.component.cover.ServerConfigurationService;
 import org.sakaiproject.coursemanagement.api.AcademicSession;
 import org.sakaiproject.coursemanagement.api.CourseManagementService;
 import org.sakaiproject.coursemanagement.api.CourseOffering;
@@ -70,10 +71,8 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         CourseOffering courseOffering = cmService.getCourseOffering(section.getCourseOfferingEid());
         String baseSiteName = getSiteName(courseOffering);
 
-        Set<String> acceptedInstructionModes =
-            Stream.of(MODE_ENSEIGNEMENT_AUTRE,
-                      MODE_ENSEIGNEMENT_EN_LIGNE,
-                      MODE_ENSEIGNEMENT_HYBRIDE)
+        Set<String> acceptedInstructionModes = 
+            Stream.of(ServerConfigurationService.getString("hec.seperate.site.instructionModes", "").split(","))
             .collect(Collectors.toSet());
 
         String[] distinctSectionsTitles =
@@ -87,7 +86,6 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         } else if (acceptedInstructionModes.contains(instructionMode)) {
             siteName = baseSiteName + "-" + instructionMode;
         } else {
-            // instruction mode is MODE_ENSEIGNEMENT_PRESENTIEL or something else or null
             siteName = baseSiteName;
         }
         return siteName;
