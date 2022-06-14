@@ -651,6 +651,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                sectionId = catalogNbr+strmId+classSection;
                 enrollmentSetEid = sectionId;
+
+                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
+                    log.debug(String.format("Skip DF enrollment for student %s in course %s and session %s.", emplId, catalogNbr, strm));
+                    continue;
+                }
                 //DEBUG MODE
                 if (debugMode.isInDebugMode) {
                     if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
@@ -704,8 +709,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         for (String enrollmentSetEid: courses){
             if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
                 enrollments = cmService.getEnrollments(enrollmentSetEid);
-                for (Enrollment enrollment : enrollments)
-                    studentsBySection.add(enrollment.getUserId() + ";" + enrollmentSetEid);
+                for (Enrollment enrollment : enrollments) {
+                    if (!enrollment.isDropped()) {
+                        studentsBySection.add(enrollment.getUserId() + ";" + enrollmentSetEid);
+                    }
+                }
             }
         }
 
