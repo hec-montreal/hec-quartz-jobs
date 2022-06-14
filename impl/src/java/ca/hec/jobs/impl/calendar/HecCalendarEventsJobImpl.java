@@ -116,7 +116,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     @Setter
     private ServerConfigurationService serverConfigService;
 
-    private Set<String> hybridSectionPrefixes;
     public enum HybridTypes {
         NO,
         ODD,
@@ -138,11 +137,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
     	catch (ConfigurationException e) {
     		log.error("Cannot load properties message files");
     	}
-        
-        String[] prefixList =
-            serverConfigService.getString("hec.calendar.events.hybrid.prefix", "")
-            .replaceAll(" ", "").split(",");
-        hybridSectionPrefixes = Arrays.stream(prefixList).collect(Collectors.toSet());
     }
     
     @Transactional
@@ -180,9 +174,6 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
         }
         
         try {
-            log.debug("Treating sections starting with the following as hybrid: " + 
-                hybridSectionPrefixes.stream().collect(Collectors.joining(",")));
-
             session.setUserEid("admin");
             session.setUserId("admin");
 
@@ -275,14 +266,22 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
 
                     if (eventGroup != null) {
                         String groupTitle = eventGroup.getTitle();
-                        // should the events be adjusted to only show odd (HY3_, ends wih a number)
-                        // or even (HY3_ ends with a letter)
-                        if (hybridSectionPrefixes.stream().anyMatch(t -> groupTitle.startsWith(t))) {
+                        // should the events be adjusted to only show odd (HY3_ and ends wih a number or HA followed by 2)
+                        // or even (HY3_ and ends with a letter or HA followed by 1)
+                        if (groupTitle.startsWith("HY3")) {
                             if (groupTitle.matches("(.*)[A-Z]$")) {
                                 hybridType = HybridTypes.EVEN;
                             }
                             else {
                                 hybridType = HybridTypes.ODD;
+                            }
+                        }
+                        else if (groupTitle.startsWith("HA")) {
+                            if (groupTitle.charAt(2) == '1') {
+                                hybridType = HybridTypes.ODD;
+                            }
+                            else if (groupTitle.charAt(2) == '2') {
+                                hybridType = HybridTypes.EVEN;
                             }
                         }
                     }
