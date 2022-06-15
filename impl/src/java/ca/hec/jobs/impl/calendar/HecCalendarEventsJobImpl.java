@@ -278,10 +278,10 @@ public class HecCalendarEventsJobImpl implements HecCalendarEventsJob {
                         }
                         else if (groupTitle.startsWith("HA")) {
                             if (groupTitle.charAt(2) == '1') {
-                                hybridType = HybridTypes.ODD;
+                                hybridType = HybridTypes.EVEN;
                             }
                             else if (groupTitle.charAt(2) == '2') {
-                                hybridType = HybridTypes.EVEN;
+                                hybridType = HybridTypes.ODD;
                             }
                         }
                     }
