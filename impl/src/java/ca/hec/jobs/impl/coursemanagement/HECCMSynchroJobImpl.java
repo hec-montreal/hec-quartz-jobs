@@ -228,6 +228,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 else
                     instructionMode = null;
 
+                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
+                    log.debug(String.format("Skip DF creation for catalogNbr and session %s.", catalogNbr, strm));
+                    continue;
+                }
+    
                 //Set language
                 shortLang = setLangue(langue);
 
@@ -472,6 +477,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     acadOrg= token[6];
                     role= token[7];
                     strmId= token[8];
+                }
+
+                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
+                    log.debug(String.format("Skip DF addition of instructor %s in course %s and session %s.", emplId, catalogNbr, strm));
+                    continue;
                 }
 
                 sectionId = catalogNbr+strmId+classSection;
