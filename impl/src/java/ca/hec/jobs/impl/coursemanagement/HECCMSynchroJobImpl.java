@@ -730,6 +730,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         for (String entry: studentEnrollmentsToDelete){
             values = entry.split(";");
             cmAdmin.removeEnrollment(values[0], values[1]);
+            log.info(String.format("Remove student %s from section %s", values[0], values[1]));
         }
 
         //Remove outdated instructors
