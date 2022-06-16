@@ -229,7 +229,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     instructionMode = null;
 
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF creation for catalogNbr and session %s.", catalogNbr, strm));
+                    log.debug(String.format("Skip DF creation for catalogNbr %s and session %s.", catalogNbr, strm));
                     continue;
                 }
     
