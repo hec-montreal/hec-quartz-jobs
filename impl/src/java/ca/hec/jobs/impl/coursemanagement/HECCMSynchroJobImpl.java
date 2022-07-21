@@ -2,6 +2,8 @@ package ca.hec.jobs.impl.coursemanagement;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.coursemanagement.HECCMSynchroJob;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -71,6 +73,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     Set<String> sectionsToRefresh;
     String error_address = null;
     String registrarErrorAddress = null;
+
+    Map<String, List<DfInstructor>> dfInstructors = new HashMap<String, List<DfInstructor>>();
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -236,11 +240,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 else
                     instructionMode = null;
 
-                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF creation for catalogNbr %s and session %s.", catalogNbr, strm));
-                    continue;
-                }
-    
                 //Set language
                 shortLang = setLangue(langue);
 
@@ -449,6 +448,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         syncedCanonicalCourses.add(canonicalCourseId);
     }
 
+    @Data
+    @AllArgsConstructor
+    class DfInstructor {
+        String role;
+        String id;
+    }
+
     /**
      * Method used to create instructors and coordinators
      */
@@ -490,7 +496,17 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
 
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF addition of instructor %s in course %s and session %s.", emplId, catalogNbr, strm));
+                    String key = catalogNbr+";"+strm+";"+classSection;
+                    List<DfInstructor> instructors;
+                    if (dfInstructors.get(key) == null) {
+                        instructors = new ArrayList<DfInstructor>();
+                        dfInstructors.put(key, instructors);
+                    }
+                    else {
+                        instructors = dfInstructors.get(key);
+                    }
+                    instructors.add(new DfInstructor(role, emplId));
+                    log.debug(String.format("Add DF instructor to map %s in course %s and session %s.", emplId, catalogNbr, strm));
                     continue;
                 }
 
@@ -672,11 +688,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 status= token[5];
                 strmId= token[6];
 
-                Section previousDFSection = null;
-                String sectionTitle = null, courseOfferingId = catalogNbr+strmId;
-
                 // find good section if it's a DF
-                if (classSection.startsWith("DF")) {
+                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
+                    String courseOfferingId = catalogNbr+strmId;
+                    Section previousDFSection = null;
+
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
                         String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'as pas d'inscription antérieur pour le cours %s dans ZoneCours.",
@@ -699,13 +715,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         }
 
                         // todo for distinct, prepend le section title ?
-                        sectionTitle = desiredInstructionMode+"DF";
+                        String sectionTitle = desiredInstructionMode+"DF";
                         sectionId = catalogNbr+strmId+sectionTitle;
 
                         // create section and enrollment set if it doesn't exist
                         if (selectedSessions.contains(strmId) &&
-                            ((debugMode.isInDebugMode && debugMode.isInDebugCourses(catalogNbr) ||
-                            (!debugMode.isInDebugMode && selectedCourses.contains(sectionId))))) {
+                            ((debugMode.isInDebugMode && debugMode.isInDebugCourses(catalogNbr)) || !debugMode.isInDebugMode)) {
+
+                            // add to sections to handle for later 
+                            selectedCourses.add(sectionId);
 
                             if (!cmService.isEnrollmentSetDefined(sectionId)) {
                                 //Create or Update enrollmentSet
@@ -736,6 +754,16 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                     addOrUpdateEtudiants(sectionId, sectionId, emplId);
                     studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
+
+                    // special case, enroll instructors and coordinators for DF sections
+                    String instructorKey = catalogNbr+";"+strmId+";"+classSection;
+                    if (dfInstructors.containsKey(instructorKey)) {
+                        List<DfInstructor> instructors = dfInstructors.get(instructorKey);
+                        for (DfInstructor dfInst : instructors) {
+                            // this method removes from the *ToDelete maps itself
+                            addOrUpdateProf(dfInst.getRole(), sectionId, dfInst.getId());
+                        }
+                    }
                 }
             }
             // ferme le tampon
