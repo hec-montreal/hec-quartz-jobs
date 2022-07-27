@@ -703,6 +703,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     }
 
                     try {
+                        // find a section with an equivalent instruction mode to the previous enrollment
                         String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
 
                         if (desiredInstructionMode == null) {
@@ -811,9 +812,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         
         // this can be removed after A2023
         CourseOffering previousSectionCO = cmService.getCourseOffering(previousSection.getCourseOfferingEid());
-        final Boolean prevSectionBeforeA2022 = Integer.parseInt(previousSectionCO.getAcademicSession().getEid()) < 22231; 
+        final Boolean prevSectionBeforeA2022 = Integer.parseInt(previousSectionCO.getAcademicSession().getEid()) < 22231;
         final String previousInstructionMode = 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY2") ? "HS" : 
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY3") ? "HA" : 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("DI") ? "DS" : 
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" : previousSection.getInstructionMode();
         // ------------
         
@@ -823,11 +826,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         // find current section with same instruction mode
         Optional<Section> returnMe = 
             sectionsStream
-                .filter(s -> { return s.getInstructionMode().equals(previousSection.getInstructionMode()); } )
+                .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
                 .findAny();
 
         // if there isn't one, find equivalent instruction mode (by order of priority listed above)
-        if (returnMe == null && modePriority.contains(previousSection.getInstructionMode())) {
+        if (returnMe == null && modePriority.contains(previousInstructionMode)) {
             returnMe = sectionsStream
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
                 .sorted(new Comparator<Section>(){
@@ -840,7 +843,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
         
         if (returnMe.isPresent()) { 
-            log.debug(String.format("Found section %s with instruction mode %s", returnMe.get().getEid(), returnMe.get().getInstructionMode())); 
+            log.debug(String.format("Returning instruction mode %s since we found matching section %s", returnMe.get().getInstructionMode(), returnMe.get().getEid())); 
         }
         return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
     }
@@ -848,7 +851,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private Section getPreviousSectionForDF(final String studentId, final String catalogNbr, final Integer oldestEligibleSession) {
         try {
             Set<Section> previousSections = cmService.findEnrolledSections(studentId);
-            log.debug(String.format("Searching for %s section after %d", catalogNbr, oldestEligibleSession));
+            log.debug(String.format("Searching for %s section for student %s after %d", catalogNbr, studentId, oldestEligibleSession));
 
             // get a list of previous enrollments ordered by session (including other languages) to return the first result
             List<Section> sectionList = previousSections.stream()
