@@ -665,11 +665,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         String emplId, catalogNbr, strm, sessionCode, classSection, status, strmId;
         String sectionId, enrollmentSetEid;
 
-        // used for identifying the original enrollment of a DF student
-        Integer oldestEligibleSession = getOldestEligibleSession();
-
         //get entries from last synchro
         studentEnrollmentsToDelete = getStudentsInPreviousSynchro();
+        // load sessions for DF students
+        List<String> allSessions = cmService.getAcademicSessions().stream().map(s->{ return s.getEid(); }).collect(Collectors.toList());
+
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory+ File.separator + ETUDIANT_FILE), "ISO-8859-1"));
@@ -692,6 +692,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
                     String courseOfferingId = catalogNbr+strmId;
                     Section previousDFSection = null;
+                    // used for identifying the original enrollment of a DF student
+                    Integer oldestEligibleSession = getOldestEligibleSession(strmId, allSessions);
 
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
@@ -783,25 +785,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     // When retrieving the original enrollment for the DF 
     // we should only go back 3 sessions
-    private Integer getOldestEligibleSession()
+    private Integer getOldestEligibleSession(String givenSession, List<String> allSessions)
     {
-        Boolean activeFound = false;
+        // sessions list should be in order
         Integer prevSessionsToCheck = 3;
-        List<String> activeSessions = cmService.getCurrentAcademicSessions().stream().map(AcademicSession::getEid).collect(Collectors.toList());
-        List<AcademicSession> sessions = cmService.getAcademicSessions();
-        Collections.reverse(sessions);
-        for (AcademicSession session : sessions) {
-            if (activeFound == false && activeSessions.contains(session.getEid())) {
-                activeFound = true;
-            }
-            if (activeFound) {
-                if (prevSessionsToCheck == 0) {
-                    return Integer.parseInt(session.getEid().substring(0, 4));
-                }
-                else { prevSessionsToCheck -= 1; }    
-            }
-        }
-        return null;
+        return Integer.parseInt(allSessions.get(allSessions.lastIndexOf(givenSession)-prevSessionsToCheck).substring(0, 4));
     }
 
     // return the instruction mode to use for the new student enrollment
@@ -820,8 +808,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" : previousSection.getInstructionMode();
         // ------------
         
+        // get current sections, filter out DF sections
         Stream<Section> sectionsStream = cmService.getSections(courseOfferingId).stream()
-            .filter(s -> {return !s.getTitle().startsWith("DF");});
+            .filter(s -> {return !s.getTitle().startsWith("DF") && !s.getTitle().endsWith("DF");});
 
         // find current section with same instruction mode
         Optional<Section> returnMe = 
@@ -858,6 +847,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 .filter(s -> { 
                     return s.getEid().startsWith(catalogNbr) && 
                         !s.getTitle().startsWith("DF") &&
+                        !s.getTitle().endsWith("DF") &&
                         getSessionCode(s.getEid(), catalogNbr) >= oldestEligibleSession; 
                 })
                 .sorted(new Comparator<Section>() {
