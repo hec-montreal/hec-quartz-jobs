@@ -71,4 +71,7 @@ public interface SiteIdFormatHelper {
       * @return sectionId
      */
     String buildSectionId(String catalog_nbr, String session_id, String session_code, String sectionName);
+
+    // Return the distinct section prefix matching this section, null if there is none (e.g. AL,LB,AG,CB9,CF9)
+    String getSectionDistinctTitle(Section section, String[] distinctSectionsTitles);
 }

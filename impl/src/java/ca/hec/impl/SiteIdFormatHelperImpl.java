@@ -149,7 +149,7 @@ public class SiteIdFormatHelperImpl implements SiteIdFormatHelper {
         return sessionName;
     }
     
-    private String getSectionDistinctTitle(Section section, String[] distinctSectionsTitles) {
+    public String getSectionDistinctTitle(Section section, String[] distinctSectionsTitles) {
     	for (String title : distinctSectionsTitles) {
     		if (section.getTitle().startsWith(title)) {
     			return title;

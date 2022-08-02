@@ -129,7 +129,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             loadServEnseignements();
             loadCourses();
             loadInstructeurs();
-            loadEtudiants();
+            loadEtudiants(distinctSitesSections);
             removeEntriesMarkedToDelete(distinctSitesSections);
 
             log.info("Refresh authz groups to ensure correct role for coordinators and coordinator-instructors");
@@ -660,7 +660,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     /**
      * Method used to create students
      */
-    private void loadEtudiants(){
+    private void loadEtudiants(String distinctSitesSections){
         log.debug("Start loadEtudiants");
         String emplId, catalogNbr, strm, sessionCode, classSection, status, strmId;
         String sectionId, enrollmentSetEid;
@@ -706,7 +706,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                     try {
                         // find a section with an equivalent instruction mode to the previous enrollment
-                        String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
+                        String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection, distinctSitesSections);
 
                         if (desiredInstructionMode == null) {
                             String errorMsg = String.format("ZoneCours ne trouve aucune section dans le site %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans le %s de la session %s. Le mode d'enseignement antérieur était %s",
@@ -795,7 +795,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     // return the instruction mode to use for the new student enrollment
     // should be same instruction mode or an equivalend if it's in the modePriority list
     // Checks that a section already exists
-    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection) {
+    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection, final String distinctSitesSections) {
         final List<String> modePriority = Arrays.asList("P,CM,HS,DS,IS".split(","));
         
         // this can be removed after A2023
@@ -812,14 +812,25 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         Stream<Section> sectionsStream = cmService.getSections(courseOfferingId).stream()
             .filter(s -> {return !s.getTitle().startsWith("DF") && !s.getTitle().endsWith("DF");});
 
+        Optional<Section> returnMe = Optional.empty();
+        String distinctTitle = siteIdFormatHelper.getSectionDistinctTitle(previousSection, distinctSitesSections.split(","));
+        if (distinctTitle != null) {
+            // for distinct sections (e.g. AL,LB,AG,CB9,CF9), check if any current sections start with the same two letters
+            if (sectionsStream.anyMatch(s -> { return s.getTitle().startsWith(distinctTitle); })) {
+                return distinctTitle;
+            }
+        }
+
         // find current section with same instruction mode
-        Optional<Section> returnMe = 
-            sectionsStream
-                .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
-                .findAny();
+        if (!returnMe.isPresent()) {
+            returnMe =
+                sectionsStream
+                    .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
+                    .findAny();
+        }
 
         // if there isn't one, find equivalent instruction mode (by order of priority listed above)
-        if (returnMe.isEmpty() && modePriority.contains(previousInstructionMode)) {
+        if (!returnMe.isPresent() && modePriority.contains(previousInstructionMode)) {
             returnMe = sectionsStream
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
                 .sorted(new Comparator<Section>(){
