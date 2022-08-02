@@ -819,7 +819,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 .findAny();
 
         // if there isn't one, find equivalent instruction mode (by order of priority listed above)
-        if (returnMe == null && modePriority.contains(previousInstructionMode)) {
+        if (returnMe.isEmpty() && modePriority.contains(previousInstructionMode)) {
             returnMe = sectionsStream
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
                 .sorted(new Comparator<Section>(){
@@ -843,16 +843,17 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             log.debug(String.format("Searching for %s section for student %s after %d", catalogNbr, studentId, oldestEligibleSession));
 
             // get a list of previous enrollments ordered by session (including other languages) to return the first result
+            final String catNumWithoutLang = catalogNbr.matches(".*[A-Z]") ? catalogNbr.substring(0, catalogNbr.length()-1) : catalogNbr;
             List<Section> sectionList = previousSections.stream()
                 .filter(s -> { 
-                    return s.getEid().startsWith(catalogNbr) && 
+                    return s.getEid().startsWith(catNumWithoutLang) && 
                         !s.getTitle().startsWith("DF") &&
                         !s.getTitle().endsWith("DF") &&
-                        getSessionCode(s.getEid(), catalogNbr) >= oldestEligibleSession; 
+                        getSessionCode(s.getEid(), catNumWithoutLang) >= oldestEligibleSession; 
                 })
                 .sorted(new Comparator<Section>() {
                     public int compare(Section s1, Section s2) {
-                        return getSessionCode(s1.getEid(), catalogNbr).compareTo(getSessionCode(s2.getEid(), catalogNbr));
+                        return getSessionCode(s1.getEid(), catNumWithoutLang).compareTo(getSessionCode(s2.getEid(), catNumWithoutLang));
                     }
                 })
                 .collect(Collectors.toList());
@@ -869,7 +870,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return null;
     }
 
-    // return the 4 characters following the catalog number (with or without letter), which is the session code (eg 2221 for H2022)
+    // return the 4 characters following the catalog number, which is the session code (eg 2221 for H2022)
     private Integer getSessionCode(String sectionEid, String catalogNbr) {
         try {
             if (!Character.isDigit(sectionEid.charAt(catalogNbr.length()))) {
