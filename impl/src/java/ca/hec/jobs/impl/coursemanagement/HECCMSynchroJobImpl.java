@@ -28,6 +28,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.*;
+import java.util.function.Supplier;
 
 /**
  * Created by 11091096 on 2017-04-27.
@@ -74,7 +75,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     String error_address = null;
     String registrarErrorAddress = null;
 
-    Map<String, List<DfInstructor>> dfInstructors = new HashMap<String, List<DfInstructor>>();
+    Map<String, List<DfInstructor>> dfInstructors;
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -98,6 +99,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
         syncedCanonicalCourses = new HashSet<String>();
         syncedCourseOfferings = new HashSet<String>();
+        dfInstructors = new HashMap<String, List<DfInstructor>>();
 
         directory =
                 ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
@@ -759,7 +761,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
 
                     // special case, enroll instructors and coordinators for DF sections
-                    String instructorKey = catalogNbr+";"+strmId+";"+classSection;
+                    String instructorKey = catalogNbr+";"+strm+";"+classSection;
                     if (dfInstructors.containsKey(instructorKey)) {
                         List<DfInstructor> instructors = dfInstructors.get(instructorKey);
                         for (DfInstructor dfInst : instructors) {
@@ -808,15 +810,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" : previousSection.getInstructionMode();
         // ------------
         
-        // get current sections, filter out DF sections
-        Stream<Section> sectionsStream = cmService.getSections(courseOfferingId).stream()
+        // supplier to get a stream of current sections, filter out DF sections
+        Supplier<Stream<Section>> sectionsStreamSupplier = () -> cmService.getSections(courseOfferingId).stream()
             .filter(s -> {return !s.getTitle().startsWith("DF") && !s.getTitle().endsWith("DF");});
 
         Optional<Section> returnMe = Optional.empty();
         String distinctTitle = siteIdFormatHelper.getSectionDistinctTitle(previousSection, distinctSitesSections.split(","));
         if (distinctTitle != null) {
             // for distinct sections (e.g. AL,LB,AG,CB9,CF9), check if any current sections start with the same two letters
-            if (sectionsStream.anyMatch(s -> { return s.getTitle().startsWith(distinctTitle); })) {
+            if (sectionsStreamSupplier.get().anyMatch(s -> { return s.getTitle().startsWith(distinctTitle); })) {
                 return distinctTitle;
             }
         }
@@ -824,14 +826,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         // find current section with same instruction mode
         if (!returnMe.isPresent()) {
             returnMe =
-                sectionsStream
+                sectionsStreamSupplier.get()
                     .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
                     .findAny();
         }
 
         // if there isn't one, find equivalent instruction mode (by order of priority listed above)
         if (!returnMe.isPresent() && modePriority.contains(previousInstructionMode)) {
-            returnMe = sectionsStream
+            returnMe = sectionsStreamSupplier.get()
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
                 .sorted(new Comparator<Section>(){
                     public int compare(Section s1, Section s2) {
