@@ -855,6 +855,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             // get a list of previous enrollments ordered by session (including other languages) to return the first result
             final String catNumWithoutLang = catalogNbr.matches(".*[A-Z]") ? catalogNbr.substring(0, catalogNbr.length()-1) : catalogNbr;
+            final String languageCode = catalogNbr.matches(".*[A-Z]") ? catalogNbr.substring(catalogNbr.length()-1) : null;
+
             List<Section> sectionList = previousSections.stream()
                 .filter(s -> { 
                     return s.getEid().startsWith(catNumWithoutLang) && 
@@ -864,7 +866,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 })
                 .sorted(new Comparator<Section>() {
                     public int compare(Section s1, Section s2) {
-                        return getSessionCode(s1.getEid(), catNumWithoutLang).compareTo(getSessionCode(s2.getEid(), catNumWithoutLang));
+                        Integer sessionCode1 = getSessionCode(s1.getEid(), catNumWithoutLang);
+                        Integer sessionCode2 = getSessionCode(s2.getEid(), catNumWithoutLang);
+                        String langCode1 = s1.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
+                        String langCode2 = s2.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
+
+                        if (langCode1 == languageCode) { return 1; }
+                        if (langCode2 == languageCode) { return -1; }
+                        return sessionCode1.compareTo(sessionCode2);
                     }
                 })
                 .collect(Collectors.toList());
