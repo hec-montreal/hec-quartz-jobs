@@ -873,15 +873,17 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         String langCode1 = s1.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
                         String langCode2 = s2.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
 
-                        if (langCode1 == languageCode) { return 1; }
-                        if (langCode2 == languageCode) { return -1; }
-                        return sessionCode1.compareTo(sessionCode2);
+                        if (sessionCode1.equals(sessionCode2)) {
+                            if (langCode1 == languageCode) { return 1; }
+                            if (langCode2 == languageCode) { return -1; }
+                        }
+                        return sessionCode2.compareTo(sessionCode1);
                     }
                 })
                 .collect(Collectors.toList());
 
             if (sectionList.size() > 0) {
-                log.debug(String.format("Returning section %s", sectionList.get(0).getEid()));
+                log.debug(String.format("Returning section %s out of %i options", sectionList.get(0).getEid(), sectionList.size()));
                 return sectionList.get(0);
             }
         }
