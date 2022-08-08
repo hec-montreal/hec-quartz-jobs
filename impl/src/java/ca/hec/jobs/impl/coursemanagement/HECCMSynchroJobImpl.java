@@ -708,9 +708,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                     try {
                         // find a section with an equivalent instruction mode to the previous enrollment
-                        String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection, distinctSitesSections);
+                        String dfSectionPrefix = getDFSectionPrefix(courseOfferingId, previousDFSection, distinctSitesSections);
 
-                        if (desiredInstructionMode == null) {
+                        if (dfSectionPrefix == null) {
                             String errorMsg = String.format("ZoneCours ne trouve aucune section dans le site %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans le %s de la session %s. Le mode d'enseignement antérieur était %s",
                             catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
                             log.error(errorMsg);
@@ -720,7 +720,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         }
 
                         // todo for distinct, prepend le section title ?
-                        String sectionTitle = desiredInstructionMode+"DF";
+                        String sectionTitle = dfSectionPrefix+"DF";
                         sectionId = catalogNbr+strmId+sectionTitle;
 
                         // create section and enrollment set if it doesn't exist
@@ -795,9 +795,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     }
 
     // return the instruction mode to use for the new student enrollment
-    // should be same instruction mode or an equivalend if it's in the modePriority list
+    // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
+    // If the previous section was "distinct", return the same prefix so the new one is too.
     // Checks that a section already exists
-    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection, final String distinctSitesSections) {
+    private String getDFSectionPrefix(final String courseOfferingId, final Section previousSection, final String distinctSitesSections) {
         final List<String> modePriority = Arrays.asList("P,CM,HS,DS,IS".split(","));
         
         // this can be removed after A2023
@@ -819,6 +820,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (distinctTitle != null) {
             // for distinct sections (e.g. AL,LB,AG,CB9,CF9), check if any current sections start with the same two letters
             if (sectionsStreamSupplier.get().anyMatch(s -> { return s.getTitle().startsWith(distinctTitle); })) {
+                log.debug(String.format("Return distinct prefix %s since we found at least one matching section", distinctTitle));
                 return distinctTitle;
             }
         }
@@ -845,7 +847,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
         
         if (returnMe.isPresent()) { 
-            log.debug(String.format("Returning instruction mode %s since we found matching section %s", returnMe.get().getInstructionMode(), returnMe.get().getEid())); 
+            log.debug(String.format("Returning instruction mode %s since we found matching section %s (we were looking for %s)", 
+                returnMe.get().getInstructionMode(), 
+                returnMe.get().getEid(), previousInstructionMode));
         }
         return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
     }
