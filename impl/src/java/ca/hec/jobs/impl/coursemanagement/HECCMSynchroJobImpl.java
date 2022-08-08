@@ -883,7 +883,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 .collect(Collectors.toList());
 
             if (sectionList.size() > 0) {
-                log.debug(String.format("Returning section %s out of %i options", sectionList.get(0).getEid(), sectionList.size()));
+                log.debug(String.format("Returning section %s out of %d options", sectionList.get(0).getEid(), sectionList.size()));
                 return sectionList.get(0);
             }
         }
