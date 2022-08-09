@@ -807,7 +807,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY2") ? "HS" : 
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY3") ? "HA" : 
             prevSectionBeforeA2022 && previousSection.getTitle().startsWith("DI") ? "DS" : 
-            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" : previousSection.getInstructionMode();
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" :
+            prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("AL") ? "HS" :
+            prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("WW") ? "DS" :
+            previousSection.getInstructionMode();
         // ------------
         
         // supplier to get a stream of current sections, filter out DF sections
