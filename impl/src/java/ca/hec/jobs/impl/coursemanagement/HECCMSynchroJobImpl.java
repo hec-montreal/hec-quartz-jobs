@@ -728,8 +728,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         if (selectedSessions.contains(strmId) &&
                             ((debugMode.isInDebugMode && debugMode.isInDebugCourses(catalogNbr)) || !debugMode.isInDebugMode)) {
 
-                            // add to sections to handle for later 
-                            selectedCourses.add(sectionId);
+                            // add to sections to handle for later, and load students to delete the ones that aren't in the extract 
+                            if (!selectedCourses.contains(sectionId)) {
+                                selectedCourses.add(sectionId);
+                                studentEnrollmentsToDelete.addAll(getStudentsInEnrollmentSet(sectionId));
+                            }
 
                             if (!cmService.isEnrollmentSetDefined(sectionId)) {
                                 //Create or Update enrollmentSet
@@ -957,6 +960,20 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         return studentsBySection;
+    }
+
+    public Set<String> getStudentsInEnrollmentSet(String enrollmentSetEid) {
+        Set<Enrollment> enrollments = null;
+        Set<String> students = new HashSet <String>();
+        if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
+            enrollments = cmService.getEnrollments(enrollmentSetEid);
+            for (Enrollment enrollment : enrollments) {
+                if (!enrollment.isDropped()) {
+                    students.add(enrollment.getUserId() + ";" + enrollmentSetEid);
+                }
+            }
+        }
+        return students;
     }
 
     public void removeEntriesMarkedToDelete(String distinctSitesSections){
