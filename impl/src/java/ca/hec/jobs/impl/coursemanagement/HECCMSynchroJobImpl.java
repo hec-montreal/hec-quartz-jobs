@@ -261,7 +261,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                 // don't create DF sections here
                 if (!classSection.startsWith("DF") && 
-                    selectedCourses.contains(strmId) && selectedCourses.contains(sectionId) ) {
+                    selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
                     //Add active classes
                     if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
