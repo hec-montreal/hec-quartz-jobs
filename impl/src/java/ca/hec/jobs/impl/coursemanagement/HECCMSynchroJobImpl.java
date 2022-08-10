@@ -89,8 +89,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         error_address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
         registrarErrorAddress = ServerConfigurationService.getString(REGISTRAR_EMAIL_PROP, null);
         if (registrarErrorAddress != null) {
-            error_address += ","+registrarErrorAddress;
+            registrarErrorAddress += ","+error_address;
         }
+        else { registrarErrorAddress = error_address; }
 
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
@@ -702,7 +703,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'as pas d'inscription antérieur pour le cours %s dans ZoneCours.",
                             emplId, classSection, strm, catalogNbr);
                         log.error(errorMsg);
-                        emailService.send("zonecours2@hec.ca", error_address, "Inscription antérieur manquante pour une inscription DF", errorMsg+"\n",null, null, null);
+                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, "Inscription antérieur manquante pour une inscription DF", errorMsg+"\n",null, null, null);
                         continue;
                     }
 
@@ -714,7 +715,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             String errorMsg = String.format("ZoneCours ne trouve aucune section dans le site %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans le %s de la session %s. Le mode d'enseignement antérieur était %s",
                             catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
                             log.error(errorMsg);
-                            emailService.send("zonecours2@hec.ca", error_address,
+                            emailService.send("zonecours2@hec.ca", registrarErrorAddress,
                                 "Aucun site trouvé pour une inscription DF", errorMsg+"\n",null, null, null);
                             continue;
                         }
