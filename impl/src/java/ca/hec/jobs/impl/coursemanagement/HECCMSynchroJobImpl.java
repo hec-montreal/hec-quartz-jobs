@@ -53,6 +53,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
     private static final String NOTIFICATION_EMAIL_PROP = "hec.error.notification.email";
     private static final String REGISTRAR_EMAIL_PROP = "hec.registrar.error.notification.email";
+    private static final String SESSIONS_TO_CHECK = "hec.df-enrollment.numPreviousSessionsToCheck";
     private static final Integer MIN_NUMBER_OF_LINES = 5;
     private static boolean isRunning = false;
 
@@ -442,7 +443,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 log.info("Lier le canonical course " + canonicalCourseId + " au course set " + courseSetId);
             }
         } else {
-            course = cmService.getCanonicalCourse(canonicalCourseId);
+            course = cmService.getCanonicalCourse();
             course.setDescription(description);
             course.setTitle(title);
             cmAdmin.updateCanonicalCourse(course);
@@ -712,12 +713,21 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection, distinctSitesSections);
 
                         if (desiredInstructionMode == null) {
-                            String errorMsg = String.format("ZoneCours ne trouve aucune section dans le site %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans le %s de la session %s. Le mode d'enseignement antérieur était %s",
-                            catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
+                            String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.",
+                                catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
                             log.error(errorMsg);
                             emailService.send("zonecours2@hec.ca", registrarErrorAddress,
                                 "Aucun site trouvé pour une inscription DF", errorMsg+"\n",null, null, null);
-                            continue;
+
+                            /*
+                            if (cmService.isCourseOfferingDefined(courseOfferingId)) {
+                                // Create course offering
+                                CanonicalCourse cc = cmService.getCanonicalCourse(catalogNbr);
+                                syncCourseOffering(cc.getCourseSetEids(), courseOfferingId, "lang", "NONEVAL", 0, "acad career",
+                                            COURSE_OFF_STATUS, cc.getTitle(), cc.getDescription(), strmId, catalogNbr);
+                            }
+                            */
+                            desiredInstructionMode = previousDFSection.getInstructionMode();
                         }
 
                         // todo for distinct, prepend le section title ?
@@ -794,7 +804,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private Integer getOldestEligibleSession(String givenSession, List<String> allSessions)
     {
         // sessions list should be in order
-        Integer prevSessionsToCheck = 3;
+        Integer prevSessionsToCheck = ServerConfigurationService.getInt(SESSIONS_TO_CHECK, 9);
         return Integer.parseInt(allSessions.get(allSessions.lastIndexOf(givenSession)-prevSessionsToCheck).substring(0, 4));
     }
 
@@ -846,13 +856,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (!returnMe.isPresent() && modePriority.contains(previousInstructionMode)) {
             returnMe = sectionsStreamSupplier.get()
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
-                .sorted(new Comparator<Section>(){
-                    public int compare(Section s1, Section s2) {
-                        return Integer.compare(modePriority.indexOf(s2.getInstructionMode()),
-                            modePriority.indexOf(s1.getInstructionMode()));
-                    }
-                })
-                .findFirst();
+                .min(Comparator.comparing(o->modePriority.indexOf(o.getInstructionMode())));
         }
         
         if (returnMe.isPresent()) { 
@@ -860,7 +864,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 returnMe.get().getInstructionMode(), 
                 returnMe.get().getEid(), previousInstructionMode));
         }
-        return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
+        return returnMe.isPresent() ? returnMe.get().getInstructionMode() : previousInstructionMode;
     }
 
     private Section getPreviousSectionForDF(final String studentId, final String catalogNbr, final Integer oldestEligibleSession) {
