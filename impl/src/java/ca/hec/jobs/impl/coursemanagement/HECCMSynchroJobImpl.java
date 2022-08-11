@@ -443,7 +443,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 log.info("Lier le canonical course " + canonicalCourseId + " au course set " + courseSetId);
             }
         } else {
-            course = cmService.getCanonicalCourse();
+            course = cmService.getCanonicalCourse(canonicalCourseId);
             course.setDescription(description);
             course.setTitle(title);
             cmAdmin.updateCanonicalCourse(course);
@@ -864,7 +864,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 returnMe.get().getInstructionMode(), 
                 returnMe.get().getEid(), previousInstructionMode));
         }
-        return returnMe.isPresent() ? returnMe.get().getInstructionMode() : previousInstructionMode;
+        return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
     }
 
     private Section getPreviousSectionForDF(final String studentId, final String catalogNbr, final Integer oldestEligibleSession) {
