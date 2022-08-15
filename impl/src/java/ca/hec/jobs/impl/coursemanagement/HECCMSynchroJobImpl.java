@@ -2,6 +2,8 @@ package ca.hec.jobs.impl.coursemanagement;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.coursemanagement.HECCMSynchroJob;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.Setter;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -24,6 +26,9 @@ import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.*;
+import java.util.function.Supplier;
 
 /**
  * Created by 11091096 on 2017-04-27.
@@ -47,6 +52,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     private static Log log = LogFactory.getLog(HECCMSynchroJobImpl.class);
 
     private static final String NOTIFICATION_EMAIL_PROP = "hec.error.notification.email";
+    private static final String REGISTRAR_EMAIL_PROP = "hec.registrar.error.notification.email";
+    private static final String SESSIONS_TO_CHECK = "hec.df-enrollment.numPreviousSessionsToCheck";
     private static final Integer MIN_NUMBER_OF_LINES = 5;
     private static boolean isRunning = false;
 
@@ -67,6 +74,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     Map<String, InstructionMode> instructionMode;
     Set<String> sectionsToRefresh;
     String error_address = null;
+    String registrarErrorAddress = null;
+
+    Map<String, List<DfInstructor>> dfInstructors;
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -78,6 +88,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         isRunning = true;
 
         error_address = ServerConfigurationService.getString(NOTIFICATION_EMAIL_PROP, null);
+        registrarErrorAddress = ServerConfigurationService.getString(REGISTRAR_EMAIL_PROP, null);
+        if (registrarErrorAddress != null) {
+            registrarErrorAddress += ","+error_address;
+        }
+        else { registrarErrorAddress = error_address; }
 
         String sessionStartDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionStart");
         String sessionEndDebug = jobExecutionContext.getMergedJobDataMap().getString("cmSessionEnd");
@@ -86,6 +101,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
         syncedCanonicalCourses = new HashSet<String>();
         syncedCourseOfferings = new HashSet<String>();
+        dfInstructors = new HashMap<String, List<DfInstructor>>();
 
         directory =
                 ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
@@ -228,11 +244,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 else
                     instructionMode = null;
 
-                if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF creation for catalogNbr %s and session %s.", catalogNbr, strm));
-                    continue;
-                }
-    
                 //Set language
                 shortLang = setLangue(langue);
 
@@ -250,7 +261,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     selectedCourses.add(sectionId);
                 }
 
-                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
+                // don't create DF sections here
+                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                     //Add active classes
                     if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
@@ -266,12 +278,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         syncCourseOffering(courseSetId, courseOfferingId, shortLang, typeEvaluation, unitsMinimum, acadCareer,
                                 COURSE_OFF_STATUS, title, description, strmId, canonicalCourseId);
 
-                        //Create or Update enrollmentSet
-                        syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
+                        // don't create section/enrollment set for DF, it's handled per student
+                        if (!classSection.startsWith("DF") || Integer.parseInt(strm) < 2223) {
+                            //Create or Update enrollmentSet
+                            syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
 
-                        //Create or Update section
-                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLang,
+                            //Create or Update section
+                            syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLang,
                                 typeEvaluation, courseOfferingId, instructionMode);
+                        }
                     } else {
                         //Remove the section
                         if (cmService.isSectionDefined(sectionId)) {
@@ -439,6 +454,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         syncedCanonicalCourses.add(canonicalCourseId);
     }
 
+    @Data
+    @AllArgsConstructor
+    class DfInstructor {
+        String role;
+        String id;
+    }
+
     /**
      * Method used to create instructors and coordinators
      */
@@ -480,7 +502,17 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
 
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF addition of instructor %s in course %s and session %s.", emplId, catalogNbr, strm));
+                    String key = catalogNbr+";"+strm+";"+classSection;
+                    List<DfInstructor> instructors;
+                    if (dfInstructors.get(key) == null) {
+                        instructors = new ArrayList<DfInstructor>();
+                        dfInstructors.put(key, instructors);
+                    }
+                    else {
+                        instructors = dfInstructors.get(key);
+                    }
+                    instructors.add(new DfInstructor(role, emplId));
+                    log.debug(String.format("Add DF instructor to map %s in course %s and session %s.", emplId, catalogNbr, strm));
                     continue;
                 }
 
@@ -641,6 +673,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
         //get entries from last synchro
         studentEnrollmentsToDelete = getStudentsInPreviousSynchro();
+        // load sessions for DF students
+        List<String> allSessions = cmService.getAcademicSessions().stream().map(s->{ return s.getEid(); }).collect(Collectors.toList());
+
         try {
             breader = new BufferedReader(new InputStreamReader(new FileInputStream(
                     directory+ File.separator + ETUDIANT_FILE), "ISO-8859-1"));
@@ -659,23 +694,96 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 status= token[5];
                 strmId= token[6];
 
-               sectionId = catalogNbr+strmId+classSection;
-                enrollmentSetEid = sectionId;
-
+                // find good section if it's a DF
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
-                    log.debug(String.format("Skip DF enrollment for student %s in course %s and session %s.", emplId, catalogNbr, strm));
-                    continue;
-                }
-                //DEBUG MODE
-                if (debugMode.isInDebugMode) {
-                    if (selectedSessions.contains(strmId) && debugMode.isInDebugCourses(catalogNbr)) {
-                        addOrUpdateEtudiants(sectionId, enrollmentSetEid, emplId);
-                        studentEnrollmentsToDelete.remove(emplId + ";" + enrollmentSetEid);
+                    String courseOfferingId = catalogNbr+strmId;
+                    Section previousDFSection = null;
+                    // used for identifying the original enrollment of a DF student
+                    Integer oldestEligibleSession = getOldestEligibleSession(strmId, allSessions);
+
+                    previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
+                    if (previousDFSection == null) {
+                        String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'as pas d'inscription antérieur pour le cours %s dans ZoneCours.",
+                            emplId, classSection, strm, catalogNbr);
+                        log.error(errorMsg);
+                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, "Inscription antérieur manquante pour une inscription DF", errorMsg+"\n",null, null, null);
+                        continue;
                     }
-                } else {
-                    if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
-                        addOrUpdateEtudiants(sectionId, enrollmentSetEid, emplId);
-                        studentEnrollmentsToDelete.remove(emplId + ";" + enrollmentSetEid);
+
+                    try {
+                        // find a section with an equivalent instruction mode to the previous enrollment
+                        String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
+
+                        if (desiredInstructionMode == null) {
+                            String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.",
+                                catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
+                            log.error(errorMsg);
+                            emailService.send("zonecours2@hec.ca", registrarErrorAddress,
+                                "Aucun site trouvé pour une inscription DF", errorMsg+"\n",null, null, null);
+
+                            desiredInstructionMode = previousDFSection.getInstructionMode();
+                        }
+
+                        String sectionTitle = desiredInstructionMode+"DF";
+                        sectionId = catalogNbr+strmId+sectionTitle;
+
+                        // create section and enrollment set if it doesn't exist
+                        if (selectedSessions.contains(strmId) &&
+                            ((debugMode.isInDebugMode && debugMode.isInDebugCourses(catalogNbr)) || !debugMode.isInDebugMode)) {
+
+                            // add to sections to handle for later, and load students to delete the ones that aren't in the extract 
+                            if (!selectedCourses.contains(sectionId)) {
+                                selectedCourses.add(sectionId);
+                                studentEnrollmentsToDelete.addAll(getStudentsInEnrollmentSet(sectionId));
+                            }
+
+                            // retrieve course offering for creating section/enrollmentSet
+                            CourseOffering co = cmService.getCourseOffering(courseOfferingId);
+                            String courseSetEid = null;
+                            if (co.getCourseSetEids().size()>0) {
+                                courseSetEid = co.getCourseSetEids().iterator().next();
+                            }
+                            else {
+                                log.error(String.format("Couln't find course set id for DF section %s in course offering %s", sectionTitle, courseOfferingId));
+                            }
+
+                            if (!cmService.isEnrollmentSetDefined(sectionId)) {
+                                //Create or Update enrollmentSet
+                                syncEnrollmentSet(sectionId, co.getDescription(), sectionTitle, courseSetEid, co.getCredits(), courseOfferingId);
+                            }
+
+                            if (!cmService.isSectionDefined(sectionId)) {
+                                //Create or Update section
+                                syncSection(sectionId, courseSetEid, co.getDescription(), sectionId, sectionTitle,
+                                    co.getLang(), "NONEVAL", courseOfferingId, desiredInstructionMode);
+                            }
+                        }
+                    }
+                    catch (IdNotFoundException infe) {
+                        log.debug("Current sections for course offering not found: "+courseOfferingId);
+                        continue;
+                    }
+                }
+                else {
+                    sectionId = catalogNbr+strmId+classSection;
+                }
+
+                //DEBUG MODE
+                if (selectedSessions.contains(strmId) &&
+                    ((debugMode.isInDebugMode && debugMode.isInDebugCourses(catalogNbr) ||
+                    (!debugMode.isInDebugMode && selectedCourses.contains(sectionId))))) {
+
+                    addOrUpdateEtudiants(sectionId, sectionId, emplId);
+                    studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
+
+                    // special case, enroll instructors and coordinators for DF sections
+                    String instructorKey = catalogNbr+";"+strm+";"+classSection;
+                    if (dfInstructors.containsKey(instructorKey)) {
+                        List<DfInstructor> instructors = dfInstructors.get(instructorKey);
+                        for (DfInstructor dfInst : instructors) {
+                            // this method removes from the *ToDelete maps itself
+                            addOrUpdateProf(dfInst.getRole(), sectionId, dfInst.getId());
+                        }
                     }
                 }
             }
@@ -691,6 +799,125 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         log.debug("End loadEtudiants");
+    }
+
+    // When retrieving the original enrollment for the DF 
+    // we should only go back 3 sessions
+    private Integer getOldestEligibleSession(String givenSession, List<String> allSessions)
+    {
+        // sessions list should be in order
+        Integer prevSessionsToCheck = ServerConfigurationService.getInt(SESSIONS_TO_CHECK, 9);
+        return Integer.parseInt(allSessions.get(allSessions.lastIndexOf(givenSession)-prevSessionsToCheck).substring(0, 4));
+    }
+
+    // return the instruction mode to use for the new student enrollment
+    // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
+    // Checks that a section already exists
+    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection) {
+        final List<String> modePriority = Arrays.asList("P,CM,HS,DS,IS".split(","));
+        
+        // this can be removed after A2023
+        CourseOffering previousSectionCO = cmService.getCourseOffering(previousSection.getCourseOfferingEid());
+        final Boolean prevSectionBeforeA2022 = Integer.parseInt(previousSectionCO.getAcademicSession().getEid()) < 22231;
+        final String previousInstructionMode = 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY2") ? "HS" : 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("HY3") ? "HA" : 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("DI") ? "DS" : 
+            prevSectionBeforeA2022 && previousSection.getTitle().startsWith("WE") ? "DA" :
+            prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("AL") ? "HS" :
+            prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("WW") ? "DS" :
+            previousSection.getInstructionMode();
+        // ------------
+        
+        // supplier to get a stream of current sections, filter out DF sections
+        Supplier<Stream<Section>> sectionsStreamSupplier = () -> cmService.getSections(courseOfferingId).stream()
+            .filter(s -> {return !s.getTitle().startsWith("DF") && !s.getTitle().endsWith("DF");});
+
+        Optional<Section> returnMe = Optional.empty();
+
+        // find current section with same instruction mode
+        if (!returnMe.isPresent()) {
+            returnMe =
+                sectionsStreamSupplier.get()
+                    .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
+                    .findAny();
+        }
+
+        // if there isn't one, find equivalent instruction mode (by order of priority listed above)
+        if (!returnMe.isPresent() && modePriority.contains(previousInstructionMode)) {
+            returnMe = sectionsStreamSupplier.get()
+                .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
+                .min(Comparator.comparing(o->modePriority.indexOf(o.getInstructionMode())));
+        }
+        
+        if (returnMe.isPresent()) { 
+            log.debug(String.format("Returning instruction mode %s since we found matching section %s (we were looking for %s)", 
+                returnMe.get().getInstructionMode(), 
+                returnMe.get().getEid(), previousInstructionMode));
+        }
+        return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
+    }
+
+    private Section getPreviousSectionForDF(final String studentId, final String catalogNbr, final Integer oldestEligibleSession) {
+        try {
+            Set<Section> previousSections = cmService.findEnrolledSections(studentId);
+            log.debug(String.format("Searching for %s section for student %s after %d", catalogNbr, studentId, oldestEligibleSession));
+
+            // get a list of previous enrollments ordered by session (including other languages) to return the first result
+            final String catNumWithoutLang = catalogNbr.matches(".*[A-Z]") ? catalogNbr.substring(0, catalogNbr.length()-1) : catalogNbr;
+            final String languageCode = catalogNbr.matches(".*[A-Z]") ? catalogNbr.substring(catalogNbr.length()-1) : null;
+
+            List<Section> sectionList = previousSections.stream()
+                .filter(s -> { 
+                    return s.getEid().startsWith(catNumWithoutLang) && 
+                        !s.getTitle().startsWith("DF") &&
+                        !s.getTitle().endsWith("DF") &&
+                        getSessionCode(s.getEid(), catNumWithoutLang) >= oldestEligibleSession; 
+                })
+                .sorted(new Comparator<Section>() {
+                    public int compare(Section s1, Section s2) {
+                        Integer sessionCode1 = getSessionCode(s1.getEid(), catNumWithoutLang);
+                        Integer sessionCode2 = getSessionCode(s2.getEid(), catNumWithoutLang);
+                        String langCode1 = s1.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
+                        String langCode2 = s2.getEid().substring(catNumWithoutLang.length(), catNumWithoutLang.length()+1);
+
+                        if (sessionCode1.equals(sessionCode2)) {
+                            if (langCode1 == languageCode) { return 1; }
+                            if (langCode2 == languageCode) { return -1; }
+                        }
+                        return sessionCode2.compareTo(sessionCode1);
+                    }
+                })
+                .collect(Collectors.toList());
+
+            if (sectionList.size() > 0) {
+                log.debug(String.format("Returning section %s out of %d options", sectionList.get(0).getEid(), sectionList.size()));
+                return sectionList.get(0);
+            }
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+            log.error("Exception getting previous section for DF: " + catalogNbr + " " + studentId);
+        }
+        return null;
+    }
+
+    // return the 4 characters following the catalog number, which is the session code (eg 2221 for H2022)
+    private Integer getSessionCode(String sectionEid, String catalogNbr) {
+        try {
+            if (!Character.isDigit(sectionEid.charAt(catalogNbr.length()))) {
+                // treat other languages (character following catalog nbr is not a number)
+                return Integer.parseInt(sectionEid.substring(catalogNbr.length()+1, catalogNbr.length()+5));
+            }
+            else {
+                return Integer.parseInt(sectionEid.substring(catalogNbr.length(), catalogNbr.length()+4));
+            }
+        }
+        catch (NumberFormatException e) {
+            log.error("Error parsing int");
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public void addOrUpdateEtudiants(String sectionId, String enrollmentSetEid, String emplId){
@@ -728,6 +955,20 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         }
 
         return studentsBySection;
+    }
+
+    public Set<String> getStudentsInEnrollmentSet(String enrollmentSetEid) {
+        Set<Enrollment> enrollments = null;
+        Set<String> students = new HashSet <String>();
+        if (cmService.isEnrollmentSetDefined(enrollmentSetEid)) {
+            enrollments = cmService.getEnrollments(enrollmentSetEid);
+            for (Enrollment enrollment : enrollments) {
+                if (!enrollment.isDropped()) {
+                    students.add(enrollment.getUserId() + ";" + enrollmentSetEid);
+                }
+            }
+        }
+        return students;
     }
 
     public void removeEntriesMarkedToDelete(String distinctSitesSections){
