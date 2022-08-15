@@ -262,8 +262,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 }
 
                 // don't create DF sections here
-                if (!classSection.startsWith("DF") && 
-                    selectedSessions.contains(strmId) && selectedCourses.contains(sectionId) ) {
+                if (selectedSessions.contains(strmId) && selectedCourses.contains(sectionId)) {
                     //Add active classes
                     if (ACTIVE_SECTION.equalsIgnoreCase(classStat)) {
 
@@ -279,12 +278,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         syncCourseOffering(courseSetId, courseOfferingId, shortLang, typeEvaluation, unitsMinimum, acadCareer,
                                 COURSE_OFF_STATUS, title, description, strmId, canonicalCourseId);
 
-                        //Create or Update enrollmentSet
-                        syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
+                        // don't create section/enrollment set for DF, it's handled per student
+                        if (!classSection.startsWith("DF")) {
+                            //Create or Update enrollmentSet
+                            syncEnrollmentSet(enrollmentSetId, description, classSection, acadOrg, unitsMinimum, courseOfferingId);
 
-                        //Create or Update section
-                        syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLang,
+                            //Create or Update section
+                            syncSection(sectionId, acadOrg, description, enrollmentSetId, classSection, shortLang,
                                 typeEvaluation, courseOfferingId, instructionMode);
+                        }
                     } else {
                         //Remove the section
                         if (cmService.isSectionDefined(sectionId)) {
@@ -719,18 +721,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             emailService.send("zonecours2@hec.ca", registrarErrorAddress,
                                 "Aucun site trouvé pour une inscription DF", errorMsg+"\n",null, null, null);
 
-                            /*
-                            if (cmService.isCourseOfferingDefined(courseOfferingId)) {
-                                // Create course offering
-                                CanonicalCourse cc = cmService.getCanonicalCourse(catalogNbr);
-                                syncCourseOffering(cc.getCourseSetEids(), courseOfferingId, "lang", "NONEVAL", 0, "acad career",
-                                            COURSE_OFF_STATUS, cc.getTitle(), cc.getDescription(), strmId, catalogNbr);
-                            }
-                            */
                             desiredInstructionMode = previousDFSection.getInstructionMode();
                         }
 
-                        // todo for distinct, prepend le section title ?
                         String sectionTitle = desiredInstructionMode+"DF";
                         sectionId = catalogNbr+strmId+sectionTitle;
 
@@ -744,16 +737,25 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                                 studentEnrollmentsToDelete.addAll(getStudentsInEnrollmentSet(sectionId));
                             }
 
+                            // retrieve course offering for creating section/enrollmentSet
+                            CourseOffering co = cmService.getCourseOffering(courseOfferingId);
+                            String courseSetEid = null;
+                            if (co.getCourseSetEids().size()>0) {
+                                courseSetEid = co.getCourseSetEids().iterator().next();
+                            }
+                            else {
+                                log.error(String.format("Couln't find course set id for DF section %s in course offering %s", sectionTitle, courseOfferingId));
+                            }
+
                             if (!cmService.isEnrollmentSetDefined(sectionId)) {
                                 //Create or Update enrollmentSet
-                                syncEnrollmentSet(sectionId, previousDFSection.getDescription(), sectionTitle, previousDFSection.getCategory(),
-                                   previousDFSection.getEnrollmentSet().getDefaultEnrollmentCredits(), courseOfferingId);
+                                syncEnrollmentSet(sectionId, co.getDescription(), sectionTitle, courseSetEid, co.getCredits(), courseOfferingId);
                             }
 
                             if (!cmService.isSectionDefined(sectionId)) {
                                 //Create or Update section
-                                syncSection(sectionId, previousDFSection.getCategory(), previousDFSection.getDescription(), sectionId, sectionTitle,
-                                    previousDFSection.getLang(), "NONEVAL", courseOfferingId, desiredInstructionMode);
+                                syncSection(sectionId, courseSetEid, co.getDescription(), sectionId, sectionTitle,
+                                    co.getLang(), "NONEVAL", courseOfferingId, desiredInstructionMode);
                             }
                         }
                     }
@@ -832,17 +834,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             .filter(s -> {return !s.getTitle().startsWith("DF") && !s.getTitle().endsWith("DF");});
 
         Optional<Section> returnMe = Optional.empty();
-
-	/* attempting to handle distinct sections
-        String distinctTitle = siteIdFormatHelper.getSectionDistinctTitle(previousSection, distinctSitesSections.split(","));
-        if (distinctTitle != null) {
-            // for distinct sections (e.g. AL,LB,AG,CB9,CF9), check if any current sections start with the same two letters
-            if (sectionsStreamSupplier.get().anyMatch(s -> { return s.getTitle().startsWith(distinctTitle); })) {
-                log.debug(String.format("Return distinct prefix %s since we found at least one matching section", distinctTitle));
-                return distinctTitle;
-            }
-        }
-	*/
 
         // find current section with same instruction mode
         if (!returnMe.isPresent()) {
