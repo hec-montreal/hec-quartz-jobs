@@ -814,7 +814,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
     // Checks that a section already exists
     private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection) {
-        final List<String> modePriority = Arrays.asList("P,CM,HS,DS,IS".split(","));
+        final List<String> modePriority = 
+            Arrays.asList(ServerConfigurationService.getString("hec.df-enrollment.equivalence-priority", "P,CM,HS,DS,IS").split(","));
         
         // this can be removed after A2023
         CourseOffering previousSectionCO = cmService.getCourseOffering(previousSection.getCourseOfferingEid());
