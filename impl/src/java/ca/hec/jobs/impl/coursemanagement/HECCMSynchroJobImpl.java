@@ -698,6 +698,17 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
                     String courseOfferingId = catalogNbr+strmId;
                     Section previousDFSection = null;
+
+                    // retrieve course offering for creating section/enrollmentSet
+                    CourseOffering co = cmService.getCourseOffering(courseOfferingId);
+                    String courseSetEid = null;
+                    if (co.getCourseSetEids().size()>0) {
+                        courseSetEid = co.getCourseSetEids().iterator().next();
+                    }
+                    else {
+                        log.error(String.format("Couln't find course set id for DF in course offering %s", courseOfferingId));
+                    }
+
                     // used for identifying the original enrollment of a DF student
                     Integer oldestEligibleSession = getOldestEligibleSession(strmId, allSessions);
 
@@ -706,7 +717,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'as pas d'inscription antérieur pour le cours %s dans ZoneCours.",
                             emplId, classSection, strm, catalogNbr);
                         log.error(errorMsg);
-                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, "Inscription antérieur manquante pour une inscription DF", errorMsg+"\n",null, null, null);
+                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, 
+                            String.format("Inscription antérieur manquante pour une inscription DF (cheminement %s)", courseSetEid), 
+                            errorMsg+"\n",null, null, null);
                         continue;
                     }
 
@@ -719,7 +732,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                                 catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
                             log.error(errorMsg);
                             emailService.send("zonecours2@hec.ca", registrarErrorAddress,
-                                "Aucun site trouvé pour une inscription DF", errorMsg+"\n",null, null, null);
+                            String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", courseSetEid), 
+                                errorMsg+"\n",null, null, null);
 
                             desiredInstructionMode = previousDFSection.getInstructionMode();
                         }
@@ -735,16 +749,6 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             if (!selectedCourses.contains(sectionId)) {
                                 selectedCourses.add(sectionId);
                                 studentEnrollmentsToDelete.addAll(getStudentsInEnrollmentSet(sectionId));
-                            }
-
-                            // retrieve course offering for creating section/enrollmentSet
-                            CourseOffering co = cmService.getCourseOffering(courseOfferingId);
-                            String courseSetEid = null;
-                            if (co.getCourseSetEids().size()>0) {
-                                courseSetEid = co.getCourseSetEids().iterator().next();
-                            }
-                            else {
-                                log.error(String.format("Couln't find course set id for DF section %s in course offering %s", sectionTitle, courseOfferingId));
                             }
 
                             if (!cmService.isEnrollmentSetDefined(sectionId)) {
