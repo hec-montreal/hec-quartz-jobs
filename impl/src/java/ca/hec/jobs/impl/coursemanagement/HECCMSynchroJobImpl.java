@@ -77,6 +77,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     String registrarErrorAddress = null;
 
     Map<String, List<DfInstructor>> dfInstructors;
+    Map<String, String> dfInstructionModes;
 
     @Override
     public void execute(JobExecutionContext jobExecutionContext) throws JobExecutionException {
@@ -102,6 +103,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         syncedCanonicalCourses = new HashSet<String>();
         syncedCourseOfferings = new HashSet<String>();
         dfInstructors = new HashMap<String, List<DfInstructor>>();
+        dfInstructionModes = new HashMap<String, String>();
 
         directory =
                 ServerConfigurationService.getString(EXTRACTS_PATH_CONFIG_KEY,
@@ -259,6 +261,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     }
                 } else {
                     selectedCourses.add(sectionId);
+                }
+
+                String key = catalogNbr + ";" + strm + ";" + classSection;
+                if (classSection.startsWith("DF") && !dfInstructionModes.containsKey(key)) {
+                    // remember instruction mode in case we need it later
+                    dfInstructionModes.put(key, instructionMode);
                 }
 
                 // don't create DF sections here
@@ -694,6 +702,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 status= token[5];
                 strmId= token[6];
 
+                String key = catalogNbr+";"+strm+";"+classSection;
+
                 // find good section if it's a DF
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
                     String courseOfferingId = catalogNbr+strmId;
@@ -712,6 +722,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     // used for identifying the original enrollment of a DF student
                     Integer oldestEligibleSession = getOldestEligibleSession(strmId, allSessions);
 
+                    String desiredInstructionMode = null;
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
                         String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours.",
@@ -720,23 +731,25 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         emailService.send("zonecours2@hec.ca", registrarErrorAddress, 
                             String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
                             errorMsg+"\n",null, null, null);
-                        continue;
+                        desiredInstructionMode = dfInstructionModes.get(key);
                     }
 
                     try {
-                        // find a section with an equivalent instruction mode to the previous enrollment
-                        String desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
-
                         if (desiredInstructionMode == null) {
-                            String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.",
-                                catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
-                            log.error(errorMsg);
-                            emailService.send("zonecours2@hec.ca", registrarErrorAddress,
-                            String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
-                                errorMsg+"\n",null, null, null);
+                            // find a section with an equivalent instruction mode to the previous enrollment
+                            desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
 
-                            desiredInstructionMode = previousDFSection.getInstructionMode();
-                        }
+                            if (desiredInstructionMode == null) {
+                                String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.",
+                                    catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
+                                log.error(errorMsg);
+                                emailService.send("zonecours2@hec.ca", registrarErrorAddress,
+                                String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
+                                    errorMsg+"\n",null, null, null);
+
+                                desiredInstructionMode = previousDFSection.getInstructionMode();
+                            }
+                        } 
 
                         String sectionTitle = desiredInstructionMode+"DF";
                         sectionId = catalogNbr+strmId+sectionTitle;
@@ -781,9 +794,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
 
                     // special case, enroll instructors and coordinators for DF sections
-                    String instructorKey = catalogNbr+";"+strm+";"+classSection;
-                    if (dfInstructors.containsKey(instructorKey)) {
-                        List<DfInstructor> instructors = dfInstructors.get(instructorKey);
+                    if (dfInstructors.containsKey(key)) {
+                        List<DfInstructor> instructors = dfInstructors.get(key);
                         for (DfInstructor dfInst : instructors) {
                             // this method removes from the *ToDelete maps itself
                             addOrUpdateProf(dfInst.getRole(), sectionId, dfInst.getId());
@@ -818,6 +830,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
     // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
     // Checks that a section already exists
     private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection) {
+        if (previousSection == null) {
+            return null;
+        }
+
         final List<String> modePriority = 
             Arrays.asList(ServerConfigurationService.getString("hec.df-enrollment.equivalence-priority", "P,CM,HS,DS,IS").split(","));
         
