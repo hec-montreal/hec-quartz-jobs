@@ -718,7 +718,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             emplId, classSection, strm, catalogNbr);
                         log.error(errorMsg);
                         emailService.send("zonecours2@hec.ca", registrarErrorAddress, 
-                            String.format("Inscription antérieur manquante pour une inscription DF (cheminement %s)", courseSetEid), 
+                            String.format("Inscription antérieur manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
                             errorMsg+"\n",null, null, null);
                         continue;
                     }
@@ -732,7 +732,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                                 catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
                             log.error(errorMsg);
                             emailService.send("zonecours2@hec.ca", registrarErrorAddress,
-                            String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", courseSetEid), 
+                            String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
                                 errorMsg+"\n",null, null, null);
 
                             desiredInstructionMode = previousDFSection.getInstructionMode();
