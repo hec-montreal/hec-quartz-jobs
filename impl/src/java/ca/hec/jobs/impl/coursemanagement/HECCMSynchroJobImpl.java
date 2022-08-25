@@ -714,11 +714,11 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
-                        String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'as pas d'inscription antérieur pour le cours %s dans ZoneCours.",
+                        String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours.",
                             emplId, classSection, strm, catalogNbr);
                         log.error(errorMsg);
                         emailService.send("zonecours2@hec.ca", registrarErrorAddress, 
-                            String.format("Inscription antérieur manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
+                            String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
                             errorMsg+"\n",null, null, null);
                         continue;
                     }
