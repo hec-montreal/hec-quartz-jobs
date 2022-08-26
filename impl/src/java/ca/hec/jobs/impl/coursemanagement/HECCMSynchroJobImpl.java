@@ -703,6 +703,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 strmId= token[6];
 
                 String key = catalogNbr+";"+strm+";"+classSection;
+                String errorMsg = null;
+                String errorSubject = null;
 
                 // find good section if it's a DF
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
@@ -725,12 +727,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     String desiredInstructionMode = null;
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
-                        String errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours.",
+                        errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours.\n",
                             emplId, classSection, strm, catalogNbr);
+                        errorSubject = String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                         log.error(errorMsg);
-                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, 
-                            String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
-                            errorMsg+"\n",null, null, null);
                         desiredInstructionMode = dfInstructionModes.get(key);
                     }
 
@@ -740,13 +740,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
 
                             if (desiredInstructionMode == null) {
-                                String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.",
+                                errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
                                     catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
+                                errorSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                                 log.error(errorMsg);
-                                emailService.send("zonecours2@hec.ca", registrarErrorAddress,
-                                String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer()), 
-                                    errorMsg+"\n",null, null, null);
-
                                 desiredInstructionMode = previousDFSection.getInstructionMode();
                             }
                         } 
@@ -791,7 +788,13 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     (!debugMode.isInDebugMode && selectedCourses.contains(sectionId))))) {
 
                     addOrUpdateEtudiants(sectionId, sectionId, emplId);
-                    studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
+                    if (studentEnrollmentsToDelete.contains(emplId + ";" + sectionId)) {
+                        studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
+                    }
+                    else if (errorMsg != null) {
+                        // only send the email if the student has not previously been enrolled
+                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, errorSubject, errorMsg,null, null, null);
+                    }
 
                     // special case, enroll instructors and coordinators for DF sections
                     if (dfInstructors.containsKey(key)) {
