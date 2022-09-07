@@ -727,28 +727,31 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     String desiredInstructionMode = null;
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
-                        desiredInstructionMode = dfInstructionModes.get(key);
                         errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s, correspondant à son inscription DF.\n",
                             emplId, classSection, strm, catalogNbr, desiredInstructionMode);
                         errorSubject = String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                         log.error(errorMsg);
+
+                        desiredInstructionMode = dfInstructionModes.get(key);
+                    }
+                    else {
+                        desiredInstructionMode = translateOldInstructionModes(previousDFSection);
                     }
 
                     try {
-                        if (desiredInstructionMode == null) {
-                            // find a section with an equivalent instruction mode to the previous enrollment
-                            desiredInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, previousDFSection);
+                        String equivalentInstructionMode = null;
+                        // check that a section exists with the desired insctruction mode or return an equivalent that does exist
+                        equivalentInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, desiredInstructionMode);
 
-                            if (desiredInstructionMode == null) {
-                                errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
-                                    catalogNbr, emplId, classSection, strm, previousDFSection.getInstructionMode());
-                                errorSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
-                                log.error(errorMsg);
-                                desiredInstructionMode = previousDFSection.getInstructionMode();
-                            }
-                        } 
+                        if (equivalentInstructionMode == null) {
+                            errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
+                                catalogNbr, emplId, classSection, strm, desiredInstructionMode);
+                            errorSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
+                            log.error(errorMsg);
+                            equivalentInstructionMode = desiredInstructionMode;
+                        }
 
-                        String sectionTitle = desiredInstructionMode+"DF";
+                        String sectionTitle = equivalentInstructionMode+"DF";
                         sectionId = catalogNbr+strmId+sectionTitle;
 
                         // create section and enrollment set if it doesn't exist
@@ -829,18 +832,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         return Integer.parseInt(allSessions.get(allSessions.lastIndexOf(givenSession)-prevSessionsToCheck).substring(0, 4));
     }
 
-    // return the instruction mode to use for the new student enrollment
-    // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
-    // Checks that a section already exists
-    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final Section previousSection) {
-        if (previousSection == null) {
-            return null;
-        }
+    // this can be removed after A2023
+    private String translateOldInstructionModes(Section previousSection) {
 
-        final List<String> modePriority = 
-            Arrays.asList(ServerConfigurationService.getString("hec.df-enrollment.equivalence-priority", "P,CM,HS,DS,IS").split(","));
-        
-        // this can be removed after A2023
         CourseOffering previousSectionCO = cmService.getCourseOffering(previousSection.getCourseOfferingEid());
         final Boolean prevSectionBeforeA2022 = Integer.parseInt(previousSectionCO.getAcademicSession().getEid()) < 22231;
         final String previousInstructionMode = 
@@ -851,7 +845,20 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("AL") ? "HS" :
             prevSectionBeforeA2022 && previousSection.getInstructionMode().equals("WW") ? "DS" :
             previousSection.getInstructionMode();
-        // ------------
+
+        return previousInstructionMode;
+    }
+
+    // return the instruction mode to use for the new student enrollment
+    // should be same instruction mode as previous enrollment or an equivalent if it's in the modePriority list
+    // Checks that a section already exists
+    private String getDesiredInstructionModeOrEquivalent(final String courseOfferingId, final String desiredInstructionMode) {
+        if (desiredInstructionMode == null) {
+            return null;
+        }
+
+        final List<String> modePriority = 
+            Arrays.asList(ServerConfigurationService.getString("hec.df-enrollment.equivalence-priority", "P,CM,HS,DS,IS").split(","));
         
         // supplier to get a stream of current sections, filter out DF sections
         Supplier<Stream<Section>> sectionsStreamSupplier = () -> cmService.getSections(courseOfferingId).stream()
@@ -863,12 +870,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (!returnMe.isPresent()) {
             returnMe =
                 sectionsStreamSupplier.get()
-                    .filter(s -> { return s.getInstructionMode().equals(previousInstructionMode); } )
+                    .filter(s -> { return s.getInstructionMode().equals(desiredInstructionMode); } )
                     .findAny();
         }
 
         // if there isn't one, find equivalent instruction mode (by order of priority listed above)
-        if (!returnMe.isPresent() && modePriority.contains(previousInstructionMode)) {
+        if (!returnMe.isPresent() && modePriority.contains(desiredInstructionMode)) {
             returnMe = sectionsStreamSupplier.get()
                 .filter(s -> { return modePriority.contains(s.getInstructionMode()); })
                 .min(Comparator.comparing(o->modePriority.indexOf(o.getInstructionMode())));
@@ -877,7 +884,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         if (returnMe.isPresent()) { 
             log.debug(String.format("Returning instruction mode %s since we found matching section %s (we were looking for %s)", 
                 returnMe.get().getInstructionMode(), 
-                returnMe.get().getEid(), previousInstructionMode));
+                returnMe.get().getEid(), desiredInstructionMode));
         }
         return returnMe.isPresent() ? returnMe.get().getInstructionMode() : null;
     }
