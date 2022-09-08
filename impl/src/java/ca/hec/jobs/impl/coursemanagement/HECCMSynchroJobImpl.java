@@ -703,8 +703,8 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                 strmId= token[6];
 
                 String key = catalogNbr+";"+strm+";"+classSection;
-                String errorMsg = null;
-                String errorSubject = null;
+                String errorEmailText = null;
+                String errorEmailSubject = null;
 
                 // find good section if it's a DF
                 if (classSection.startsWith("DF") && Integer.parseInt(strm) >= 2223) {
@@ -727,12 +727,12 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     String desiredInstructionMode = null;
                     previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, oldestEligibleSession);
                     if (previousDFSection == null) {
-                        errorMsg = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s, correspondant à son inscription DF.\n",
-                            emplId, classSection, strm, catalogNbr, desiredInstructionMode);
-                        errorSubject = String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer());
-                        log.error(errorMsg);
-
                         desiredInstructionMode = dfInstructionModes.get(key);
+
+                        errorEmailText = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s, correspondant à son inscription DF.\n",
+                            emplId, classSection, strm, catalogNbr, desiredInstructionMode);
+                        errorEmailSubject = String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer());
+                        log.error(errorEmailText);
                     }
                     else {
                         desiredInstructionMode = translateOldInstructionModes(previousDFSection);
@@ -744,10 +744,19 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         equivalentInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, desiredInstructionMode);
 
                         if (equivalentInstructionMode == null) {
-                            errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
+                            String errorMsg = String.format("\nZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
                                 catalogNbr, emplId, classSection, strm, desiredInstructionMode);
-                            errorSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                             log.error(errorMsg);
+
+                            if (errorEmailText != null) {
+                                errorEmailText += "\n"+errorMsg;
+                            }
+                            else {
+                                errorEmailText = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
+                                    catalogNbr, emplId, classSection, strm, desiredInstructionMode);
+                                errorEmailSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
+                            }
+
                             equivalentInstructionMode = desiredInstructionMode;
                         }
 
@@ -794,9 +803,9 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     if (studentEnrollmentsToDelete.contains(emplId + ";" + sectionId)) {
                         studentEnrollmentsToDelete.remove(emplId + ";" + sectionId);
                     }
-                    else if (errorMsg != null) {
+                    else if (errorEmailText != null) {
                         // only send the email if the student has not previously been enrolled
-                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, errorSubject, errorMsg,null, null, null);
+                        emailService.send("zonecours2@hec.ca", registrarErrorAddress, errorEmailSubject, errorEmailText, null, null, null);
                     }
 
                     // special case, enroll instructors and coordinators for DF sections
