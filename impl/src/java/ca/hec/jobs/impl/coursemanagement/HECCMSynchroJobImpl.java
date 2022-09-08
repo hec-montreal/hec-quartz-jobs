@@ -744,16 +744,15 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         equivalentInstructionMode = getDesiredInstructionModeOrEquivalent(courseOfferingId, desiredInstructionMode);
 
                         if (equivalentInstructionMode == null) {
-                            String errorMsg = String.format("\nZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
+                            String errorMsg = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
                                 catalogNbr, emplId, classSection, strm, desiredInstructionMode);
                             log.error(errorMsg);
 
                             if (errorEmailText != null) {
-                                errorEmailText += "\n"+errorMsg;
+                                errorEmailText += "\n\n"+errorMsg;
                             }
                             else {
-                                errorEmailText = String.format("ZoneCours ne trouve aucune section pour le cours %s avec un mode d'enseignement acceptable pour l'étudiant %s inscrit dans la section %s à la session %s. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s.\n",
-                                    catalogNbr, emplId, classSection, strm, desiredInstructionMode);
+                                errorEmailText = errorMsg;
                                 errorEmailSubject = String.format("Aucun site trouvé pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                             }
 
