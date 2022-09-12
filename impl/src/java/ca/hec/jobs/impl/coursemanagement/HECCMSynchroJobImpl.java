@@ -729,7 +729,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     if (previousDFSection == null) {
                         desiredInstructionMode = dfInstructionModes.get(key);
 
-                        errorEmailText = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours. L'étudiant sera inscrit dans une nouvelle section avec le mode d'enseigment %s, correspondant à son inscription DF.\n",
+                        errorEmailText = String.format("L'étudiant %s inscrit dans le %s de la session %s n'a pas d'inscription antérieure pour le cours %s dans ZoneCours. On utilise le mode d'enseigment %s, correspondant à son inscription DF.\n",
                             emplId, classSection, strm, catalogNbr, desiredInstructionMode);
                         errorEmailSubject = String.format("Inscription antérieure manquante pour une inscription DF (cheminement %s)", co.getAcademicCareer());
                         log.error(errorEmailText);
