@@ -780,7 +780,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                             if (!cmService.isSectionDefined(sectionId)) {
                                 //Create or Update section
                                 syncSection(sectionId, courseSetEid, co.getDescription(), sectionId, sectionTitle,
-                                    co.getLang(), "NONEVAL", courseOfferingId, desiredInstructionMode);
+                                    co.getLang(), "NONEVAL", courseOfferingId, equivalentInstructionMode);
                             }
                         }
                     }
