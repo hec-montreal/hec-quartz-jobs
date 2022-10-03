@@ -760,6 +760,10 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                         }
 
                         String sectionTitle = equivalentInstructionMode+"DF";
+                        if (Integer.parseInt(strm) >= 2231) {
+                            sectionTitle = "DF-" + equivalentInstructionMode;
+                        }
+
                         sectionId = catalogNbr+strmId+sectionTitle;
 
                         // create section and enrollment set if it doesn't exist
