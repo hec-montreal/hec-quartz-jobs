@@ -149,6 +149,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             List<ExceptedStudent> studentExceptions = sqlService.dbRead(query,
                     params.toArray(), new ExceptedStudentRecord());
 
+            HashMap<String, SiteAndEmails> emptyGroups = new HashMap<>();
             HashMap<String, String> emailList = new HashMap<>();
             for (ExceptedStudent student : studentExceptions) {
 
@@ -202,6 +203,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
 
+                    String groupPrefix = EXCEPTION_GROUP_PREFIX + student.getClassSection();
                     String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
                     group = getGroupByTitle(site, groupTitle);
 
@@ -222,6 +224,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         } else if (student.getState().equals(STATE_REMOVE)) {
                             log.debug("Remove student " + student.getEmplid() + " from group " + groupTitle + " in site " + site.getId());
                             group.get().deleteMember(studentId);
+                            if (!groupContainsStudents(group.get())) {
+                                log.debug("Group is empty, add to map");
+                                emptyGroups.put(groupPrefix, new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
+                            }
                             removedStudents.add(student);
                         }
                     } catch (NoSuchElementException e) {
@@ -243,12 +249,60 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 clearState(addedStudents);    
             }
 
+            sendEmptyGroupAlerts(emptyGroups);
             createOrUpdateRegularGroups(exceptionMap, distinctSitesSections);
             sendNewGroupEmails(emailList);
         } finally {
             session.clear();
             isRunning = false;
             log.debug("finished");
+        }
+    }
+
+    private boolean groupContainsStudents(Group g) {
+        return g.getMembers().stream().anyMatch( m -> { return m.getRole().getId().equals("Student"); } );
+    }
+    
+    // for each entry, check if only regular has members, if so send an email as it won't be synced anymore
+    private void sendEmptyGroupAlerts(Map<String, SiteAndEmails> sitesToCheck) {
+        boolean excludeInstructors = serverConfigService.getBoolean("hec.exception-group.excludeInstructorEmails", false);
+        String zoneCoursEmails = serverConfigService.getString("hec.error.notification.email", "");
+        String daipEmails = serverConfigService.getString("hec.notification.daip.emailList", "");
+
+        String from = "zonecours@hec.ca";
+        String subject = "Équipe d'accommodement régulier ne sera plus sychronisé: ";
+
+        for (Entry<String, SiteAndEmails> e : sitesToCheck.entrySet()) {
+            Site site = e.getValue().getSite();
+
+            String emailAddresses = "";
+
+            if (!excludeInstructors) {
+                emailAddresses = e.getValue().getDestinationEmails();
+            }
+            if (!zoneCoursEmails.isEmpty()) {
+                emailAddresses += "," + zoneCoursEmails;
+            }
+            if (!daipEmails.isEmpty()) {
+                emailAddresses += "," + daipEmails;
+            }
+
+            log.debug("Check empty groups for " + site.getId() + " group prefix " + e.getKey());
+
+            List<Group> matchedGroups = site.getGroups().stream()
+                // find groups that start with prefix and contain at least one student
+                .filter(g -> { return g.getTitle().startsWith(e.getKey()) && groupContainsStudents(g); } )
+                .collect(Collectors.toList());
+
+            // send email if only one group has students (regular group). Other groups may contain instructor.
+            if (matchedGroups != null && matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")) {
+                String message = "L'équipe d'accommodement régulier " 
+                    + matchedGroups.get(0).getTitle() 
+                    + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
+                    + "\r\nVeuillez ne plus l'utiliser pour les examens.";
+                emailService.send(from, emailAddresses, subject+matchedGroups.get(0).getTitle(), message, null, null, null);
+                log.debug("Email sent for " + matchedGroups.get(0).getTitle());
+            }
         }
     }
 
@@ -478,6 +532,13 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         }
     }
     
+    @Data
+    @AllArgsConstructor
+    private class SiteAndEmails {
+        Site site;
+        String destinationEmails;
+    }
+
     @Data
     private class ExceptedStudent {
         String strm, emplid, name, nPrcentSupp, acadCareer, subject, catalogNbr, classSection, state,
