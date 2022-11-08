@@ -249,7 +249,10 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             setInfoUrl(createdSite);
 
             //Set tool zoom by default for DS DA HS HA sites
-            if(!createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("P")){
+            if(createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HS") ||
+                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HA") ||
+                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DS") ||
+                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DA")){
                 addTool(createdSite, "sakai.zoom");
             }
 
@@ -332,23 +335,6 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         }
 
         log.info("*** addTool SecurityAdvisor advisor = new SecurityAdvisor() { OsylSiteServiceImpl *** ");
-
-        /*
-         * SecurityAdvisor advisor = new SecurityAdvisor() { public
-         * SecurityAdvice isAllowed(String userId, String function, String
-         * reference) { return SecurityAdvice.ALLOWED; } };
-         */
-        try {
-            // securityService.pushAdvisor(advisor);
-            siteService.save(site);
-        } catch (IdUnusedException e) {
-            log.error("Add tool - Unused id exception", e);
-        } catch (PermissionException e) {
-            log.error("Add tool - Permission exception", e);
-        } finally {
-            // securityService.popAdvisor();
-        }
-
         log.info("Finished adding new tool");
         return toolConf;
     }
