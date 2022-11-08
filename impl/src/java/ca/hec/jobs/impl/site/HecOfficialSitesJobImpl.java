@@ -19,6 +19,7 @@ import org.sakaiproject.authz.api.AuthzGroup;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.authz.api.AuthzPermissionException;
 import org.sakaiproject.authz.api.GroupNotDefinedException;
+import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
 import org.sakaiproject.coursemanagement.api.AcademicCareer;
 import org.sakaiproject.coursemanagement.api.AcademicSession;
@@ -36,16 +37,17 @@ import org.sakaiproject.exception.IdInvalidException;
 import org.sakaiproject.exception.IdUnusedException;
 import org.sakaiproject.exception.IdUsedException;
 import org.sakaiproject.exception.PermissionException;
-import org.sakaiproject.site.api.Site;
-import org.sakaiproject.site.api.SiteAdvisor;
-import org.sakaiproject.site.api.SiteService;
+import org.sakaiproject.site.api.*;
 import org.sakaiproject.tool.api.Session;
 import org.sakaiproject.tool.api.SessionManager;
+import org.sakaiproject.tool.api.Tool;
+import org.sakaiproject.tool.api.ToolManager;
 import org.sakaiproject.util.ArrayUtil;
 
 import ca.hec.api.SiteIdFormatHelper;
 import ca.hec.jobs.api.site.HecOfficialSitesJob;
 import lombok.Setter;
+
 
 /**
  * Created by mame-awa.diop@hec.ca on 2017-02-07.
@@ -70,6 +72,12 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     protected SiteIdFormatHelper siteIdFormatHelper;
     @Setter
     protected AuthzGroupService authzGroupService;
+
+    @Setter
+    protected ServerConfigurationService serverConfigService;
+
+    @Setter
+    protected ToolManager toolManager;
 
     @Override
     public void execute(JobExecutionContext context) throws JobExecutionException {
@@ -237,6 +245,14 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             //Set site properties
             setSiteProperties(createdSite, siteName, sections);
 
+            // Set Info URL
+            setInfoUrl(createdSite);
+
+            //Set tool zoom by default for DS DA HS HA sites
+            if(!createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("P")){
+                addTool(createdSite, "sakai.zoom");
+            }
+
             //Save/Update site properties, tools and providerId
             siteService.save(createdSite);
 
@@ -254,6 +270,89 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         return null;
     }
 
+    // Set Info URL according to instruction mode
+    private void setInfoUrl(Site site){
+
+        String info = serverConfigService.getString("hec.officialSite.info.default");
+
+        String instructionMode = site.getPropertiesEdit().getProperty("instruction_mode");
+
+        if(instructionMode.equals("HS")){
+            info = serverConfigService.getString("hec.officialSite.info.HS");
+        } else if(instructionMode.equals("HA")){
+            info = serverConfigService.getString("hec.officialSite.info.HA");
+        } else if(instructionMode.equals("DS")){
+        info = serverConfigService.getString("hec.officialSite.info.DS");
+        } else if(instructionMode.equals("DA")) {
+            info = serverConfigService.getString("hec.officialSite.info.DA");
+        }
+
+        site.setInfoUrl(info);
+    }
+    // addTool copied from  OsylSiteServiceImpl.java (opensyllabus)
+    // to be able to add a tool at site creation
+    private ToolConfiguration addTool(Site site, String toolId) {
+        return addTool(site, toolId, false);
+    }
+
+    private ToolConfiguration addTool(Site site, String toolId, boolean hideFromStudents) {
+        SitePage page = site.addPage();
+        page.setTitle(toolManager.getTool(toolId).getTitle());
+        page.setLayout(SitePage.LAYOUT_SINGLE_COL);
+
+        return addTool(site, page, toolId, hideFromStudents);
+    }
+
+    private ToolConfiguration addTool(Site site, SitePage page, String toolId) {
+        return addTool(site, page, toolId, false);
+    }
+
+    private ToolConfiguration addTool(Site site, SitePage page, String toolId, boolean hideFromStudents) {
+        return addTool(site, page, toolId, null, hideFromStudents);
+    }
+
+    private ToolConfiguration addTool(Site site, SitePage page, String toolId,
+                                      String specifiedTitle) {
+        return addTool(site, page, toolId, specifiedTitle, false);
+    }
+    private ToolConfiguration addTool(Site site, SitePage page, String toolId,
+                                      String specifiedTitle, boolean hideFromStudents) {
+
+        Tool tool = toolManager.getTool(toolId);
+        ToolConfiguration toolConf = page.addTool(tool);
+        if (specifiedTitle != null) {
+            toolConf.setTitle(specifiedTitle);
+        } else {
+            toolConf.setTitle(tool.getTitle());
+        }
+        toolConf.setLayoutHints("0,0");
+
+        if (hideFromStudents) {
+            toolConf.getPlacementConfig().setProperty("sakai-portal:visible", "false");
+        }
+
+        log.info("*** addTool SecurityAdvisor advisor = new SecurityAdvisor() { OsylSiteServiceImpl *** ");
+
+        /*
+         * SecurityAdvisor advisor = new SecurityAdvisor() { public
+         * SecurityAdvice isAllowed(String userId, String function, String
+         * reference) { return SecurityAdvice.ALLOWED; } };
+         */
+        try {
+            // securityService.pushAdvisor(advisor);
+            siteService.save(site);
+        } catch (IdUnusedException e) {
+            log.error("Add tool - Unused id exception", e);
+        } catch (PermissionException e) {
+            log.error("Add tool - Permission exception", e);
+        } finally {
+            // securityService.popAdvisor();
+        }
+
+        log.info("Finished adding new tool");
+        return toolConf;
+    }
+    // end of copy addTool from opensyllabus
 
     private void copyContent (String templateReference, String siteReference){
             EntityTransferrer et = null;
@@ -281,6 +380,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         rpe.addProperty(Site.PROP_SITE_TERM, courseOffering.getAcademicSession().getTitle());
         rpe.addProperty(Site.PROP_SITE_TERM_EID, courseOffering.getAcademicSession().getEid());
         rpe.addProperty("title", courseOffering.getTitle());
+        rpe.addProperty("instruction_mode", sectionRef.getInstructionMode());
 
         if (courseOffering.getLang().equals("en")) {
             rpe.addProperty("hec_syllabus_locale", "en_US");

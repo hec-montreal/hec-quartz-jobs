@@ -130,6 +130,8 @@
 				  ref="ca.hec.api.SiteIdFormatHelper" />
   		<property name="authzGroupService" 
 		          ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="serverConfigService" ref="org.sakaiproject.component.api.ServerConfigurationService" />
+		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.hecOffSitesjob"
