@@ -101,7 +101,7 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
             for (CourseOffering courseOff: selectedCO){
                 sitesToCreate = siteIdFormatHelper.getSitesToCreateForCourseOffering(courseOff, distinctSitesSections);
                                 
-                sitesToCreate.forEach((siteName,sections) -> createSite(siteName, sections));
+                sitesToCreate.forEach((siteName,sections) -> createSite(siteName, sections, distinctSitesSections));
              }
         } finally {
             session.clear();
@@ -222,9 +222,20 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
         }
         return offCanonicalCourses;
     }
+    private String getSectionDistinctTitle(Section section, String[] distinctSectionsTitles){
 
-    private Site createSite (String siteName, List<Section> sections){
+        for (String title : distinctSectionsTitles) {
+            if (section.getTitle().startsWith(title)) {
+                return title;
+            }
+        }
+        return null;
+
+    }
+    private Site createSite (String siteName, List<Section> sections, String distinctSitesSections){
+
         try {
+            String sectionDistinctTitle = getSectionDistinctTitle(sections.get(0), distinctSitesSections.split(",") );
         	Site createdSite = null;
 
             Site templateSite = siteService.getSite(HEC_TEMPLATE_SITE);
@@ -234,27 +245,51 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
 
                 //Copy template content
                 copyContent(chs.getSiteCollection(templateSite.getId()), chs.getSiteCollection(createdSite.getId()));
+
+                //Associate to sections
+                createdSite = setProviderId(createdSite, sections);
+
+                //Set site properties
+                setSiteProperties(createdSite, siteName, sections);
+
+                // Set Info URL
+                setInfoUrl(createdSite, sectionDistinctTitle);
+
+                //Set tool zoom by default for DS DA HS HA sites
+                if(createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HS") ||
+                        createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HA") ||
+                        createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DS") ||
+                        createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DA")){
+                    addTool(createdSite, "sakai.zoom");
+                }
             }
             else {
                 createdSite = siteService.getSite(siteName);
+
+                //Associate to sections
+                createdSite = setProviderId(createdSite, sections);
+
+                //Set site properties
+                setSiteProperties(createdSite, siteName, sections);
+
             }
 
-            //Associate to sections
-            createdSite = setProviderId(createdSite, sections);
-
-            //Set site properties
-            setSiteProperties(createdSite, siteName, sections);
-
-            // Set Info URL
-            setInfoUrl(createdSite);
-
-            //Set tool zoom by default for DS DA HS HA sites
-            if(createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HS") ||
-                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HA") ||
-                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DS") ||
-                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DA")){
-                addTool(createdSite, "sakai.zoom");
-            }
+//            //Associate to sections
+//            createdSite = setProviderId(createdSite, sections);
+//
+//            //Set site properties
+//            setSiteProperties(createdSite, siteName, sections);
+//
+//            // Set Info URL
+//            setInfoUrl(createdSite, sectionDistinctTitle);
+//
+//            //Set tool zoom by default for DS DA HS HA sites
+//            if(createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HS") ||
+//                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("HA") ||
+//                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DS") ||
+//                    createdSite.getPropertiesEdit().getProperty("instruction_mode").equals("DA")){
+//                addTool(createdSite, "sakai.zoom");
+//            }
 
             //Save/Update site properties, tools and providerId
             siteService.save(createdSite);
@@ -274,20 +309,26 @@ public class HecOfficialSitesJobImpl implements HecOfficialSitesJob {
     }
 
     // Set Info URL according to instruction mode
-    private void setInfoUrl(Site site){
+    private void setInfoUrl(Site site, String sectionDistinctTitle){
 
         String info = serverConfigService.getString("hec.officialSite.info.default");
 
         String instructionMode = site.getPropertiesEdit().getProperty("instruction_mode");
 
-        if(instructionMode.equals("HS")){
-            info = serverConfigService.getString("hec.officialSite.info.HS");
-        } else if(instructionMode.equals("HA")){
-            info = serverConfigService.getString("hec.officialSite.info.HA");
-        } else if(instructionMode.equals("DS")){
-        info = serverConfigService.getString("hec.officialSite.info.DS");
-        } else if(instructionMode.equals("DA")) {
-            info = serverConfigService.getString("hec.officialSite.info.DA");
+        if(sectionDistinctTitle != null && sectionDistinctTitle.equals("AG")){
+            info = serverConfigService.getString("hec.officialSite.info.AG");
+        }else {
+            if (instructionMode.equals("HS")) {
+                info = serverConfigService.getString("hec.officialSite.info.HS");
+            } else if (instructionMode.equals("HA")) {
+                info = serverConfigService.getString("hec.officialSite.info.HA");
+            } else if (instructionMode.equals("DS")) {
+                info = serverConfigService.getString("hec.officialSite.info.DS");
+            } else if (instructionMode.equals("DA")) {
+                info = serverConfigService.getString("hec.officialSite.info.DA");
+            } else if (instructionMode.equals("IS")) {
+                info = serverConfigService.getString("hec.officialSite.info.IS");
+            }
         }
 
         site.setInfoUrl(info);
