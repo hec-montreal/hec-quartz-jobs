@@ -153,10 +153,9 @@ public class EvaluationSiteHierarchyJob implements Job{
 				String providerGroup = g.getProviderGroupId();
 				String wsetupProp = g.getProperties().getProperty(Group.GROUP_PROP_WSETUP_CREATED);
 
-				// skip if it's a manual group, the provider group id is null or ends in 00
+				// skip if it's a manual group, the provider group id is null
 				// (means it's a shareable site), or DF1
 				if ((wsetupProp != null && wsetupProp.equals(Boolean.TRUE.toString())) || providerGroup == null
-						|| providerGroup.substring(providerGroup.length() - 2).equals("00")
 						|| providerGroup.length() - providerGroup.lastIndexOf("DF") <= 5) {
 					continue;
 				}
