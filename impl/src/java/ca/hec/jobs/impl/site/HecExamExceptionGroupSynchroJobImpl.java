@@ -281,10 +281,10 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 emailAddresses = e.getValue().getDestinationEmails();
             }
             if (!zoneCoursEmails.isEmpty()) {
-                emailAddresses += "," + zoneCoursEmails;
+                emailAddresses += emailAddresses.isEmpty()?"":"," + zoneCoursEmails;
             }
             if (!daipEmails.isEmpty()) {
-                emailAddresses += "," + daipEmails;
+                emailAddresses += emailAddresses.isEmpty()?"":"," + daipEmails;
             }
 
             log.debug("Check empty groups for " + site.getId() + " group prefix " + e.getKey());
