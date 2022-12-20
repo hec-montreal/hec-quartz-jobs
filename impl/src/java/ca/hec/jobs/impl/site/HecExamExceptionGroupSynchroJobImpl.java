@@ -297,7 +297,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             // send email if only one group has students (regular group). Other groups may contain instructor.
             if (matchedGroups != null && matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")) {
                 String message = "L'équipe d'accommodement régulier " 
-                    + matchedGroups.get(0).getTitle() + " du site" + site.getId()
+                    + matchedGroups.get(0).getTitle() + " du site " + site.getId()
                     + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
                     + "\r\nVeuillez ne plus l'utiliser pour les examens.";
                 emailService.send(from, emailAddresses, subject+matchedGroups.get(0).getTitle(), message, null, null, null);
