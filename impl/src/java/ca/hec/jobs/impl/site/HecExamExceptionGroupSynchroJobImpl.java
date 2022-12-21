@@ -302,7 +302,8 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                     + matchedGroups.get(0).getTitle() + " du site " + site.getId()
                     + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
                     + "\r\nVeuillez ne plus l'utiliser pour les examens.";
-                emailService.send(from, emailAddresses, subject+matchedGroups.get(0).getTitle(), message, null, null, null);
+                emailService.send(from, emailAddresses, subject+site.getId()+" "+matchedGroups.get(0).getTitle(),
+                    message, null, null, null);
                 log.debug("Email sent for " + matchedGroups.get(0).getTitle());
             }
         }
