@@ -725,7 +725,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
                     Integer oldestEligibleSession = getOldestEligibleSession(strmId, allSessions);
 
                     String desiredInstructionMode = null;
-                    previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, Integer.valueOf(sessionCode), oldestEligibleSession);
+                    previousDFSection = getPreviousSectionForDF(emplId, catalogNbr, Integer.valueOf(strm), oldestEligibleSession);
                     if (previousDFSection == null) {
                         desiredInstructionMode = dfInstructionModes.get(key);
 
