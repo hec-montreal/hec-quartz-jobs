@@ -912,12 +912,14 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
 
             List<Section> sectionList = previousSections.stream()
                 .filter(s -> { 
-                    Integer session = getSessionCode(s.getEid(), catNumWithoutLang);
-                    return s.getEid().startsWith(catNumWithoutLang) && 
-                        !s.getTitle().startsWith("DF") &&
-                        !s.getTitle().endsWith("DF") &&
-                        session < dfSession &&
-                        session >= oldestEligibleSession; 
+                    if (s.getEid().startsWith(catNumWithoutLang)) {
+                        Integer session = getSessionCode(s.getEid(), catNumWithoutLang);
+                        return !s.getTitle().startsWith("DF") &&
+                            !s.getTitle().endsWith("DF") &&
+                            session < dfSession &&
+                            session >= oldestEligibleSession;
+                    }
+                    else { return false; }
                 })
                 .sorted(new Comparator<Section>() {
                     public int compare(Section s1, Section s2) {
