@@ -39,6 +39,9 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 	// prevent multiple instances
 	static private boolean isRunning = false;
 
+	// unless specified in parameters, don't actually delete anything
+	private boolean debugMode = true;
+
 	public void execute(JobExecutionContext context) throws JobExecutionException {
 
 		if (isRunning) {
@@ -56,6 +59,10 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 			String term = context.getMergedJobDataMap().getString("deleteSubmission.term");
 			String siteIds = context.getMergedJobDataMap().getString("sites");
 
+			if (context.getMergedJobDataMap().getString("debugMode").equals("DELETE")) {
+				debugMode = false;
+			}
+
 			if (!siteIds.isEmpty()) {
 				allSites = Arrays.asList(siteIds.split(","));
 			}
@@ -71,6 +78,9 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 			}
 
 			log.info("Delete submissions from " + allSites.size() + " sites");
+			if (debugMode) {
+				log.info("************ Debug mode active, only printing logs (no delete) ******************");
+			}
 
 			// get a database connection
 			c = sqlService.borrowConnection();
@@ -248,9 +258,11 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 }
 
 	private void deleteSubmissions(String siteId, List<PreparedStatement> statements) throws SQLException {
-		for (int j = 0; j < statements.size(); j++) {
-			statements.get(j).setString(1, siteId);
-			statements.get(j).execute();
+		if (!debugMode) {
+			for (int j = 0; j < statements.size(); j++) {
+				statements.get(j).setString(1, siteId);
+				statements.get(j).execute();
+			}
 		}
 	}
 }

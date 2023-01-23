@@ -614,6 +614,12 @@
 					<property name="descriptionResourceKey" value="sites.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="false"/>
+					<property name="labelResourceKey" value="debugMode"/>
+					<property name="descriptionResourceKey" value="debugMode.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
 			</set>
 		</property>
 	</bean>
