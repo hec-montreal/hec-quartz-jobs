@@ -118,8 +118,8 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 					}
 					if (!site.getTools("sakai.samigo").isEmpty()) {
 						List<String> ids = sqlService.dbRead("select assessmentgradingid FROM SAM_ASSESSMENTGRADING_T sat " + 
-						"WHERE (SUBMITTED_DATE IS NULL OR SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) AND " +
-						"publishedassessmentid IN (SELECT qualifierid FROM SAM_AUTHZDATA_T sat2 WHERE FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = '" + siteId + "')");
+						"WHERE SUBMITTEDDATE < TRUNC(SYSDATE-18*30 " +
+						"AND publishedassessmentid IN (SELECT qualifierid FROM SAM_AUTHZDATA_T sat2 WHERE FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = '" + siteId + "')");
 						if (ids.size() > 0) {
 							samigoCount += ids.size();
 							log.debug(String.format("Delete %d Samigo submissions.", ids.size()));
@@ -157,50 +157,50 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 			"SELECT '/private/samigo/' || sat2.AGENTID || '/' || spt.ID || '/' || sit.AGENTID || '/' || sit.PUBLISHEDITEMID || '' || smt.FILENAME " +
 			"FROM SAM_MEDIA_T smt, SAM_ITEMGRADING_T sit, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2, SAKAI_USER_ID_MAP suim , SAM_PUBLISHEDASSESSMENT_T spt " +
 			"WHERE spt.ID = publishedassessmentid AND suim.USER_ID = sat.AGENTID AND smt.ITEMGRADINGID = sit.ITEMGRADINGID AND sit.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid " +
-				"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-				"AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID LIKE ?)"));
+				"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+				"AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = ?)"));
 		
 		statements.add(c.prepareStatement(
 			"DELETE FROM CONTENT_RESOURCE_BODY_BINARY WHERE RESOURCE_ID IN ( " +
 			"SELECT '/private/samigo/' || sat2.AGENTID || '/' || spt.ID || '/' || sit.AGENTID || '/' || sit.PUBLISHEDITEMID || '' || smt.FILENAME " +
 				"FROM SAM_MEDIA_T smt, SAM_ITEMGRADING_T sit, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2, SAKAI_USER_ID_MAP suim , SAM_PUBLISHEDASSESSMENT_T spt " +
 				"WHERE spt.ID = publishedassessmentid AND suim.USER_ID = sat.AGENTID AND smt.ITEMGRADINGID = sit.ITEMGRADINGID AND sit.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid " +
-				"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-					"AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID LIKE ?)"));
+				"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+					"AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement(
 			"DELETE FROM SAM_MEDIA_T smt WHERE ITEMGRADINGID IN " +
 			"(SELECT sit.ITEMGRADINGID FROM SAM_ITEMGRADING_T sit, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 " +
 			"WHERE sit.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' " + 
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement(
 			"DELETE FROM CONTENT_RESOURCE WHERE RESOURCE_ID IN " +
 			"(SELECT sgt.RESOURCEID FROM SAM_GRADINGATTACHMENT_T sgt, SAM_ITEMGRADING_T sigt, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 " +
 			"WHERE sgt.ITEMGRADINGID = sigt.ITEMGRADINGID AND sigt.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' " +
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 		
 		statements.add(c.prepareStatement(
 			"DELETE FROM CONTENT_RESOURCE_BODY_BINARY WHERE RESOURCE_ID IN " +
 			"(SELECT sgt.RESOURCEID FROM SAM_GRADINGATTACHMENT_T sgt, SAM_ITEMGRADING_T sigt, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 " + 
 			"WHERE sgt.ITEMGRADINGID = sigt.ITEMGRADINGID AND sigt.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' " +
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement(
 			"DELETE FROM SAM_GRADINGATTACHMENT_T sgt WHERE ITEMGRADINGID IN " +
 			"(SELECT sigt.ITEMGRADINGID FROM SAM_ITEMGRADING_T sigt, SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 " +
 			"WHERE sigt.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID AND publishedassessmentid = qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' " +
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement(
 			"DELETE FROM SAM_ITEMGRADING_T sit WHERE ASSESSMENTGRADINGID IN " +
 			"(SELECT ASSESSMENTGRADINGID FROM SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 WHERE publishedassessmentid = qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' " +
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		// Delete resources and GradingAttachments for AssessmentGrading
 		statements.add(c.prepareStatement(
@@ -209,8 +209,8 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 			"WHERE sgt.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID "+
 			"AND sat.publishedassessmentid = sat2.qualifierid "+
 			"AND sat2.FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' "+
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement(
 			"DELETE FROM CONTENT_RESOURCE_BODY_BINARY WHERE RESOURCE_ID IN ( "+
@@ -218,19 +218,19 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 			"WHERE sgt.ASSESSMENTGRADINGID = sat.ASSESSMENTGRADINGID "+
 			"AND sat.publishedassessmentid = sat2.qualifierid "+
 			"AND sat2.FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' "+
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement("DELETE FROM SAM_GRADINGATTACHMENT_T sgt WHERE ASSESSMENTGRADINGID IN "+
 			"(SELECT sat.ASSESSMENTGRADINGID "+
 			"FROM SAM_ASSESSMENTGRADING_T sat, SAM_AUTHZDATA_T sat2 "+
 			"WHERE sat.publishedassessmentid = sat2.qualifierid AND FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' "+
-			"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) " +
-			"AND sat2.AGENTID LIKE ?)"));
+			"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
+			"AND sat2.AGENTID = ?)"));
 
 		statements.add(c.prepareStatement("DELETE FROM SAM_ASSESSMENTGRADING_T sat " +
-		"WHERE publishedassessmentid IN (SELECT qualifierid FROM SAM_AUTHZDATA_T sat2 WHERE FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID LIKE ?)" +
-		"AND (sat.SUBMITTED_DATE IS NULL OR sat.SUBMITTED_DATE < TRUNC(SYSDATE-18*30)) "));
+		"WHERE publishedassessmentid IN (SELECT qualifierid FROM SAM_AUTHZDATA_T sat2 WHERE FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = ?)" +
+		"AND sat.SUBMITTEDDATE < TRUNC(SYSDATE-18*30) "));
 	}
 
 	private void createAssignmentStatements(List<PreparedStatement> statements, Connection c) throws SQLException {
