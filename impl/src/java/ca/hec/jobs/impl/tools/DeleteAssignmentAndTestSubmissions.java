@@ -118,7 +118,7 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 					}
 					if (!site.getTools("sakai.samigo").isEmpty()) {
 						List<String> ids = sqlService.dbRead("select assessmentgradingid FROM SAM_ASSESSMENTGRADING_T sat " + 
-						"WHERE SUBMITTEDDATE < TRUNC(SYSDATE-18*30 " +
+						"WHERE SUBMITTEDDATE < TRUNC(SYSDATE-18*30) " +
 						"AND publishedassessmentid IN (SELECT qualifierid FROM SAM_AUTHZDATA_T sat2 WHERE FUNCTIONID = 'OWN_PUBLISHED_ASSESSMENT' AND sat2.AGENTID = '" + siteId + "')");
 						if (ids.size() > 0) {
 							samigoCount += ids.size();
@@ -267,12 +267,12 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 		statements.add(c.prepareStatement(
 			"DELETE FROM CONTENT_RESOURCE WHERE RESOURCE_ID IN " +
 			"(SELECT substr(feedback_attachment, 9) FROM ASN_SUBMISSION_FEEDBACK_ATTACH asfa, ASN_SUBMISSION asub, ASN_ASSIGNMENT ass " +
-			"WHERE asfa.SUBMISSION_ID = asub.SUBMISSION_ID AND asub.ASSIGNMENT_ID = ass.ASSIGNMENT_ID" +
+			"WHERE asfa.SUBMISSION_ID = asub.SUBMISSION_ID AND asub.ASSIGNMENT_ID = ass.ASSIGNMENT_ID " +
 			"AND ass.CLOSE_DATE < TRUNC(SYSDATE-(18*30)) AND ass.CONTEXT = ?)"));
 		statements.add(c.prepareStatement(
 			"DELETE FROM ASN_SUBMISSION_FEEDBACK_ATTACH asfa WHERE SUBMISSION_ID IN " +
 			"(SELECT asub.SUBMISSION_ID FROM ASN_SUBMISSION asub, ASN_ASSIGNMENT ass " +
-			"WHERE asub.ASSIGNMENT_ID = ass.ASSIGNMENT_ID" +
+			"WHERE asub.ASSIGNMENT_ID = ass.ASSIGNMENT_ID " +
 			"AND ass.CLOSE_DATE < TRUNC(SYSDATE-(18*30)) AND ass.CONTEXT = ?)"));
 
 		// delete submissions 
