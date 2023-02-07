@@ -226,7 +226,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             group.get().deleteMember(studentId);
                             if (!groupContainsStudents(group.get())) {
                                 log.debug("Group is empty, add to map");
-                                emptyGroups.put(groupPrefix, new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
+                                emptyGroups.put(site.getId()+";"+groupPrefix, new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
                             }
                             removedStudents.add(student);
                         }
@@ -275,6 +275,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         for (Entry<String, SiteAndEmails> e : sitesToCheck.entrySet()) {
             Site site = e.getValue().getSite();
 
+            // map key is "siteId;groupPrefix"
+            String groupPrefix = e.getKey().split(";")[1];
+
             String emailAddresses = "";
 
             if (!excludeInstructors) {
@@ -289,11 +292,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 emailAddresses += daipEmails;
             }
 
-            log.debug("Check empty groups for " + site.getId() + " group prefix " + e.getKey());
+            log.debug("Check empty groups for " + site.getId() + " group prefix " + groupPrefix);
 
             List<Group> matchedGroups = site.getGroups().stream()
                 // find groups that start with prefix and contain at least one student
-                .filter(g -> { return g.getTitle().startsWith(e.getKey()) && groupContainsStudents(g); } )
+                .filter(g -> { return g.getTitle().startsWith(groupPrefix) && groupContainsStudents(g); } )
                 .collect(Collectors.toList());
 
             // send email if only one group has students (regular group). Other groups may contain instructor.
