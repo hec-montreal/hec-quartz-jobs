@@ -327,12 +327,22 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
         InstructionMode instrMode;
 
 
-        if (instructionMode != null){
-            instrMode = this.instructionMode.get(instructionMode);
-            if (lang.equals("fr_CA")){
-                instrModeDescription = instrMode.getDescrShort();
-            }else{
-                instrModeDescription = instrMode.getDescrAng();
+        try {
+            if (instructionMode != null){
+                instrMode = this.instructionMode.get(instructionMode);
+                if (lang.equals("fr_CA")){
+                    instrModeDescription = instrMode.getDescrShort();
+                }else{
+                    instrModeDescription = instrMode.getDescrAng();
+                }
+            }
+        }
+        catch (NullPointerException npe) {
+            log.error("Error retrieving description for instruction mode: " + instructionMode);
+            if (error_address != null) {
+                emailService.send("zonecours2@hec.ca", error_address, 
+                    "Synchronisation d'une section a échoué", 
+                    "Le cours {} est assigné un mode d'enseignement qui n'existe pas dans le fichier mode_enseignement.dat ({})".format(sectionId, instructionMode), null, null, null);
             }
         }
 
