@@ -342,7 +342,7 @@ public class HECCMSynchroJobImpl implements HECCMSynchroJob {
             if (error_address != null) {
                 emailService.send("zonecours2@hec.ca", error_address, 
                     "Synchronisation d'une section a échoué", 
-                    "Le cours {} est assigné un mode d'enseignement qui n'existe pas dans le fichier mode_enseignement.dat ({})".format(sectionId, instructionMode), null, null, null);
+                    String.format("Le cours %s est assigné un mode d'enseignement qui n'existe pas dans le fichier mode_enseignement.dat (%s)", sectionId, instructionMode), null, null, null);
             }
         }
 
