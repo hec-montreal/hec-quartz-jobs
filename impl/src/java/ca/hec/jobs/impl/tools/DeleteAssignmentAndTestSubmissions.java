@@ -40,9 +40,10 @@ public class DeleteAssignmentAndTestSubmissions extends AbstractQuartzJobImpl {
 	static private boolean isRunning = false;
 
 	// unless specified in parameters, don't actually delete anything
-	private boolean debugMode = true;
+	private boolean debugMode;
 
 	public void execute(JobExecutionContext context) throws JobExecutionException {
+		debugMode = true;
 
 		if (isRunning) {
 			log.error("Job already running");
