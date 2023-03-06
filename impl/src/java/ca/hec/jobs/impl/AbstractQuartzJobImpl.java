@@ -24,6 +24,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.sakaiproject.assignment.api.AssignmentService;
 import org.sakaiproject.authz.api.AuthzGroupService;
 import org.sakaiproject.component.api.ServerConfigurationService;
 import org.sakaiproject.content.api.ContentHostingService;
@@ -87,6 +88,7 @@ public abstract class AbstractQuartzJobImpl implements
     protected ToolManager toolManager;
     protected UsageSessionService usageSessionService;
     protected UserDirectoryService userDirectoryService;
+    protected AssignmentService assignmentService;
 
     public void setAuthzGroupService(AuthzGroupService authzGroupService) {
 	this.authzGroupService = authzGroupService;
@@ -125,6 +127,10 @@ public abstract class AbstractQuartzJobImpl implements
     public void setOsylDirectoryService(
 	    OsylDirectoryService osylDirectoryService) {
 	this.osylDirectoryService = osylDirectoryService;
+    }
+
+    public void setAssignmentService(AssignmentService assignmentService) {
+        this.assignmentService = assignmentService;
     }
 
     public void setOsylPublishService(OsylPublishService osylPublishService) {

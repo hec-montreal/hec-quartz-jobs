@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
-	xsi:schemaLocation="
+	   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:tx="http://www.springframework.org/schema/tx"
+	   xsi:schemaLocation="
      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.5.xsd">
 
@@ -9,7 +9,7 @@
 	<tx:annotation-driven transaction-manager="transactionManager"  />
 
 	<bean id="transactionManager"
-		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		  class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
 		<property name="dataSource" ref="javax.sql.DataSource" />
 	</bean>
 
@@ -17,43 +17,44 @@
 	<bean id="ca.hec.api.SiteIdFormatHelper"
 		  class="ca.hec.impl.SiteIdFormatHelperImpl">
 		<property name="cmService"
-			  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 	</bean>
 
 	<bean id="abstractQuartzJob" abstract="true"
-		class="ca.hec.jobs.impl.AbstractQuartzJobImpl">
-		<property name="authzGroupService" 
-			ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		  class="ca.hec.jobs.impl.AbstractQuartzJobImpl">
+		<property name="authzGroupService"
+				  ref="org.sakaiproject.authz.api.AuthzGroupService" />
 		<property name="cmAdmin"
-			ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementAdministration" />
 		<property name="cmService"
-			ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
+				  ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 		<property name="contentHostingService"
-			ref="org.sakaiproject.content.api.ContentHostingService" />
+				  ref="org.sakaiproject.content.api.ContentHostingService" />
 		<property name="coRelationDao"
-			ref="org.sakaiquebec.opensyllabus.common.dao.CORelationDao" />
+				  ref="org.sakaiquebec.opensyllabus.common.dao.CORelationDao" />
 		<property name="emailService" ref="org.sakaiproject.email.api.EmailService" />
 		<property name="eventTrackingService"
-			ref="org.sakaiproject.event.api.EventTrackingService" />
+				  ref="org.sakaiproject.event.api.EventTrackingService" />
 		<property name="osylContentService"
-			ref="org.sakaiquebec.opensyllabus.common.api.OsylContentService" />
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylContentService" />
 		<property name="osylDirectoryService"
-			ref="org.sakaiquebec.opensyllabus.common.api.OsylDirectoryService" />
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylDirectoryService" />
 		<property name="osylPublishService"
-			ref="org.sakaiquebec.opensyllabus.common.api.OsylPublishService" />
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylPublishService" />
 		<property name="osylSiteService"
-			ref="org.sakaiquebec.opensyllabus.common.api.OsylSiteService" />
+				  ref="org.sakaiquebec.opensyllabus.common.api.OsylSiteService" />
 		<property name="resourceDao"
-			ref="org.sakaiquebec.opensyllabus.common.dao.ResourceDao" />
+				  ref="org.sakaiquebec.opensyllabus.common.dao.ResourceDao" />
 		<property name="serverConfigService"
-			ref="org.sakaiproject.component.api.ServerConfigurationService" />
+				  ref="org.sakaiproject.component.api.ServerConfigurationService" />
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
+		<property name="assignmentService" ref="org.sakaiproject.assignment.api.AssignmentService" />
 		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
 		<property name="usageSessionService"
-			ref="org.sakaiproject.event.api.UsageSessionService" />
+				  ref="org.sakaiproject.event.api.UsageSessionService" />
 		<property name="userDirectoryService"
-			ref="org.sakaiproject.user.api.UserDirectoryService" />
+				  ref="org.sakaiproject.user.api.UserDirectoryService" />
 	</bean>
 
 	<bean id="hecCMSynchroJob"
@@ -128,8 +129,8 @@
 				  ref="org.sakaiproject.entity.api.EntityManager" />
 		<property name="siteIdFormatHelper"
 				  ref="ca.hec.api.SiteIdFormatHelper" />
-  		<property name="authzGroupService" 
-		          ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="authzGroupService"
+				  ref="org.sakaiproject.authz.api.AuthzGroupService" />
 		<property name="serverConfigService" ref="org.sakaiproject.component.api.ServerConfigurationService" />
 		<property name="toolManager" ref="org.sakaiproject.tool.api.ToolManager" />
 	</bean>
@@ -245,13 +246,13 @@
 		</property>
 	</bean>
 
-   <bean id="softDeleteEvaluationsJob"
-      class="ca.hec.jobs.impl.evaluation.SoftDeleteEvaluationsJobImpl">
-      <property name="evaluationService"
-        ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
-      <property name="evaluationSetupService"
-        ref="org.sakaiproject.evaluation.logic.EvalEvaluationSetupService" /> 
-    </bean>
+	<bean id="softDeleteEvaluationsJob"
+		  class="ca.hec.jobs.impl.evaluation.SoftDeleteEvaluationsJobImpl">
+		<property name="evaluationService"
+				  ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
+		<property name="evaluationSetupService"
+				  ref="org.sakaiproject.evaluation.logic.EvalEvaluationSetupService" />
+	</bean>
 
 	<bean id="hecBackfillRoleRemovalJob"
 		  class="ca.hec.jobs.impl.roles.BackfillRoleRemovalJobImpl">
@@ -311,7 +312,7 @@
 					<property name="labelResourceKey" value="roleRemovalRealmIds"/>
 					<property name="descriptionResourceKey" value="roleRemovalRealmIds.description"/>
 					<property name="defaultValue" value=""/>
-				</bean>				
+				</bean>
 			</set>
 		</property>
 	</bean>
@@ -393,45 +394,45 @@
 					<property name="labelResourceKey" value="roleRealmIds"/>
 					<property name="descriptionResourceKey" value="roleRealmIds.description"/>
 					<property name="defaultValue" value=""/>
-				</bean>				
+				</bean>
 			</set>
 		</property>
 	</bean>
-	
-    <bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.SoftDeleteEvaluationsJob"
- 		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.SoftDeleteEvaluationsJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
 		  init-method="init">
 
 		<property name="beanId">
-        <value>softDeleteEvaluationsJob</value>
-      </property>
-      <property name="jobName">
-        <value>HEC Soft delete Evaluations by Term ID </value>
-      </property>
+			<value>softDeleteEvaluationsJob</value>
+		</property>
+		<property name="jobName">
+			<value>HEC Soft delete Evaluations by Term ID </value>
+		</property>
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
 		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
-        <set>
-			<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-				<property name="required" value="true"/>
-				<property name="labelResourceKey" value="term"/>
-				<property name="descriptionResourceKey" value="term.description"/>
-				<property name="defaultValue" value=""/>
-			</bean>
-        </set>
-      </property>
-    </bean>
-    
-	<bean id="cmoverridesiteusers"
-		class="ca.hec.jobs.impl.coursemanagement.CMOverrideSiteUsers"
-		parent="abstractQuartzJob">
+			<set>
+				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
+					<property name="required" value="true"/>
+					<property name="labelResourceKey" value="term"/>
+					<property name="descriptionResourceKey" value="term.description"/>
+					<property name="defaultValue" value=""/>
+				</bean>
+			</set>
+		</property>
 	</bean>
-	
+
+	<bean id="cmoverridesiteusers"
+		  class="ca.hec.jobs.impl.coursemanagement.CMOverrideSiteUsers"
+		  parent="abstractQuartzJob">
+	</bean>
+
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.cmoverridesiteusers"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
 
 		<property name="beanId">
 			<value>cmoverridesiteusers</value>
@@ -447,13 +448,13 @@
 	</bean>
 
 	<bean id="cmoverridestudentusers"
-		class="ca.hec.jobs.impl.coursemanagement.CMOverrideStudentUsers"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.coursemanagement.CMOverrideStudentUsers"
+		  parent="abstractQuartzJob">
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.cmoverridestudentusers"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
 
 		<property name="beanId">
 			<value>cmoverridestudentusers</value>
@@ -469,12 +470,12 @@
 	</bean>
 
 	<bean id="resetCodeOfConductJob"
-		class="ca.hec.jobs.impl.codeofconduct.ResetCodeOfConductJob">
+		  class="ca.hec.jobs.impl.codeofconduct.ResetCodeOfConductJob">
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.resetCodeOfConductJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
 
 		<property name="beanId">
 			<value>resetCodeOfConductJob</value>
@@ -490,19 +491,19 @@
 	</bean>
 
 	<bean id="createEvalSysPdfJob"
-		class="ca.hec.jobs.impl.evaluation.CreateEvalSysPdfJob"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.evaluation.CreateEvalSysPdfJob"
+		  parent="abstractQuartzJob">
 		<property name="evaluationService"
-			ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
+				  ref="org.sakaiproject.evaluation.logic.EvalEvaluationService" />
 		<property name="contentHostingService"
-			ref="org.sakaiproject.content.api.ContentHostingService" />
+				  ref="org.sakaiproject.content.api.ContentHostingService" />
 		<property name="entityManager"
-			ref="org.sakaiproject.entity.api.EntityManager" />
- 	</bean>
+				  ref="org.sakaiproject.entity.api.EntityManager" />
+	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createEvalSysPdfJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
 
 		<property name="beanId">
 			<value>createEvalSysPdfJob</value>
@@ -517,15 +518,48 @@
 		</property>
 	</bean>
 
+
+
+
+	<bean id="testTravauxPdfJob"
+		  class="ca.hec.jobs.impl.testtravauxarchive.HecTestTravauxPdfJob"
+		  parent="abstractQuartzJob">
+		<property name="siteService"
+				  ref="org.sakaiproject.site.api.SiteService" />
+		<property name="assignmentService"
+				  ref="org.sakaiproject.assignment.api.AssignmentService" />
+
+	</bean>
+
+	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.testTravauxPdfJob"
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
+
+		<property name="beanId">
+			<value>testTravauxPdfJob</value>
+		</property>
+
+		<property name="jobName">
+			<value>HEC Create a PDF with Tests et Travaux INTRA et FINAL</value>
+		</property>
+
+		<property name="schedulerManager">
+			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
+		</property>
+	</bean>
+
+
+
+
 	<bean id="createSiteHierarchyjob"
-		class="ca.hec.jobs.impl.site.CreateSiteHierarchyJob"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.site.CreateSiteHierarchyJob"
+		  parent="abstractQuartzJob">
 	</bean>
 
 	<bean
-		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createSiteHierarchyjob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
-		init-method="init">
+			id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.createSiteHierarchyjob"
+			class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
+			init-method="init">
 
 		<property name="beanId">
 			<value>createSiteHierarchyjob</value>
@@ -538,29 +572,29 @@
 		<property name="schedulerManager">
 			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
 		</property>
-		
+
 		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
 		<property name="configurableJobProperties">
-	        <set>
+			<set>
 				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
 					<property name="required" value="false"/>
 					<property name="labelResourceKey" value="allSites"/>
 					<property name="descriptionResourceKey" value="allSites.description"/>
 					<property name="defaultValue" value=""/>
 				</bean>
-        	</set>
+			</set>
 		</property>
 	</bean>
 
 	<bean id="deleteAllMyWorkspaces"
-		class="ca.hec.jobs.impl.site.DeleteAllMyWorkspaceJob"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.site.DeleteAllMyWorkspaceJob"
+		  parent="abstractQuartzJob">
 	</bean>
 
 	<bean
-		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.deleteAllMyWorkspaces"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+			id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.deleteAllMyWorkspaces"
+			class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+			init-method="init">
 
 		<property name="beanId">
 			<value>deleteAllMyWorkspaces</value>
@@ -575,65 +609,16 @@
 		</property>
 	</bean>
 
-	<bean id="deleteAssignmentAndTestSubmissions"
-		class="ca.hec.jobs.impl.tools.DeleteAssignmentAndTestSubmissions"
-		parent="abstractQuartzJob">
-		
-		<property name="sqlService" ref="org.sakaiproject.db.api.SqlService" />
-	</bean>
-
-	<bean
-		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.deleteAssignmentAndTestSubmissions"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobBeanWrapper"
-		init-method="init">
-
-		<property name="beanId">
-			<value>deleteAssignmentAndTestSubmissions</value>
-		</property>
-
-		<property name="jobName">
-			<value>HEC Deletes all assignment and test submissions for a session.</value>
-		</property>
-
-		<property name="schedulerManager">
-			<ref bean="org.sakaiproject.api.app.scheduler.SchedulerManager" />
-		</property>
-
-		<property name="resourceBundleBase" value="ca.hec.jobs.bundle.JobMessages"/>
-		<property name="configurableJobProperties">
-			<set>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="deleteSubmission.term"/>
-					<property name="descriptionResourceKey" value="deleteSubmission.term.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="sites"/>
-					<property name="descriptionResourceKey" value="sites.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-				<bean class="org.sakaiproject.component.app.scheduler.jobs.SpringConfigurableJobProperty">
-					<property name="required" value="false"/>
-					<property name="labelResourceKey" value="debugMode"/>
-					<property name="descriptionResourceKey" value="debugMode.description"/>
-					<property name="defaultValue" value=""/>
-				</bean>
-			</set>
-		</property>
-	</bean>
-
 	<bean id="evaluationSiteHierarchyJob" class="ca.hec.jobs.impl.evaluation.EvaluationSiteHierarchyJob">
 		<property name="courseManagementService" ref="org.sakaiproject.coursemanagement.api.CourseManagementService" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="evalHierarchyLogic"
-			ref="org.sakaiproject.evaluation.logic.externals.ExternalHierarchyLogic" />
+				  ref="org.sakaiproject.evaluation.logic.externals.ExternalHierarchyLogic" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.evaluationSiteHierarchyJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+		  class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+		  init-method="init">
 
 		<property name="beanId">
 			<value>evaluationSiteHierarchyJob</value>
@@ -649,15 +634,15 @@
 	</bean>
 
 	<bean id="removeUsersFromSiteJob"
-		class="ca.hec.jobs.impl.site.RemoveUsersFromSiteJob"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.site.RemoveUsersFromSiteJob"
+		  parent="abstractQuartzJob">
 		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager" />
 	</bean>
 
 	<bean
-		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.removeUsersFromSiteJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+			id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.removeUsersFromSiteJob"
+			class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+			init-method="init">
 
 		<property name="beanId">
 			<value>removeUsersFromSiteJob</value>
@@ -674,15 +659,15 @@
 	</bean>
 
 	<bean id="removeUsersFromCMJob"
-		class="ca.hec.jobs.impl.coursemanagement.RemoveUsersFromCMJob"
-		parent="abstractQuartzJob">
+		  class="ca.hec.jobs.impl.coursemanagement.RemoveUsersFromCMJob"
+		  parent="abstractQuartzJob">
 		<property name="entityManager" ref="org.sakaiproject.entity.api.EntityManager" />
 	</bean>
 
 	<bean
-		id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.removeUsersFromCMJob"
-		class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
-		init-method="init">
+			id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.removeUsersFromCMJob"
+			class="org.sakaiproject.component.app.scheduler.jobs.SpringJobBeanWrapper"
+			init-method="init">
 
 		<property name="beanId">
 			<value>removeUsersFromCMJob</value>
@@ -787,10 +772,10 @@
 		<property name="sessionManager" ref="org.sakaiproject.tool.api.SessionManager" />
 		<property name="siteService" ref="org.sakaiproject.site.api.SiteService" />
 		<property name="userDirectoryService" ref="org.sakaiproject.user.api.UserDirectoryService" />
-		<property name="authzGroupService" 
-			ref="org.sakaiproject.authz.api.AuthzGroupService" />
+		<property name="authzGroupService"
+				  ref="org.sakaiproject.authz.api.AuthzGroupService" />
 		<property name="serverConfigService"
-			ref="org.sakaiproject.component.api.ServerConfigurationService" />
+				  ref="org.sakaiproject.component.api.ServerConfigurationService" />
 	</bean>
 
 	<bean id="org.sakaiproject.api.app.scheduler.JobBeanWrapper.HecEdStudentSynchroJobSynchroJobImpl"
