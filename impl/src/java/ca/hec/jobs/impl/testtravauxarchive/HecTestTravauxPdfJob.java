@@ -151,8 +151,6 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
                                 ContentCollection assignmentFolderCollection = null;
 
-                                log.info("########### "+assignment.toString());
-
                                 hasIntrasFinals = true;
 
                                 String userName = "";
@@ -179,7 +177,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                                     nouvelleRemise = assignment.getProperties().get("allow_resubmit_number");
 
                                 }
-
+                                // get the section
                                 Set<String> groups = null;
 
                                 if(!assignment.getGroups().isEmpty()){
@@ -194,7 +192,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                                         groupUrl = groupUrl.substring(groupUrl.lastIndexOf("/") + 1);
                                         Group group = site.getGroup(groupUrl);
                                         String groupTitle = group.getTitle();
-                                        log.info(groupTitle);
+
                                         groupsDisplay = groupsDisplay + groupTitle + " ";
                                     }
 
@@ -262,7 +260,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                                          {
                                                 try {
                                                     String att = attachment.toString();
-                                                    // get rid of "/content/"
+                                                    // get rid of first part of URL: "/content/"
                                                     String attFolder = att.substring(8);
 
                                                     contentHostingService.copy(
