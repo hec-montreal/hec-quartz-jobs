@@ -17,6 +17,7 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.assignment.api.AssignmentService;
 
+
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.content.api.ContentCollection;
 import org.sakaiproject.content.api.ContentCollectionEdit;
@@ -29,6 +30,8 @@ import java.io.ByteArrayOutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+
+import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
 
 public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
@@ -87,12 +90,12 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                 //List<String> terms = getActiveTerms();
                 String siteId = null;
                 Collection<Assignment> assignments = null;
-                ByteArrayOutputStream byteOutputStream;
+
                 ByteArrayOutputStream otherSitesByteOutputStream;
-                String fileTitle = null;
-                ResourcePropertiesEdit resourceProperties = null;
+
+
                 ResourcePropertiesEdit otherSitesResourceProperties = null;
-                String reportTextId = null;
+
                 String otherSitesReportTextId = null;
 
 
@@ -135,151 +138,21 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                     siteFolderName = siteId;
                     Boolean hasIntrasFinals = false;
 
+                    siteFolderId =
+                            sessionFolderCollection.getId() + siteId +"/";
+
                     assignments = assignmentService.getAssignmentsForContext(siteId);
+                    //testsquiz = site.get
+
+                    if(!assignments.isEmpty()){
+
+                        hasIntrasFinals = createAssignmentFiles(assignments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
+
+                    }
 
 // methode assignment et test quiz
-                    for (Assignment assignment : assignments) {
-
-                        String assignmentFolderId = "";
-                        String assignmentFolderName = "";
 
 
-
-                        try {
-                            if(!assignment.getDraft() && (assignment.getTitle().toUpperCase().contains("INTRA") || assignment.getTitle().toUpperCase().contains("FINAL")
-                            || assignment.getTitle().toUpperCase().contains("MIDTERM"))){
-
-                                ContentCollection assignmentFolderCollection = null;
-
-                                hasIntrasFinals = true;
-
-                                String userName = "";
-                                String titleWithoutAccents = "";
-                                String titleWithoutSpacesAndAccents = "";
-                                String modeRemise = "";
-                                String note = "";
-
-                                try {
-                                    userName = userDirectoryService.getUser(assignment.getAuthor()).getDisplayName();
-                                }catch (UserNotDefinedException e2){
-                                    e2.printStackTrace();
-                                }
-                                titleWithoutAccents = removeAccents(assignment.getTitle());
-                                titleWithoutSpacesAndAccents = replaceSpace(titleWithoutAccents);
-                                assignmentFolderName = titleWithoutSpacesAndAccents;
-                                modeRemise = getModeRemise(assignment);
-                                String nouvelleRemise = "0";
-                                String groupsDisplay = "Site";
-                                note = getNote(assignment);
-
-                                if(assignment.getProperties().containsKey("allow_resubmit_number")){
-
-                                    nouvelleRemise = assignment.getProperties().get("allow_resubmit_number");
-
-                                }
-                                // get the section
-                                Set<String> groups = null;
-
-                                if(!assignment.getGroups().isEmpty()){
-
-                                    groupsDisplay = "";
-                                    groups = assignment.getGroups();
-                                    Iterator<String> groupsIterator = groups.iterator();
-
-                                    while(groupsIterator.hasNext()) {
-
-                                        String groupUrl = groupsIterator.next();
-                                        groupUrl = groupUrl.substring(groupUrl.lastIndexOf("/") + 1);
-                                        Group group = site.getGroup(groupUrl);
-                                        String groupTitle = group.getTitle();
-
-                                        groupsDisplay = groupsDisplay + groupTitle + " ";
-                                    }
-
-                               }
-
-                                String textToDisplay =
-                                        "Titre du travail: "+ titleWithoutSpacesAndAccents + "\n" +
-                                        "Identifiant du cours: "+ siteId + "\n" +
-                                        "Créé par: " + userName + "\n" +
-                                        "Date de création: " + assignment.getDateCreated().toString() + "\n" +
-                                        "Ouvert: " + assignment.getOpenDate().toString() + "\n" +
-                                        "Date d'échéance du travail: " + assignment.getDueDate().toString() + "\n" +
-                                        "Date d'échéance finale: " + assignment.getCloseDate().toString() + "\n" +
-                                        "Modifié par l'instructeur: " + assignment.getDateModified().toString() + "\n" +
-                                        "Pour: " + groupsDisplay + "\n" +
-                                        "Mode de remise: " + modeRemise + "\n" +
-                                        "Nombre de nouvelles remises permises: " + nouvelleRemise + "\n" +
-                                        "Accepter les soumissions en retard jusqu'à: " + assignment.getDropDeadDate().toString() + "\n" +
-                                        "Note: " + note + "\n\n" +
-                                        "Instructions pour le travail - "+ "\n\n" +  assignment.getInstructions()+ "\n\n" ;
-
-
-                                fileTitle = replaceSpace(removeAccents(assignment.getTitle()));
-
-                                siteFolderId =
-                                        sessionFolderCollection.getId() + siteId +"/";
-
-                                siteFolderCollection =
-                                        createOrGetContentCollection(siteFolderId, siteFolderName);
-
-                                assignmentFolderId =
-                                        siteFolderCollection.getId() + assignmentFolderName + "/";
-
-                                assignmentFolderCollection =
-                                        createOrGetContentCollection(assignmentFolderId, assignmentFolderName);
-
-                                // add name to file
-                                resourceProperties =
-                                        contentHostingService.newResourceProperties();
-                                resourceProperties.addProperty(
-                                        ResourceProperties.PROP_DISPLAY_NAME, fileTitle
-                                                + ".txt");
-                               // Create text file
-                                byteOutputStream = new ByteArrayOutputStream();
-                                byte[] array = textToDisplay.getBytes();
-
-                                // Writes data to the output stream
-                                byteOutputStream.write(array);
-
-                                // Save text to  folder
-                                reportTextId = assignmentFolderCollection.getId() +
-                                        fileTitle
-                                                + ".txt";
-
-                                contentHostingService.addResource(reportTextId,
-                                        "text/plain", new ByteArrayInputStream(
-                                                byteOutputStream.toByteArray()),
-                                        resourceProperties, 0);
-
-                                if(!assignment.getAttachments().isEmpty()){
-
-                                    String finalSiteFolderId = assignmentFolderId;
-
-                                    assignment.getAttachments().stream().forEach(attachment ->
-                                         {
-                                                try {
-                                                    String att = attachment.toString();
-                                                    // get rid of first part of URL: "/content/"
-                                                    String attFolder = att.substring(8);
-
-                                                    contentHostingService.copy(
-                                                           attFolder,
-                                                            finalSiteFolderId + att.substring(att.lastIndexOf("/") + 1));
-
-                                                } catch (Exception e) {
-                                                    e.printStackTrace();
-                                                }
-                                         }
-
-                                    );
-                                }
-
-                            }
-                           } catch (Exception e1) {
-                            e1.printStackTrace();
-                        }
-                    }
 
                     if(hasIntrasFinals.equals(false)) {
                         sitesWithoutInstrasFinals.add(siteId);
@@ -320,7 +193,157 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
         }
     }
 
+private Boolean createAssignmentFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
+                                      Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
+    for (Assignment assignment : assignments) {
 
+        String assignmentFolderId = "";
+        String assignmentFolderName = "";
+        String fileTitle = null;
+        String reportTextId = null;
+        ByteArrayOutputStream byteOutputStream;
+        ResourcePropertiesEdit resourceProperties = null;
+
+
+        try {
+            if(!assignment.getDraft() && (assignment.getTitle().toUpperCase().contains("INTRA") || assignment.getTitle().toUpperCase().contains("FINAL")
+                    || assignment.getTitle().toUpperCase().contains("MIDTERM"))){
+
+                ContentCollection assignmentFolderCollection = null;
+
+
+                hasIntrasFinals = true;
+                String userName = "";
+                String titleWithoutAccents = "";
+                String titleWithoutSpacesAndAccents = "";
+                String modeRemise = "";
+                String note = "";
+
+                try {
+                    userName = userDirectoryService.getUser(assignment.getAuthor()).getDisplayName();
+                }catch (UserNotDefinedException e2){
+                    e2.printStackTrace();
+                    continue;
+                }
+                titleWithoutAccents = removeAccents(assignment.getTitle());
+                titleWithoutSpacesAndAccents = replaceSpace(titleWithoutAccents);
+                assignmentFolderName = titleWithoutSpacesAndAccents;
+                modeRemise = getModeRemise(assignment);
+                String nouvelleRemise = "0";
+                String groupsDisplay = "Site";
+                note = getNote(assignment);
+
+                if(assignment.getProperties().containsKey("allow_resubmit_number")){
+
+                    nouvelleRemise = assignment.getProperties().get("allow_resubmit_number");
+
+                }
+                // get the section
+                Set<String> groups = null;
+
+                if(!assignment.getGroups().isEmpty()){
+
+                    groupsDisplay = "";
+                    groups = assignment.getGroups();
+                    Iterator<String> groupsIterator = groups.iterator();
+
+                    while(groupsIterator.hasNext()) {
+
+                        String groupUrl = groupsIterator.next();
+                        groupUrl = groupUrl.substring(groupUrl.lastIndexOf("/") + 1);
+                        Group group = site.getGroup(groupUrl);
+                        String groupTitle = group.getTitle();
+
+                        groupsDisplay = groupsDisplay + groupTitle + " ";
+                    }
+
+                }
+
+                String textToDisplay =
+                        "Titre du travail: "+ titleWithoutSpacesAndAccents + "\n" +
+                                "Identifiant du cours: "+ siteId + "\n" +
+                                "Créé par: " + userName + "\n" +
+                                "Date de création: " + assignment.getDateCreated().toString() + "\n" +
+                                "Ouvert: " + assignment.getOpenDate().toString() + "\n" +
+                                "Date d'échéance du travail: " + assignment.getDueDate().toString() + "\n" +
+                                "Date d'échéance finale: " + assignment.getCloseDate().toString() + "\n" +
+                                "Modifié par l'instructeur: " + assignment.getDateModified().toString() + "\n" +
+                                "Pour: " + groupsDisplay + "\n" +
+                                "Mode de remise: " + modeRemise + "\n" +
+                                "Nombre de nouvelles remises permises: " + nouvelleRemise + "\n" +
+                                "Accepter les soumissions en retard jusqu'à: " + assignment.getDropDeadDate().toString() + "\n" +
+                                "Note: " + note + "\n\n" +
+                                "Instructions pour le travail - "+ "\n\n" + assignment.getInstructions().replaceAll("<[^>]*>", "")+ "\n\n" ;
+
+
+                fileTitle = replaceSpace(removeAccents(assignment.getTitle().toLowerCase()));
+
+
+
+                siteFolderCollection =
+                        createOrGetContentCollection(siteFolderId, siteFolderName);
+
+                assignmentFolderId =
+                        siteFolderCollection.getId() + assignmentFolderName + "/";
+
+                assignmentFolderCollection =
+                        createOrGetContentCollection(assignmentFolderId, assignmentFolderName);
+
+                // add name to file
+                resourceProperties =
+                        contentHostingService.newResourceProperties();
+                resourceProperties.addProperty(
+                        ResourceProperties.PROP_DISPLAY_NAME, fileTitle
+                                + ".txt");
+                // Create text file
+                byteOutputStream = new ByteArrayOutputStream();
+                byte[] array = textToDisplay.getBytes();
+
+                // Writes data to the output stream
+                byteOutputStream.write(array);
+
+                // Save text to  folder
+                reportTextId = assignmentFolderCollection.getId() +
+                        fileTitle
+                        + ".txt";
+
+                contentHostingService.addResource(reportTextId,
+                        "text/plain", new ByteArrayInputStream(
+                                byteOutputStream.toByteArray()),
+                        resourceProperties, 0);
+
+                if(!assignment.getAttachments().isEmpty()){
+
+                    String finalSiteFolderId = assignmentFolderId;
+
+                    assignment.getAttachments().stream().forEach(attachment ->
+                            {
+                                try {
+                                    String att = attachment.toString();
+                                    // get rid of first part of URL: "/content/"
+                                    String attFolder = att.substring(8);
+
+                                    contentHostingService.copy(
+                                            attFolder,
+                                            finalSiteFolderId + att.substring(att.lastIndexOf("/") + 1));
+
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+
+                    );
+                }
+
+
+            }
+        } catch (Exception e1) {
+            e1.printStackTrace();
+        }
+    }
+    return hasIntrasFinals;
+
+}
     private String getModeRemise(Assignment assignment){
         if(assignment.getTypeOfSubmission().toString().equals("TEXT_ONLY_ASSIGNMENT_SUBMISSION")){
             return "Saisie dans une zone de texte";
