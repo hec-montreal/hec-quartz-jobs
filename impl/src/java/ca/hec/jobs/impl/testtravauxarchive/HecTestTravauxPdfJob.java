@@ -17,6 +17,10 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.assignment.api.AssignmentService;
 
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
+import org.sakaiproject.tool.assessment.services.PersistenceService;
+
 
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.content.api.ContentCollection;
@@ -52,6 +56,15 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
     @Setter
     protected ContentHostingService contentHostingService;
 
+    @Setter
+    private PersistenceService persistenceService;
+//    @Setter
+//    protected PublishedAssessmentService publishedAssessmentService;
+
+
+
+
+
 
 
     //
@@ -85,25 +98,37 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
         }
 
         try {
-            for (int i = 0; i < terms.size(); i++) {
+            // ####################for debug
+            //for (int i = 0; i < terms.size(); i++) {
                 List<Site> sites = null;
                 //List<String> terms = getActiveTerms();
+
+
                 String siteId = null;
+
                 Collection<Assignment> assignments = null;
+                //List<PublishedAssessmentFacade> assessments = null;
+            List<PublishedAssessmentFacade> assessments = null;
+
+
 
                 ByteArrayOutputStream otherSitesByteOutputStream;
-
 
                 ResourcePropertiesEdit otherSitesResourceProperties = null;
 
                 String otherSitesReportTextId = null;
 
-
-
                 ContentCollection sessionFolderCollection = null;
                 Map<String, String> criteria = new HashMap<String, String>();
-                criteria.put("term", terms.get(i));
-                String actualTerm = terms.get(i);
+                //##########################for debug
+                //criteria.put("term", terms.get(i));
+                //String actualTerm = terms.get(i);
+
+                criteria.put("term", "H2023");
+                String actualTerm = "H2023";
+
+                //log.info("/////////TERM: ######## "+ terms.get(i));
+
                 String sessionFolderId = "";
                 String sessionFolderName = "";
                 String pattern = "yyyyMMddHHmm";
@@ -128,13 +153,24 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
 
                 sites = siteService.getSites(SiteService.SelectionType.ANY, "course", null, criteria, SiteService.SortType.NONE, null);
+//###########################for debug
+                //for (Site site : sites) {
 
-                for (Site site : sites) {
+                    //###########################for debug
+                    siteId = "ATEL49037.H2023";
+                    //siteId = site.getId();
+
+                    Site site = siteService.getSite(siteId);
+
+
 
                     ContentCollection siteFolderCollection = null;
                     String siteFolderId = "";
                     String siteFolderName = "";
-                    siteId = site.getId();
+
+
+
+
                     siteFolderName = siteId;
                     Boolean hasIntrasFinals = false;
 
@@ -142,12 +178,27 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                             sessionFolderCollection.getId() + siteId +"/";
 
                     assignments = assignmentService.getAssignmentsForContext(siteId);
+
+                    assessments =
+                    persistenceService.getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(
+                            PublishedAssessmentFacadeQueries.TITLE, true, siteId);
+
+                     //assessments = publishedAssessmentService.getAllActivePublishedAssessments("startDate");
+
+
+                    //assessments = publishedAssessmentService.getBasicInfoOfAllPublishedAssessments2("startDate", true, siteId);
+
                     //testsquiz = site.get
 
                     if(!assignments.isEmpty()){
 
-                        hasIntrasFinals = createAssignmentFiles(assignments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
 
+
+                        hasIntrasFinals = createAssignmentsFiles(assignments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
+
+                    }
+                    if(!assessments.isEmpty()) {
+                        log.info("/////////SITE: ######## "+ assessments.toString());
                     }
 
 // methode assignment et test quiz
@@ -157,8 +208,8 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                     if(hasIntrasFinals.equals(false)) {
                         sitesWithoutInstrasFinals.add(siteId);
                     }
-
-                }
+//###########################for debug
+                //}
                 String otherSitesTextToDisplay = sitesWithoutInstrasFinals.toString();
                 // add name to file
                 otherSitesResourceProperties =
@@ -182,7 +233,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                         "text/plain", new ByteArrayInputStream(
                                 otherSitesByteOutputStream.toByteArray()),
                         otherSitesResourceProperties, 0);
-            }
+           // }
 
             log.info("The terms " + terms.toString() + " have been treated.");
             logoutFromSakai();
@@ -193,7 +244,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
         }
     }
 
-private Boolean createAssignmentFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
+private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
                                       Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
     for (Assignment assignment : assignments) {
 
