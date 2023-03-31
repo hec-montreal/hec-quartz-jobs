@@ -186,6 +186,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                      //assessments = publishedAssessmentService.getAllActivePublishedAssessments("startDate");
 
 
+
                     //assessments = publishedAssessmentService.getBasicInfoOfAllPublishedAssessments2("startDate", true, siteId);
 
                     //testsquiz = site.get
@@ -198,7 +199,8 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
                     }
                     if(!assessments.isEmpty()) {
-                        log.info("/////////SITE: ######## "+ assessments.toString());
+                        hasIntrasFinals = createAssessmentFiles(assessments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
+
                     }
 
 // methode assignment et test quiz
@@ -243,7 +245,13 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
             isRunning = false;
         }
     }
+    private Boolean createAssessmentFiles(List<PublishedAssessmentFacade> assessments, Boolean hasIntrasFinals,
+                                           Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection) {
+        for (PublishedAssessmentFacade assessmentFacade : assessments) {
 
+           // assessmentFacade.get
+        }
+    }
 private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
                                       Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
     for (Assignment assignment : assignments) {
