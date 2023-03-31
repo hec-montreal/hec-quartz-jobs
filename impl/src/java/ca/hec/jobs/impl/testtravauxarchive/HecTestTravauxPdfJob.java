@@ -251,6 +251,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
            // assessmentFacade.get
         }
+        return hasIntrasFinals;
     }
 private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
                                       Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
