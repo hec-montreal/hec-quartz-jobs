@@ -529,6 +529,7 @@
 		<property name="assignmentService"
 				  ref="org.sakaiproject.assignment.api.AssignmentService" />
 		<property name="persistenceService" ref="PersistenceService" />
+
 		<property name="userDirectoryService"
 				  ref="org.sakaiproject.user.api.UserDirectoryService" />
 
