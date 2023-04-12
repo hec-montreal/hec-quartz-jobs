@@ -80,6 +80,7 @@
       <dependency>
           <groupId>org.sakaiproject.samigo</groupId>
           <artifactId>samigo-qti</artifactId>
+          <version>19.4</version>
       </dependency>
 
 

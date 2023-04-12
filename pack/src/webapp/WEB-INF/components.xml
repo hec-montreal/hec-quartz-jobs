@@ -529,7 +529,9 @@
 		<property name="assignmentService"
 				  ref="org.sakaiproject.assignment.api.AssignmentService" />
 		<property name="persistenceService" ref="PersistenceService" />
-
+		<property name="sakaiBootStrap" ref="org.sakaiproject.tool.assessment.shared.SakaiBootStrap" />
+		<property name="mediaContentConverter" ref="MediaContentConverter" />
+		<property name="qtiService" ref="QTIService" />
 		<property name="userDirectoryService"
 				  ref="org.sakaiproject.user.api.UserDirectoryService" />
 

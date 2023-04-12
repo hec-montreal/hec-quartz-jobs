@@ -26,9 +26,10 @@ import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
+import org.sakaiproject.tool.assessment.services.ExportService;
 
-//import org.w3c.dom.Document;
-//import org.sakaiproject.tool.assessment.services.qti.QTIService;
+import org.w3c.dom.Document;
+import org.sakaiproject.tool.assessment.services.qti.QTIService;
 
 
 
@@ -41,11 +42,12 @@ import org.sakaiproject.user.api.UserNotDefinedException;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 
+import java.io.OutputStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
-import static org.apache.commons.lang.StringEscapeUtils.escapeHtml;
+
 
 public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
@@ -69,8 +71,11 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
     @Setter
     private PersistenceService persistenceService;
 
-//    @Setter
-//    private QTIService qtiService;
+    @Setter
+    private QTIService qtiService;
+
+    @Setter
+    private ExportService exportService;
 
     //
     //private final String REPORTS_SITE = "archivesintrasfinaux";
@@ -91,6 +96,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
         String REPORTS_SITE = serverConfigService.getString("hec.quartzjob.testtravaux.reportssite", "archivesintrasfinaux");
 
         List<String> terms = null;
+
         String term = context.getMergedJobDataMap().getString("term");
 
         if (!term.isEmpty()) {
@@ -113,7 +119,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
                 Collection<Assignment> assignments = null;
                 //List<PublishedAssessmentFacade> assessments = null;
-            List<PublishedAssessmentFacade> assessments = null;
+                List<PublishedAssessmentFacade> assessments = null;
 
 
 
@@ -184,9 +190,9 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
                     assignments = assignmentService.getAssignmentsForContext(siteId);
 
-//                    assessments =
-//                    persistenceService.getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(
-//                            PublishedAssessmentFacadeQueries.TITLE, true, siteId);
+                    assessments =
+                    persistenceService.getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(
+                            PublishedAssessmentFacadeQueries.TITLE, true, siteId);
 
 
 
@@ -204,10 +210,10 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                         hasIntrasFinals = createAssignmentsFiles(assignments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
 
                     }
-//                    if(!assessments.isEmpty()) {
-//                        hasIntrasFinals = createAssessmentFiles(assessments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
-//
-//                    }
+                    if(!assessments.isEmpty()) {
+                        hasIntrasFinals = createAssessmentFiles(assessments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
+
+                    }
 
 // methode assignment et test quiz
 
@@ -251,18 +257,20 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
             isRunning = false;
         }
     }
-//    private Boolean createAssessmentFiles(List<PublishedAssessmentFacade> assessments, Boolean hasIntrasFinals,
-//                                           Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection) {
-//        for (PublishedAssessmentFacade assessment : assessments) {
-//
-//            Document qtiAssessment = null;
-//
-//            qtiAssessment = qtiService.getExportedAssessment(assessment.getAssessmentId().toString(), QTIVersion.VERSION_2_0);
-//
-//
-//        }
-//        return hasIntrasFinals;
-//    }
+    private Boolean createAssessmentFiles(List<PublishedAssessmentFacade> assessments, Boolean hasIntrasFinals,
+                                           Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection) {
+        for (PublishedAssessmentFacade assessment : assessments) {
+
+            OutputStream assessmentOutputStream = null;
+
+            log.info(Long.toString(assessment.getAssessmentId()));
+
+             exportService.extractAssessment(Long.toString(assessment.getAssessmentId()));
+
+
+        }
+        return hasIntrasFinals;
+    }
 private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
                                       Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
     for (Assignment assignment : assignments) {
