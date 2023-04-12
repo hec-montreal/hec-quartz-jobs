@@ -26,7 +26,6 @@ import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
-import org.sakaiproject.tool.assessment.services.ExportService;
 
 import org.w3c.dom.Document;
 import org.sakaiproject.tool.assessment.services.qti.QTIService;
@@ -74,8 +73,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
     @Setter
     private QTIService qtiService;
 
-    @Setter
-    private ExportService exportService;
+    private ExportService exportService = new ExportService();
 
     //
     //private final String REPORTS_SITE = "archivesintrasfinaux";
@@ -265,7 +263,7 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
             log.info(Long.toString(assessment.getAssessmentId()));
 
-             exportService.extractAssessment(Long.toString(assessment.getAssessmentId()));
+             exportService.extractAssessment(Long.toString(assessment.getAssessmentId()), assessmentOutputStream);
 
 
         }

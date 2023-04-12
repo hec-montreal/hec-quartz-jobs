@@ -82,6 +82,11 @@
           <artifactId>samigo-qti</artifactId>
           <version>19.4</version>
       </dependency>
+      <dependency>
+        <groupId>org.sakaiproject.samigo</groupId>
+        <artifactId>samigo-cp</artifactId>
+        <version>19.4</version>
+    </dependency>
 
 
       <dependency>
