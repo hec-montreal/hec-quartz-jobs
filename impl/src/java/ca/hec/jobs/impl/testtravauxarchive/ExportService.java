@@ -97,9 +97,9 @@ public class ExportService {
 
 		}else{
 			if(success == AssessmentService.UPDATE_ERROR_DRAW_SIZE_TOO_LARGE) {
-                log.error("update_pool_error_size_too_large");
+                log.error("Error in updateAllRandomPoolQuestions(): update_pool_error_size_too_large");
 			}else{
-                log.error("update_pool_error_unknown");
+                log.error("Error in updateAllRandomPoolQuestions(): update_pool_error_unknown");
 			}
             return;
 		}

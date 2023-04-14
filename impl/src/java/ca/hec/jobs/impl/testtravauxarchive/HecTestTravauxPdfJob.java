@@ -18,19 +18,9 @@ import org.sakaiproject.site.api.Site;
 import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.assignment.api.AssignmentService;
 
-import org.sakaiproject.tool.assessment.data.dao.assessment.*;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.AnswerIfc;
-import org.sakaiproject.tool.assessment.data.ifc.assessment.ItemTextIfc;
-import org.sakaiproject.tool.assessment.data.ifc.shared.TypeIfc;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
-import org.sakaiproject.tool.assessment.qti.constants.QTIVersion;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
-
-import org.w3c.dom.Document;
-import org.sakaiproject.tool.assessment.services.qti.QTIService;
-
-
 
 import org.sakaiproject.user.api.UserDirectoryService;
 import org.sakaiproject.content.api.ContentCollection;
@@ -69,9 +59,6 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
 
     @Setter
     private PersistenceService persistenceService;
-
-    @Setter
-    private QTIService qtiService;
 
     private ExportService exportService = new ExportService();
 
