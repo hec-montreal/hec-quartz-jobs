@@ -19,6 +19,7 @@ import org.sakaiproject.site.api.SiteService;
 import org.sakaiproject.assignment.api.AssignmentService;
 
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacade;
+import org.sakaiproject.tool.assessment.facade.AssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.facade.PublishedAssessmentFacadeQueries;
 import org.sakaiproject.tool.assessment.services.PersistenceService;
 
@@ -96,35 +97,18 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
         try {
             // ####################for debug
             for (int i = 0; i < terms.size(); i++) {
+
                 List<Site> sites = null;
-
-
-
                 String siteId = null;
-
                 Collection<Assignment> assignments = null;
-                //List<PublishedAssessmentFacade> assessments = null;
                 List<PublishedAssessmentFacade> assessments = null;
-
-
-
                 ByteArrayOutputStream otherSitesByteOutputStream;
-
                 ResourcePropertiesEdit otherSitesResourceProperties = null;
-
                 String otherSitesReportTextId = null;
-
                 ContentCollection sessionFolderCollection = null;
                 Map<String, String> criteria = new HashMap<String, String>();
-                //##########################for debug
                 criteria.put("term", terms.get(i));
                 String actualTerm = terms.get(i);
-
-//                criteria.put("term", "H2023");
-//                String actualTerm = "H2023";
-
-                //log.info("/////////TERM: ######## "+ terms.get(i));
-
                 String sessionFolderId = "";
                 String sessionFolderName = "";
                 String pattern = "yyyyMMddHHmm";
@@ -133,81 +117,36 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
                 // Get the today date using Calendar object.
                 Date today = Calendar.getInstance().getTime();
                 String todayAsString = df.format(today);
-
-                archivesReportsFolder =
-                        "/group/" + REPORTS_SITE
-                                + "/";
-
-
+                archivesReportsFolder = "/group/" + REPORTS_SITE + "/";
                 sessionFolderName = actualTerm + "_" + todayAsString;
-
-                sessionFolderId =
-                        archivesReportsFolder + sessionFolderName +"/";
-
-                sessionFolderCollection =
-                        createOrGetContentCollection(sessionFolderId, sessionFolderName);
-
-
+                sessionFolderId = archivesReportsFolder + sessionFolderName +"/";
+                sessionFolderCollection = createOrGetContentCollection(sessionFolderId, sessionFolderName);
                 sites = siteService.getSites(SiteService.SelectionType.ANY, "course", null, criteria, SiteService.SortType.NONE, null);
-//###########################for debug
+
                 for (Site site : sites) {
 
-                    //###########################for debug
-                    //siteId = "ATEL49037.H2023";
                     siteId = site.getId();
-
-                    //Site site = siteService.getSite(siteId);
-
-
-
                     ContentCollection siteFolderCollection = null;
                     String siteFolderId = "";
                     String siteFolderName = "";
-
-
-
-
                     siteFolderName = siteId;
                     Boolean hasIntrasFinals = false;
-
-                    siteFolderId =
-                            sessionFolderCollection.getId() + siteId +"/";
-
+                    siteFolderId = sessionFolderCollection.getId() + siteId +"/";
                     assignments = assignmentService.getAssignmentsForContext(siteId);
-
-                    assessments =
-                    persistenceService.getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(
+                    assessments = persistenceService.getPublishedAssessmentFacadeQueries().getBasicInfoOfAllPublishedAssessments2(
                             PublishedAssessmentFacadeQueries.TITLE, true, siteId);
-
-
-
-
-
-                     //assessments = publishedAssessmentService.getAllActivePublishedAssessments("startDate");
-                    //assessments = publishedAssessmentService.getBasicInfoOfAllPublishedAssessments2("startDate", true, siteId);
-
-
 
                     if(!assignments.isEmpty()){
 
-
-
                         hasIntrasFinals = createAssignmentsFiles(assignments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
-
                     }
                     if(!assessments.isEmpty()) {
+
                         hasIntrasFinals = createAssessmentFiles(assessments, hasIntrasFinals, site, siteId, siteFolderId, siteFolderName, siteFolderCollection);
-
                     }
-
-// methode assignment et test quiz
-
-
-
                     if(hasIntrasFinals.equals(false)) {
                         sitesWithoutInstrasFinals.add(siteId);
                     }
-//###########################for debug
                 }
                 String otherSitesTextToDisplay = sitesWithoutInstrasFinals.toString();
                 // add name to file
@@ -245,168 +184,190 @@ public class HecTestTravauxPdfJob extends AbstractQuartzJobImpl {
     private Boolean createAssessmentFiles(List<PublishedAssessmentFacade> assessments, Boolean hasIntrasFinals,
                                            Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection) {
         for (PublishedAssessmentFacade assessment : assessments) {
+            String assessmentFolderId = "";
+            String assessmentFolderName = "";
+            String assessmentFileTitle = null;
+            String assessmentFileId = null;
+            OutputStream assessmentOutputStream = new ByteArrayOutputStream();
+            ResourcePropertiesEdit assessmentResourceProperties = null;
 
-            OutputStream assessmentOutputStream = null;
+            try {
+                if(assessment.getTitle().toUpperCase().contains("INTRA") || assessment.getTitle().toUpperCase().contains("FINAL")
+                        || assessment.getTitle().toUpperCase().contains("MIDTERM")){
 
-            log.info(Long.toString(assessment.getAssessmentId()));
+                    PublishedAssessmentFacade paf = persistenceService.getPublishedAssessmentFacadeQueries().getSettingsOfPublishedAssessment(assessment.getPublishedAssessmentId());
+                    Long assessmentId = paf.getAssessmentId();
+                    ContentCollection assessmentFolderCollection = null;
+                    hasIntrasFinals = true;
+                    String titleWithoutAccents = "";
+                    String titleWithoutSpacesAndAccents = "";
+                    titleWithoutAccents = removeAccents(assessment.getTitle());
+                    titleWithoutSpacesAndAccents = replaceSpace(titleWithoutAccents);
+                    assessmentFolderName = titleWithoutSpacesAndAccents;
+                    assessmentFileTitle = replaceSpace(removeAccents(assessment.getTitle().toLowerCase()));
+                    siteFolderCollection =
+                            createOrGetContentCollection(siteFolderId, siteFolderName);
+                    assessmentFolderId =
+                            siteFolderCollection.getId() + assessmentFolderName + "/";
+                    assessmentFolderCollection =
+                            createOrGetContentCollection(assessmentFolderId, assessmentFolderName);
+                    // add name to file
+                    assessmentResourceProperties =
+                            contentHostingService.newResourceProperties();
+                    assessmentResourceProperties.addProperty(
+                            ResourceProperties.PROP_DISPLAY_NAME, assessmentFileTitle
+                                    + ".zip");
 
-             exportService.extractAssessment(Long.toString(assessment.getAssessmentId()), assessmentOutputStream);
+                    String assId = Long.toString(assessmentId);
 
+                    //calling the service method that will create the zip file for the assessment
+                    exportService.extractAssessment(assId, assessmentOutputStream );
+
+                    // Save text to  folder
+                    assessmentFileId = assessmentFolderCollection.getId() +
+                            assessmentFileTitle
+                            + ".zip";
+
+                    contentHostingService.addResource(assessmentFileId,
+                            "application/zip", new ByteArrayInputStream(
+                                    ((ByteArrayOutputStream) assessmentOutputStream).toByteArray()),
+                            assessmentResourceProperties, 0);
+                }
+
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
 
         }
         return hasIntrasFinals;
     }
-private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
-                                      Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
-    for (Assignment assignment : assignments) {
+    private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boolean hasIntrasFinals,
+                                          Site site, String siteId, String  siteFolderId, String siteFolderName, ContentCollection siteFolderCollection){
+        for (Assignment assignment : assignments) {
 
-        String assignmentFolderId = "";
-        String assignmentFolderName = "";
-        String fileTitle = null;
-        String reportTextId = null;
-        ByteArrayOutputStream byteOutputStream;
-        ResourcePropertiesEdit resourceProperties = null;
+            String assignmentFolderId = "";
+            String assignmentFolderName = "";
+            String fileTitle = null;
+            String reportTextId = null;
+            ByteArrayOutputStream byteOutputStream;
+            ResourcePropertiesEdit resourceProperties = null;
 
+            try {
+                if(!assignment.getDraft() && (assignment.getTitle().toUpperCase().contains("INTRA") || assignment.getTitle().toUpperCase().contains("FINAL")
+                        || assignment.getTitle().toUpperCase().contains("MIDTERM"))){
 
-        try {
-            if(!assignment.getDraft() && (assignment.getTitle().toUpperCase().contains("INTRA") || assignment.getTitle().toUpperCase().contains("FINAL")
-                    || assignment.getTitle().toUpperCase().contains("MIDTERM"))){
+                    ContentCollection assignmentFolderCollection = null;
+                    hasIntrasFinals = true;
+                    String userName = "";
+                    String titleWithoutAccents = "";
+                    String titleWithoutSpacesAndAccents = "";
+                    String modeRemise = "";
+                    String note = "";
 
-                ContentCollection assignmentFolderCollection = null;
-
-
-                hasIntrasFinals = true;
-                String userName = "";
-                String titleWithoutAccents = "";
-                String titleWithoutSpacesAndAccents = "";
-                String modeRemise = "";
-                String note = "";
-
-                try {
-                    userName = userDirectoryService.getUser(assignment.getAuthor()).getDisplayName();
-                }catch (UserNotDefinedException e2){
-                    e2.printStackTrace();
-                    continue;
-                }
-                titleWithoutAccents = removeAccents(assignment.getTitle());
-                titleWithoutSpacesAndAccents = replaceSpace(titleWithoutAccents);
-                assignmentFolderName = titleWithoutSpacesAndAccents;
-                modeRemise = getModeRemise(assignment);
-                String nouvelleRemise = "0";
-                String groupsDisplay = "Site";
-                note = getNote(assignment);
-
-                if(assignment.getProperties().containsKey("allow_resubmit_number")){
-
-                    nouvelleRemise = assignment.getProperties().get("allow_resubmit_number");
-
-                }
-                // get the section
-                Set<String> groups = null;
-
-                if(!assignment.getGroups().isEmpty()){
-
-                    groupsDisplay = "";
-                    groups = assignment.getGroups();
-                    Iterator<String> groupsIterator = groups.iterator();
-
-                    while(groupsIterator.hasNext()) {
-
-                        String groupUrl = groupsIterator.next();
-                        groupUrl = groupUrl.substring(groupUrl.lastIndexOf("/") + 1);
-                        Group group = site.getGroup(groupUrl);
-                        String groupTitle = group.getTitle();
-
-                        groupsDisplay = groupsDisplay + groupTitle + " ";
+                    try {
+                        userName = userDirectoryService.getUser(assignment.getAuthor()).getDisplayName();
+                    }catch (UserNotDefinedException e2){
+                        e2.printStackTrace();
+                        continue;
                     }
+                    titleWithoutAccents = removeAccents(assignment.getTitle());
+                    titleWithoutSpacesAndAccents = replaceSpace(titleWithoutAccents);
+                    assignmentFolderName = titleWithoutSpacesAndAccents;
+                    modeRemise = getModeRemise(assignment);
+                    String nouvelleRemise = "0";
+                    String groupsDisplay = "Site";
+                    note = getNote(assignment);
 
-                }
+                    if(assignment.getProperties().containsKey("allow_resubmit_number")){
 
-                String textToDisplay =
-                        "Titre du travail: "+ titleWithoutSpacesAndAccents + "\n" +
-                                "Identifiant du cours: "+ siteId + "\n" +
-                                "Créé par: " + userName + "\n" +
-                                "Date de création: " + assignment.getDateCreated().toString() + "\n" +
-                                "Ouvert: " + assignment.getOpenDate().toString() + "\n" +
-                                "Date d'échéance du travail: " + assignment.getDueDate().toString() + "\n" +
-                                "Date d'échéance finale: " + assignment.getCloseDate().toString() + "\n" +
-                                "Modifié par l'instructeur: " + assignment.getDateModified().toString() + "\n" +
-                                "Pour: " + groupsDisplay + "\n" +
-                                "Mode de remise: " + modeRemise + "\n" +
-                                "Nombre de nouvelles remises permises: " + nouvelleRemise + "\n" +
-                                "Accepter les soumissions en retard jusqu'à: " + assignment.getDropDeadDate().toString() + "\n" +
-                                "Note: " + note + "\n\n" +
-                                "Instructions pour le travail - "+ "\n\n" + assignment.getInstructions().replaceAll("<[^>]*>", "")+ "\n\n" ;
+                        nouvelleRemise = assignment.getProperties().get("allow_resubmit_number");
+                    }
+                    // get the section
+                    Set<String> groups = null;
+
+                    if(!assignment.getGroups().isEmpty()){
+
+                        groupsDisplay = "";
+                        groups = assignment.getGroups();
+                        Iterator<String> groupsIterator = groups.iterator();
+
+                        while(groupsIterator.hasNext()) {
+
+                            String groupUrl = groupsIterator.next();
+                            groupUrl = groupUrl.substring(groupUrl.lastIndexOf("/") + 1);
+                            Group group = site.getGroup(groupUrl);
+                            String groupTitle = group.getTitle();
+
+                            groupsDisplay = groupsDisplay + groupTitle + " ";
+                        }
+                    }
+                    String textToDisplay =
+                            "Titre du travail: "+ titleWithoutSpacesAndAccents + "\n" +
+                                    "Identifiant du cours: "+ siteId + "\n" +
+                                    "Créé par: " + userName + "\n" +
+                                    "Date de création: " + assignment.getDateCreated().toString() + "\n" +
+                                    "Ouvert: " + assignment.getOpenDate().toString() + "\n" +
+                                    "Date d'échéance du travail: " + assignment.getDueDate().toString() + "\n" +
+                                    "Date d'échéance finale: " + assignment.getCloseDate().toString() + "\n" +
+                                    "Modifié par l'instructeur: " + assignment.getDateModified().toString() + "\n" +
+                                    "Pour: " + groupsDisplay + "\n" +
+                                    "Mode de remise: " + modeRemise + "\n" +
+                                    "Nombre de nouvelles remises permises: " + nouvelleRemise + "\n" +
+                                    "Accepter les soumissions en retard jusqu'à: " + assignment.getDropDeadDate().toString() + "\n" +
+                                    "Note: " + note + "\n\n" +
+                                    "Instructions pour le travail - "+ "\n\n" + assignment.getInstructions().replaceAll("<[^>]*>", "")+ "\n\n" ;
 
 
-                fileTitle = replaceSpace(removeAccents(assignment.getTitle().toLowerCase()));
+                    fileTitle = replaceSpace(removeAccents(assignment.getTitle().toLowerCase()));
+                    siteFolderCollection = createOrGetContentCollection(siteFolderId, siteFolderName);
+                    assignmentFolderId = siteFolderCollection.getId() + assignmentFolderName + "/";
+                    assignmentFolderCollection = createOrGetContentCollection(assignmentFolderId, assignmentFolderName);
+                    // add name to file
+                    resourceProperties = contentHostingService.newResourceProperties();
+                    resourceProperties.addProperty(
+                            ResourceProperties.PROP_DISPLAY_NAME, fileTitle
+                                    + ".txt");
+                    // Create text file
+                    byteOutputStream = new ByteArrayOutputStream();
+                    byte[] array = textToDisplay.getBytes();
+                    // Writes data to the output stream
+                    byteOutputStream.write(array);
+                    // Save text to  folder
+                    reportTextId = assignmentFolderCollection.getId() +
+                            fileTitle
+                            + ".txt";
+                    contentHostingService.addResource(reportTextId,
+                            "text/plain", new ByteArrayInputStream(
+                                    byteOutputStream.toByteArray()),
+                            resourceProperties, 0);
 
+                    if(!assignment.getAttachments().isEmpty()){
 
+                        String finalSiteFolderId = assignmentFolderId;
+                        assignment.getAttachments().stream().forEach(attachment ->
+                                {
+                                    try {
+                                        String att = attachment.toString();
+                                        // get rid of first part of URL: "/content/"
+                                        String attFolder = att.substring(8);
 
-                siteFolderCollection =
-                        createOrGetContentCollection(siteFolderId, siteFolderName);
+                                        contentHostingService.copy(
+                                                attFolder,
+                                                finalSiteFolderId + att.substring(att.lastIndexOf("/") + 1));
 
-                assignmentFolderId =
-                        siteFolderCollection.getId() + assignmentFolderName + "/";
-
-                assignmentFolderCollection =
-                        createOrGetContentCollection(assignmentFolderId, assignmentFolderName);
-
-                // add name to file
-                resourceProperties =
-                        contentHostingService.newResourceProperties();
-                resourceProperties.addProperty(
-                        ResourceProperties.PROP_DISPLAY_NAME, fileTitle
-                                + ".txt");
-                // Create text file
-                byteOutputStream = new ByteArrayOutputStream();
-                byte[] array = textToDisplay.getBytes();
-
-                // Writes data to the output stream
-                byteOutputStream.write(array);
-
-                // Save text to  folder
-                reportTextId = assignmentFolderCollection.getId() +
-                        fileTitle
-                        + ".txt";
-
-                contentHostingService.addResource(reportTextId,
-                        "text/plain", new ByteArrayInputStream(
-                                byteOutputStream.toByteArray()),
-                        resourceProperties, 0);
-
-                if(!assignment.getAttachments().isEmpty()){
-
-                    String finalSiteFolderId = assignmentFolderId;
-
-                    assignment.getAttachments().stream().forEach(attachment ->
-                            {
-                                try {
-                                    String att = attachment.toString();
-                                    // get rid of first part of URL: "/content/"
-                                    String attFolder = att.substring(8);
-
-                                    contentHostingService.copy(
-                                            attFolder,
-                                            finalSiteFolderId + att.substring(att.lastIndexOf("/") + 1));
-
-                                } catch (Exception e) {
-                                    e.printStackTrace();
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
                                 }
-                            }
-
-                    );
+                        );
+                    }
                 }
-
-
+            } catch (Exception e1) {
+                e1.printStackTrace();
             }
-        } catch (Exception e1) {
-            e1.printStackTrace();
         }
+        return hasIntrasFinals;
     }
-    return hasIntrasFinals;
-
-}
     private String getModeRemise(Assignment assignment){
         if(assignment.getTypeOfSubmission().toString().equals("TEXT_ONLY_ASSIGNMENT_SUBMISSION")){
             return "Saisie dans une zone de texte";
@@ -439,7 +400,6 @@ private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boole
         }
 
     }
-
     private String removeAccents(String name) {
         if (name == null)
             return null;
@@ -455,10 +415,8 @@ private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boole
             else
                 cleanName = cleanName.concat(letter + "");
         }
-
         return cleanName;
     }
-
     private String replaceSpace(String name){
         if (name == null)
             return null;
@@ -467,7 +425,6 @@ private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boole
         return cleanName;
 
     }
-
     private ContentCollection createOrGetContentCollection(
             String folderId, String folderName)
             throws Exception {
@@ -493,7 +450,6 @@ private Boolean createAssignmentsFiles(Collection<Assignment> assignments, Boole
         } catch (PermissionException e) {
             e.printStackTrace();
         }
-
         return folderCollection;
     }
 
