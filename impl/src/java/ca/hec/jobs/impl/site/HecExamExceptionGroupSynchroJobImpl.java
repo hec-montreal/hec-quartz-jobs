@@ -153,8 +153,22 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             HashMap<String, String> emailList = new HashMap<>();
             for (ExceptedStudent student : studentExceptions) {
 
+                String dfSection = null;
+
+                // if the enrollment is DF, find the true section
+                // for the student before continuing
+                if (student.getClassSection().startsWith("DF")) {
+                    dfSection = getSectionForDF(student);
+                    if (dfSection == null) {
+                        // don't to anything if we didn't find an enrollment
+                        // it should show up later
+                        continue;
+                    }
+                }
+
                 String officialProviderId = siteIdFormatHelper.buildSectionId(
-                    student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, student.getClassSection());
+                    student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, 
+                    dfSection == null ? student.getClassSection() : dfSection);
 
                 // build map of exceptions for synchronizing regular groups at the end.
                 // State = D is no longer an exception
@@ -175,11 +189,14 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
                 previousSiteId = siteId;
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
-                        SESSION_CODE, student.getClassSection(), distinctSitesSections);
+                        SESSION_CODE, 
+                        dfSection == null ? student.getClassSection() : 
+                        dfSection, distinctSitesSections);
 
                 if (siteId == null) {
                     log.info("Le cours-section n'est pas encore dans le course management " + student.getSubject()
-                            + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + student.getClassSection());
+                            + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + 
+                            dfSection == null ? student.getClassSection() : dfSection);
                 } else {
                     // We have changed site or have just started
                     if (!siteId.equals(previousSiteId)) {
@@ -203,8 +220,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
 
-                    String groupPrefix = EXCEPTION_GROUP_PREFIX + student.getClassSection();
-                    String groupTitle = generateGroupTitle(student.getClassSection(), student.getNPrcentSupp());
+                    String groupPrefix = EXCEPTION_GROUP_PREFIX + dfSection == null ? student.getClassSection() : dfSection;
+                    String groupTitle = generateGroupTitle(
+                        dfSection == null ? student.getClassSection() : dfSection, student.getNPrcentSupp());
                     group = getGroupByTitle(site, groupTitle);
 
                     try {
@@ -257,6 +275,28 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             isRunning = false;
             log.debug("finished");
         }
+    }
+
+    private String getSectionForDF(ExceptedStudent student) {
+        Set<Section> enrolledSections = cmService.findEnrolledSections(student.getEmplid());
+        List<Section> matchingSections = enrolledSections.stream()
+            .filter(s -> { return s.getEid().startsWith(
+                student.getSubject() + student.getCatalogNbr() + student.getStrm() + SESSION_CODE
+            ); })
+            .collect(Collectors.toList());
+
+        if (matchingSections.size() > 1) {
+            log.error(String.format("Student has multiple registrations for course : %s, session: %s, section: %s ", 
+                student.getSubject()+student.getCatalogNbr(), student.getStrm(), student.getClassSection()));
+        }
+        else if (matchingSections.size() == 0) {
+            log.debug(String.format("Student not enrolled in course : %s, session: %s, section: %s ", 
+                student.getSubject()+student.getCatalogNbr(), student.getStrm(), student.getClassSection()));
+        }
+        else {
+            return matchingSections.get(0).getTitle();
+        }
+        return null;
     }
 
     private boolean groupContainsStudents(Group g) {
@@ -443,8 +483,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
     private String generateGroupTitle(String section, String percent) {
         if (StringUtils.isNotEmpty(percent))
-            return EXCEPTION_GROUP_PREFIX + section  + percent.replace("%", "");
-        else return EXCEPTION_GROUP_PREFIX + section  + REGULAR_GROUP_SUFFIX;
+            return EXCEPTION_GROUP_PREFIX + section.replace("-", "")  + percent.replace("%", "");
+        // remove "-" from section title for DF (ex. DF-P)
+        else return EXCEPTION_GROUP_PREFIX + section.replace("-", "")  + REGULAR_GROUP_SUFFIX;
     }
 
     private Optional<Group> createGroup(Site site, String groupTitle) {
