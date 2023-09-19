@@ -299,8 +299,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 .filter(g -> { return g.getTitle().startsWith(groupPrefix) && groupContainsStudents(g); } )
                 .collect(Collectors.toList());
 
-            // send email if only one group has students (regular group). Other groups may contain instructor.
-            if (matchedGroups != null && matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")) {
+            // send email if only one group has students (regular group), or none have students. Other groups may contain instructor.
+            if (matchedGroups != null &&
+                    (matchedGroups.size() == 0 || (matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")))) {
                 String message = "L'équipe d'accommodement régulier " 
                     + matchedGroups.get(0).getTitle() + " du site " + site.getId()
                     + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
