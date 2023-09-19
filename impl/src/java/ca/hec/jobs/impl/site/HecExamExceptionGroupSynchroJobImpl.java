@@ -244,7 +244,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             group.get().deleteMember(studentId);
                             if (!groupContainsStudents(group.get())) {
                                 log.debug("Group is empty, add to map");
-                                emptyGroups.put(site.getId()+";"+groupPrefix, new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
+                                emptyGroups.put(
+                                    site.getId()+";"+groupPrefix.replace("-", ""), 
+                                    new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
                             }
                             removedStudents.add(student);
                         }
@@ -310,7 +312,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
         String daipEmails = serverConfigService.getString("hec.notification.daip.emailList", "");
 
         String from = "zonecours@hec.ca";
-        String subject = "Équipe d'accommodement régulier ne sera plus sychronisé: ";
+        String subject = "Équipe d'accommodement régulier ne sera plus sychronisé: %s %s";
 
         for (Entry<String, SiteAndEmails> e : sitesToCheck.entrySet()) {
             Site site = e.getValue().getSite();
@@ -339,15 +341,16 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                 .filter(g -> { return g.getTitle().startsWith(groupPrefix) && groupContainsStudents(g); } )
                 .collect(Collectors.toList());
 
-            // send email if only one group has students (regular group). Other groups may contain instructor.
-            if (matchedGroups != null && matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")) {
+            // send email if only one group has students (regular group), or none have students. Other groups may contain instructor.
+            if (matchedGroups != null &&
+                    (matchedGroups.size() == 0 || (matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")))) {
                 String message = "L'équipe d'accommodement régulier " 
-                    + matchedGroups.get(0).getTitle() + " du site " + site.getId()
+                    + groupPrefix + "R du site " + site.getId()
                     + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
                     + "\r\nVeuillez ne plus l'utiliser pour les examens.";
-                emailService.send(from, emailAddresses, subject+site.getId()+" "+matchedGroups.get(0).getTitle(),
+                emailService.send(from, emailAddresses, String.format(subject, site.getId(), groupPrefix+"R"),
                     message, null, null, null);
-                log.debug("Email sent for " + matchedGroups.get(0).getTitle());
+                log.debug("Email sent for " + groupPrefix+"R in " + site.getId());
             }
         }
     }
