@@ -244,7 +244,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                             group.get().deleteMember(studentId);
                             if (!groupContainsStudents(group.get())) {
                                 log.debug("Group is empty, add to map");
-                                emptyGroups.put(site.getId()+";"+groupPrefix, new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
+                                emptyGroups.put(
+                                    site.getId()+";"+groupPrefix.replace("-", ""), 
+                                    new SiteAndEmails(site, student.getAllEmails().stream().collect(Collectors.joining(","))));
                             }
                             removedStudents.add(student);
                         }
@@ -343,7 +345,7 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
             if (matchedGroups != null &&
                     (matchedGroups.size() == 0 || (matchedGroups.size() == 1 && matchedGroups.get(0).getTitle().endsWith("R")))) {
                 String message = "L'équipe d'accommodement régulier " 
-                    + matchedGroups.get(0).getTitle() + " du site " + site.getId()
+                    + groupPrefix + "R du site " + site.getId()
                     + " ne sera plus synchronisé parce que cette section n'as plus d'accommodements." 
                     + "\r\nVeuillez ne plus l'utiliser pour les examens.";
                 emailService.send(from, emailAddresses, subject+site.getId()+" "+matchedGroups.get(0).getTitle(),
