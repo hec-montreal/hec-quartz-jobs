@@ -165,10 +165,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
                 }
+                String section = (dfSection == null) ? student.getClassSection() : dfSection;
 
                 String officialProviderId = siteIdFormatHelper.buildSectionId(
                     student.getSubject() + student.getCatalogNbr(), student.getStrm(), SESSION_CODE, 
-                    dfSection == null ? student.getClassSection() : dfSection);
+                    section);
 
                 // build map of exceptions for synchronizing regular groups at the end.
                 // State = D is no longer an exception
@@ -189,14 +190,11 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
 
                 previousSiteId = siteId;
                 siteId = siteIdFormatHelper.getSiteId(student.getSubject() + student.getCatalogNbr(), student.getStrm(),
-                        SESSION_CODE, 
-                        dfSection == null ? student.getClassSection() : 
-                        dfSection, distinctSitesSections);
+                        SESSION_CODE, section, distinctSitesSections);
 
                 if (siteId == null) {
                     log.info("Le cours-section n'est pas encore dans le course management " + student.getSubject()
-                            + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + 
-                            dfSection == null ? student.getClassSection() : dfSection);
+                            + student.getCatalogNbr() + student.getStrm() + SESSION_CODE + section);
                 } else {
                     // We have changed site or have just started
                     if (!siteId.equals(previousSiteId)) {
@@ -220,9 +218,9 @@ public class HecExamExceptionGroupSynchroJobImpl implements HecExamExceptionGrou
                         continue;
                     }
 
-                    String groupPrefix = EXCEPTION_GROUP_PREFIX + dfSection == null ? student.getClassSection() : dfSection;
-                    String groupTitle = generateGroupTitle(
-                        dfSection == null ? student.getClassSection() : dfSection, student.getNPrcentSupp());
+                    String groupPrefix = EXCEPTION_GROUP_PREFIX + section;
+
+                    String groupTitle = generateGroupTitle(section, student.getNPrcentSupp());
                     group = getGroupByTitle(site, groupTitle);
 
                     try {
